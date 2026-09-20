@@ -1,19 +1,19 @@
-# Astral Repository â€” Fabric 1.21.1
+# Astral Repository — Fabric 1.21.1
 
-A magical storage and automation network for Minecraft 1.21.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. The `CappleApple/fabric-1.21.1` branch contains Astral Repository 1.11.8 for Fabric.
+A magical storage and automation network for Minecraft 1.21.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.11.9**, on branch `CappleApple/fabric-1.21.1`.
 
 ## Installation
 
-Install `astral_repository-fabric-1.21.1-1.11.8.jar` on both the client and server. Requires Minecraft **1.21.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.116.16+1.21.1**, and **Java 21**. Required configuration, energy, and applicable model libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-1.21.1-1.11.9.jar` on the client and server. Requires **Minecraft 1.21.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.116.17+1.21.1**, and **Java 21**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
 
-Optional Trinkets provides the goggles accessory slot; the normal helmet slot works without it. Patchouli enables the Field Guide. Refined Storage Fabric 1.21.1 has an explicit storage adapter; full optional-mod networks were not part of the runtime checks.
+Trinkets enables the goggles face slot; goggles also work in the normal helmet slot. Patchouli enables the Astral Field Guide. EMI adds recipe and menu integration, and Jade adds block information. These optional mods are not bundled. The explicit Refined Storage Fabric 1.21.1 adapter was not exercised with a complete optional storage network during these checks.
 
 ## Start a workshop
 
 1. Collect Astral Gems from an Astral geode and craft a Storage Nexus.
 2. Place the Nexus near chests or barrels and open it after automatic discovery.
 3. Extend the network with same-channel Relay Crystals. Storage Crystals provide their own capacity-based storage.
-4. Put an inscribed Recipe Tome in a nearby Chiseled Bookshelf to teach its selected recipe to the network.
+4. Inscribe a Recipe Tome and put it in a nearby Chiseled Bookshelf to teach the network its recipe. Place the required workstation nearby and supply ingredients through connected storage.
 
 Right-click the Attunement Wand in the air to choose or edit rune presets. Place a Push or Pull rune on a container, then Shift-right-click the glyph with the wand to assign target containers.
 
@@ -25,22 +25,23 @@ Run Gradle with **JDK 21**.
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.21.1-1.11.8.jar`. Do not package a release with `-PclientSmoke`.
-
-All source sets and resources live under `src/`.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.21.1-1.11.9.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
 
 ## Validation
 
-The port passed 146 JUnit tests and native server checks for item, fluid, and energy storage; transaction rollback; persistence; all 13 unconditional recipes; and ordinary and Silk Touch harvesting. A background client check covered nine standalone models, both custom shaders, and four rendered item models. The independent branch layout is checked again with `test build`; the gameplay checks apply to the same port implementation.
+The release checks include 146 JUnit tests and dedicated-server storage, transaction, recipe, and loot assertions. The packaged client fixture uses the remapped release JAR with a separate test mod. It covers all ten blocks on all six placement faces, survival item consumption, stateful storage break/re-place, stock-limited rune transfer, translated item names and tooltips, Nexus withdrawal and deposit packets, ordinary crafting, Recipe Tome inscription, bookshelf discovery, and a completed autocrafting job.
 
 ```powershell
-.\gradlew.bat runServerSmoke
-.\gradlew.bat runClientSmoke
+.\gradlew.bat productionGameplaySmoke
+.\gradlew.bat productionPersistenceRead
+.\gradlew.bat productionIntegrationGameplaySmoke
 ```
 
-The dedicated fixture uses `run-server-smoke/`. Accept the Minecraft EULA in that directory before running it. Client smoke runs are hidden, muted, and do not grab the mouse. Runtime checks do not establish complete optional-pack compatibility or cross-version world conversion.
+`productionPersistenceRead` first runs a separate write process, then reopens its saved world in a second server JVM. It checks large named item stacks, fluid, energy, upgrades, channel settings, rune settings, and explicit links. The tasks create isolated worlds under `build/` and fail if their fixture does not report success. The persistence fixture accepts the Minecraft EULA for those local test servers. Client fixtures are hidden, muted, and release the mouse.
 
-The [main branch](https://github.com/CappleApple/astral-repository/tree/main) retains the original NeoForge 1.21.1 implementation and its documentation. See the [port validation record](https://github.com/CappleApple/astral-repository/blob/main/ports/VALIDATION.md) for the original runtime evidence. Its loader APIs and compatibility descriptions do not automatically apply to this Fabric branch.
+The optional profile uses Jade **15.10.6+fabric**, Patchouli **1.21.1-93-fabric**, EMI **1.1.24+1.21.1+fabric**, and Trinkets **3.10.0**. It repeats the gameplay workflow, opens the real Field Guide, checks EMI registration, and equips goggles in the Trinkets face slot with client/server synchronization. This does not establish compatibility with every optional-mod combination or cross-version world conversion.
+
+The [main branch](https://github.com/CappleApple/astral-repository/tree/main) retains the original NeoForge 1.21.1 version and its documentation. Its loader APIs and compatibility descriptions do not automatically apply to this Fabric branch. See [port validation](https://github.com/CappleApple/astral-repository/blob/main/ports/VALIDATION.md) for the broader version matrix.
 
 ## License
 

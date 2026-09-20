@@ -7,4 +7,3 @@ public class FabricFluidTransferTest {
  void simulationAndWholeMillibucketBoundaryPreserveExactDroplets(){var tank=new Tank(202);var bridge=new FabricTransfer.FluidHandler(tank);var water=new FluidStack(Fluids.WATER,3);assertEquals(2,bridge.fill(water,FluidAction.SIMULATE));assertEquals(0,tank.amount);assertEquals(2,bridge.fill(water,FluidAction.EXECUTE));assertEquals(162,tank.amount);assertEquals(1,bridge.drain(1,FluidAction.SIMULATE).getAmount());assertEquals(162,tank.amount);assertEquals(1,bridge.drain(1,FluidAction.EXECUTE).getAmount());assertEquals(81,tank.amount);}
  void fractionalOnlyAcceptanceIsRolledBack(){var tank=new Tank(40);var bridge=new FabricTransfer.FluidHandler(tank);assertEquals(0,bridge.fill(new FluidStack(Fluids.WATER,1),FluidAction.EXECUTE));assertEquals(0,tank.amount);assertTrue(tank.getResource().isBlank());}
 }
-

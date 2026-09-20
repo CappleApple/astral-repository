@@ -7,9 +7,10 @@ import net.minecraft.world.level.Level;
 
 /** Server-thread graph endpoint shared by physical crystals and face-mounted rune surfaces. */
 public interface NetworkAnchor {
-    Level getLevel();
-    BlockPos getBlockPos();
-    boolean isRemoved();
+    // Explicit bridges keep this mod-owned API independent of Minecraft runtime method names.
+    default Level getLevel() { return ((net.minecraft.world.level.block.entity.BlockEntity)this).getLevel(); }
+    default BlockPos getBlockPos() { return ((net.minecraft.world.level.block.entity.BlockEntity)this).getBlockPos(); }
+    default boolean isRemoved() { return ((net.minecraft.world.level.block.entity.BlockEntity)this).isRemoved(); }
     NodeKind kind();
     int channel(); int priority(); boolean dimensional(); boolean enabled(); Direction facing();
     DistributionMode distributionMode();
@@ -19,7 +20,7 @@ public interface NetworkAnchor {
     boolean editingExtraction(); boolean excludeNext();
     void setChannel(int value); void setPriority(int value); void setDimensional(boolean value);
     void cycleDistribution(); void toggleDirection(); void toggleExclusion(); void toggleEnabled();
-    void changed(); void topologyChanged(); void setChanged(); CompoundTag getPersistentData();
+    void changed(); void topologyChanged(); default void setChanged() { ((net.minecraft.world.level.block.entity.BlockEntity)this).setChanged(); } CompoundTag getPersistentData();
     default AnchorAddress address() { return new AnchorAddress(GlobalPos.of(getLevel().dimension(),getBlockPos()),null); }
     default BlockPos providerPosition() { return getBlockPos().relative(facing()); }
     default Direction providerSide() { return facing().getOpposite(); }
