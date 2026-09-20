@@ -30,6 +30,7 @@
     "AstralRenderTypeMixin",
     "RuneCompositeGuiMixin",
     "AstralTrimSelectionMixin",
-    "FabricAttackMixin"
+    "FabricAttackMixin",
+    "TransferWeatherMixin"
   ]
 }

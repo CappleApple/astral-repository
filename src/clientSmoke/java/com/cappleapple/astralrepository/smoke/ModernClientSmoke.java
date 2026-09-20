@@ -33,11 +33,20 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
     private static int phase,ticks;
     private static CompletableFuture<Void> pending;
     private static boolean done;
+    private static boolean advancedTransparency;
     public static void tick(Minecraft event) {
         if(!Boolean.getBoolean("astral_repository.modernClientSmoke")||done)return;
         var mc=Minecraft.getInstance();
         mc.options.pauseOnLostFocus=false;mc.mouseHandler.releaseMouse();mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0D);
         try {
+            if(phase==2){
+                if(ticks%20==0)transferSprites();
+                if(ticks>70&&!advancedTransparency){
+                    check(TransferRenderPass.deferredDraws>0,"Classic transfer geometry never drew after clouds");
+                    check(BindingPreviewRenderer.renderedSegments>0,"Binding beam produced no world geometry");
+                    mc.options.improvedTransparency().set(true);advancedTransparency=true;
+                }
+            }
             if(++ticks>1800)throw new AssertionError("Client gate timeout in phase "+phase);
             if(pending!=null){if(!pending.isDone())return;pending.join();pending=null;}
             if(phase==0&&mc.gui.screen()!=null&&mc.gui.overlay()==null){
@@ -55,11 +64,15 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
                         new LevelSettings("Astral port smoke",GameType.CREATIVE,new LevelSettings.DifficultySettings(Difficulty.PEACEFUL,false,false),true,WorldDataConfiguration.DEFAULT),
                         new WorldOptions(42,false,false),r->r.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.FLAT).value().createWorldDimensions(),mc.gui.screen());
             } else if(phase==1&&mc.player!=null&&mc.level!=null&&mc.getSingleplayerServer()!=null&&mc.gui.overlay()==null){
-                verifyNames();mc.gui.setScreen(null);server(ModernClientSmoke::workshop);next(2);
+                verifyNames();mc.options.improvedTransparency().set(false);mc.options.cloudStatus().set(net.minecraft.client.CloudStatus.FANCY);mc.gui.setScreen(null);server(ModernClientSmoke::workshop);next(2);
             } else if(phase==2&&ticks>120){
                 check(AstralPlaneRenderType.ready(),"Astral render pipelines did not register");
                 check(RuneRenderer.visibleFaces()>0,"Rune packets did not reach the client");
                 check(RuneRenderer.renderedGlyphs()>0,"Rune world renderer produced no glyphs");
+                check(TransferRenderPass.compositorDraws>0,"Improved transparency did not draw transfer geometry through its compositor");
+                check(WorldVisuals.performance().iconsDrawn()>0,"Reduced-detail item transfer sprite did not render");
+                check(WorldVisuals.performance().resourcesDrawn()>0,"Fluid, power and source sprites did not render");
+                LogUtils.getLogger().info("FABRIC_TRANSFER_RENDER_PASSES_OK classic={} improved={} beamSegments={} resources={}",TransferRenderPass.deferredDraws,TransferRenderPass.compositorDraws,BindingPreviewRenderer.renderedSegments,WorldVisuals.performance().resourcesDrawn());
                 capture("world.png");next(3);
             } else if(phase==3){
                 mc.options.guiScale().set(1);mc.resizeGui();
@@ -89,6 +102,12 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
                 LogUtils.getLogger().info("FABRIC_MODERN_PORT_CLIENT_SMOKE_OK");done=true;mc.stop();
             }
         }catch(Throwable failure){fail(failure);}
+    }
+    private static void transferSprites(){
+        var from=new BlockPos(4,-58,1);var to=new BlockPos(6,-58,1);
+        com.cappleapple.astralrepository.AstralClientConfig.maxItemTransferModels.set(0);
+        WorldVisuals.add(new NetworkPackets.Visual(from,to,new ItemStack(Items.IRON_INGOT),0x80cfff,80,-1,List.of(from,to)));
+        for(int style=-2;style>=-4;style--)WorldVisuals.add(new NetworkPackets.Visual(from,to,ItemStack.EMPTY,0x80cfff,80,style,List.of(from,to),null,null,style==-2?net.minecraft.resources.Identifier.withDefaultNamespace("water"):null));
     }
     private static void verifyModels(){
         var models=new ArrayList<>(List.of(AstralMineralClient.GEM_MODEL,AstralMineralClient.WAND_MODEL,AstralMineralClient.REMOTE_MODEL,AstralMineralClient.GOGGLES_MODEL,AstralMineralClient.GOGGLES_ICON_MODEL));
@@ -145,6 +164,8 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
         p.getInventory().setItem(0,new ItemStack(AstralContent.ATTUNEMENT_WAND.get()));p.getInventory().setSelectedSlot(0);
         p.getAbilities().flying=true;p.onUpdateAbilities();
         ModernGameplayChecks.setup(p);
+        try {var method=RuneProgramming.class.getDeclaredMethod("select",ItemStack.class,RuneProgramming.Selection.class);method.setAccessible(true);method.invoke(null,p.getMainHandItem(),new RuneProgramming.Selection(runes.address(),runes.layers().getFirst().id()));}catch(ReflectiveOperationException failure){throw new AssertionError(failure);}
+        p.containerMenu.broadcastChanges();
         Vec3 target=new Vec3(5.5,-59.3,.5),eye=new Vec3(5.5,-58,8.5),delta=target.subtract(eye);
         float yaw=(float)Math.toDegrees(Math.atan2(delta.z,delta.x))-90,pitch=(float)-Math.toDegrees(Math.atan2(delta.y,Math.sqrt(delta.x*delta.x+delta.z*delta.z)));
         p.teleportTo(level,eye.x,eye.y-p.getEyeHeight(),eye.z,Set.of(),yaw,pitch,false);
