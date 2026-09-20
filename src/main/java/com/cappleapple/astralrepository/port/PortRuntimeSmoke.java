@@ -2,7 +2,8 @@ package com.cappleapple.astralrepository.port;
 
 import com.cappleapple.astralrepository.AstralRepository;
 import com.cappleapple.astralrepository.content.AstralContent;
-import com.cappleapple.astralrepository.content.CrystalNodeBlockEntity;
+import com.cappleapple.astralrepository.content.*;
+import com.cappleapple.astralrepository.network.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
@@ -28,6 +29,19 @@ public final class PortRuntimeSmoke {
         var server=event.getServer();
         try{
             var level=server.overworld();var pos=new BlockPos(0,100,0);level.getChunkAt(pos);
+            var marker=java.nio.file.Path.of("port-persistence.marker");var runePos=pos.east(4);var targetPos=pos.east(8);
+            if(java.nio.file.Files.exists(marker)){
+                check(level.getBlockEntity(pos) instanceof CrystalNodeBlockEntity,"saved world storage block exists after restart");
+                var previous=(CrystalNodeBlockEntity)level.getBlockEntity(pos);
+                check(previous.channel()==7&&previous.priority()==13,"world settings survived process restart");
+                check(previous.inventory().getAmountAsLong(0)==64&&previous.inventory().getStackInSlot(0).getHoverName().getString().equals("Port persistence fixture"),"world item components survived process restart");
+                check(previous.tank().getFluidAmount()==1200&&previous.energy().getEnergyStored()==6400,"world fluid and energy survived process restart");
+                var surface=RuneSurfaces.get(level,runePos,Direction.SOUTH);check(surface!=null&&surface.layers().size()==1,"rune layer survived process restart");
+                var layer=surface.layers().getFirst();check(layer.priority()==12&&!layer.enabled()&&layer.target()!=null&&layer.target().position().pos().equals(targetPos),"rune target/settings survived process restart");
+                check(layer.cadence().equals(RuneCadence.DEFAULT.with(RuneCadence.Kind.ITEMS,new RuneCadence.Rate(3,7))),"rune cadence survived process restart");
+                check(RuneSavedData.get(server).linked(AnchorAddress.crystal(level,pos),surface.address()),"explicit crystal/rune link survived process restart");
+                AstralRepository.LOGGER.info("ASTRAL_PORT_RESTART_PASS: world item components, fluid, energy, settings, rune layers/targets/cadence, explicit links");
+            }
             var state=AstralContent.SEED_STORAGE_CRYSTAL.get().defaultBlockState();
             level.removeBlock(pos,false);level.setBlockAndUpdate(pos,state);
             var node=(CrystalNodeBlockEntity)level.getBlockEntity(pos);check(node!=null,"storage block entity");
@@ -59,6 +73,15 @@ public final class PortRuntimeSmoke {
   var bud=AstralContent.SMALL_ASTRAL_BUD.get().defaultBlockState();check(net.minecraft.world.level.block.Block.getDrops(bud,level,pos,null,null,pickaxe).isEmpty(),"bud requires silk touch");
   drops=net.minecraft.world.level.block.Block.getDrops(bud,level,pos,null,null,silk);check(drops.size()==1&&drops.getFirst().is(AstralContent.SMALL_ASTRAL_BUD.get().asItem()),"silk touch preserves bud: "+drops);
 
+            level.setBlockAndUpdate(runePos,net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState());
+            level.setBlockAndUpdate(targetPos,net.minecraft.world.level.block.Blocks.CHEST.defaultBlockState());
+            RuneSurfaces.remove(level,runePos,Direction.SOUTH);
+            var surface=RuneSurfaces.getOrCreate(level,runePos,Direction.SOUTH);surface.setChannel(7);
+            var layer=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);layer.setPriority(12);layer.setEnabled(false);
+            layer.setCadence(RuneCadence.DEFAULT.with(RuneCadence.Kind.ITEMS,new RuneCadence.Rate(3,7)));
+            check(surface.toggleTarget(layer.id(),net.minecraft.core.GlobalPos.of(level.dimension(),targetPos),Direction.SOUTH).assigned(),"persisted rune target setup");
+            check(NetworkManager.get(server).toggleLink(node.address(),surface.address()).success(),"persisted explicit link setup");
+            server.saveEverything(true,true,true);java.nio.file.Files.writeString(marker,"Saved runtime fixture for real process restart.\n");
             AstralRepository.LOGGER.info("ASTRAL_PORT_SMOKE_PASS: registry, all 13 mod recipes, native cluster/bud loot, capabilities, transactional rollback, and block entity persistence");
         }catch(Throwable failure){AstralRepository.LOGGER.error("ASTRAL_PORT_SMOKE_FAIL",failure);}
         finally{server.halt(false);}
