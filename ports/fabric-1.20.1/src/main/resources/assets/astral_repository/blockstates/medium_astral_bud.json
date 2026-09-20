@@ -1,0 +1,30 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "astral_repository:block/medium_astral_bud",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "astral_repository:block/medium_astral_bud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=north": {
+      "model": "astral_repository:block/medium_astral_bud",
+      "x": 90
+    },
+    "facing=south": {
+      "model": "astral_repository:block/medium_astral_bud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=up": {
+      "model": "astral_repository:block/medium_astral_bud"
+    },
+    "facing=west": {
+      "model": "astral_repository:block/medium_astral_bud",
+      "x": 90,
+      "y": 270
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SS",
+    "SS"
+  ],
+  "key": {
+    "S": {
+      "item": "astral_repository:astral_gem"
+    }
+  },
+  "result": {
+    "count": 1,
+    "item": "astral_repository:astral_geode"
+  }
+}

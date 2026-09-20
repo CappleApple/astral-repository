@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " S ",
+    "ECE",
+    " G "
+  ],
+  "key": {
+    "S": "astral_repository:astral_gem",
+    "E": "minecraft:ender_pearl",
+    "C": "minecraft:compass",
+    "G": "minecraft:gold_ingot"
+  },
+  "result": {
+    "id": "astral_repository:astral_nexus",
+    "count": 1
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "name": "Wand and Runes",
+  "icon": "astral_repository:attunement_wand",
+  "category": "astral_repository:workshop",
+  "sortnum": 2,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "Right-click the wand in air to open your preset grid.$(br2)Left-click a preset to select it; right-click to edit. The $(bold)+$() tile creates one.$(br2)Click a container face to place a copy at the nearest free spot. Up to eight fit by default. Push sends from its host; Pull draws into it."
+    },
+    {
+      "type": "patchouli:image",
+      "images": [
+        "astral_repository:textures/gui/guide/wand_editor.png"
+      ],
+      "title": "Personal designs",
+      "border": true,
+      "text": "Paint, erase, and place separate item layers. Changes save automatically."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "$(bold)Shift-right-click a glyph$() with the wand. Click containers to add targets; click again to remove. Up to 32 targets rotate.$(br2)A Relay or Nexus addresses its network. Colored beams show assigned routes and the aimed container while you hold the wand.$(br2)An unbound glyph emits matching particles. Shift-right-click air or a non-container block to finish. Assigned targets remain saved.",
+      "title": "Connect a rune"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Connect several runes",
+      "text": "Shift-right-click a container first, then Shift-right-click Push or Pull glyphs to assign it to each one. The container stays selected. Click a glyph again to remove its assignment.$(br2)When you start from a glyph instead, Shift-right-clicking another glyph switches the selected rune. Shift-right-click air or a non-container block to finish."
+    },
+    {
+      "type": "patchouli:image",
+      "images": [
+        "astral_repository:textures/gui/guide/painted_runes.png"
+      ],
+      "title": "Placed copies",
+      "border": true,
+      "text": "Deleting or editing a preset leaves its placed copies unchanged."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Left-drag paints; right-drag erases. Ctrl+Z undoes a stroke.$(br2)$(bold)Color$() opens a wheel, brightness slider, and hex field. Painted colors stay exact; placed artwork is emissive.$(br2)Item overlays remain separate: drag to move, scroll to rotate, Shift-scroll to resize.",
+      "title": "Artwork controls"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_repository:attunement_wand"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Choose a behavior",
+      "text": "The mode button cycles $(bold)Push / Pull / Filter$(). Left-click or scroll forward; right-click goes backward.$(br2)Filter needs no target. It restricts Astral deposits into its container and sets their priority.$(br2)Shift-left-click a glyph with anything to remove it."
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Keep a placed design",
+      "text": "Right-click a placed glyph with any item or an empty hand to open its settings.$(br2)$(bold)Save Preset$() copies its function, painted texture, and item overlays into a new preset. Its JSON file includes the artwork for sharing. The placed copy stays unchanged.$(br2)Preset edits never change copies already placed."
+    }
+  ]
+}

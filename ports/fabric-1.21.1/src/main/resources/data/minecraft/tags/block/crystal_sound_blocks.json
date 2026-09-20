@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "astral_repository:astral_geode",
+    "astral_repository:budding_astral"
+  ]
+}

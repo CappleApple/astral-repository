@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "  S",
+    " G ",
+    "I  "
+  ],
+  "key": {
+    "S": "astral_repository:astral_gem",
+    "G": "minecraft:gold_ingot",
+    "I": "minecraft:stick"
+  },
+  "result": {
+    "id": "astral_repository:attunement_wand",
+    "count": 1
+  }
+}

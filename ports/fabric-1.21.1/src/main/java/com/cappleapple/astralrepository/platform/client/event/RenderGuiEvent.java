@@ -1,0 +1,1 @@
+package com.cappleapple.astralrepository.platform.client.event;public class RenderGuiEvent {public record Post(net.minecraft.client.gui.GuiGraphics guiGraphics){public net.minecraft.client.gui.GuiGraphics getGuiGraphics(){return guiGraphics;}}}

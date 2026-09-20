@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:blasting",
+  "result": {
+    "id": "minecraft:blade_pottery_sherd",
+    "count": 1
+  },
+  "ingredient": {
+    "item": "minecraft:arms_up_pottery_sherd"
+  },
+  "experience": 0,
+  "cookingtime": 4
+}

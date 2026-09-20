@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SLS",
+    "G G"
+  ],
+  "key": {
+    "S": {
+      "item": "astral_repository:astral_gem"
+    },
+    "L": {
+      "item": "minecraft:leather"
+    },
+    "G": {
+      "item": "minecraft:gold_ingot"
+    }
+  },
+  "result": {
+    "id": "astral_repository:resonance_goggles",
+    "count": 1
+  }
+}

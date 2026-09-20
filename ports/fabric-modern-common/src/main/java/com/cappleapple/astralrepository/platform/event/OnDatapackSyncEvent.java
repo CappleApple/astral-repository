@@ -1,0 +1,1 @@
+package com.cappleapple.astralrepository.platform.event;public record OnDatapackSyncEvent(net.minecraft.server.players.PlayerList playerList){public net.minecraft.server.players.PlayerList getPlayerList(){return playerList;}public net.minecraft.server.level.ServerPlayer getPlayer(){return null;}}

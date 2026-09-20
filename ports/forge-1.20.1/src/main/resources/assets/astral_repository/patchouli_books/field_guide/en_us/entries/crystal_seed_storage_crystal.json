@@ -1,0 +1,28 @@
+{
+  "name": "Storage Crystal",
+  "icon": "astral_repository:seed_storage_crystal",
+  "category": "astral_repository:crystals",
+  "sortnum": 6,
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_repository:seed_storage_crystal",
+      "text": "Native item storage, a 32,000 mB tank, and a 1,000,000 FE buffer. Nearby same-channel crystals connect automatically. Opening it shows only its own items.$(br2)Apply Moon then Star Attunements in place. Contents survive upgrades and breaking."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Seed: $(bold)16,384$() item-capacity units.$(br)Moon: $(bold)262,144$().$(br)Star: $(bold)4,194,304$().$(br2)An ordinary item costs one unit; an unstackable tool costs 64. Fluid and FE limits do not change with stage.",
+      "title": "Storage stages"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_repository:moon_attunement",
+      "recipe2": "astral_repository:star_attunement"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Right-click the placed Storage Crystal with the next attunement. Moon comes before Star. Successful upgrades consume the attunement in survival.$(br2)Filled crystals cannot be nested inside Astral storage.",
+      "title": "Upgrade in place"
+    }
+  ]
+}

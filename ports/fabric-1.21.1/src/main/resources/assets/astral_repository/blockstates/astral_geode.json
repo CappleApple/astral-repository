@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "astral_repository:block/astral_geode"
+    }
+  }
+}

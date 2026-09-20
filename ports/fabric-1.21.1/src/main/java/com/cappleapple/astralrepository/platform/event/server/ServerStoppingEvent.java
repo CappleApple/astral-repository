@@ -1,0 +1,1 @@
+package com.cappleapple.astralrepository.platform.event.server; public record ServerStoppingEvent(net.minecraft.server.MinecraftServer server){public net.minecraft.server.MinecraftServer getServer(){return server;}}

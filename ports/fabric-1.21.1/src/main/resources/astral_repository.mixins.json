@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "package": "com.cappleapple.astralrepository.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "StorageDirtyMixin",
+    "RouteOcclusionMixin",
+    "AstralMineralPistonMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "CreativeTabsAccessor",
+    "TestMouseMixin",
+    "TestAudioMixin",
+    "TestKeyboardMixin",
+    "BundledInventoryRailMixin",
+    "BundledInventoryOverlayMixin",
+    "TestWindowMixin",
+    "AstralArmorTrimMixin",
+    "AstralTrimItemMixin",
+    "AstralViewBobbingMixin",
+    "FabricAttackMixin",
+    "FabricSlotHighlightMixin"
+  ]
+}

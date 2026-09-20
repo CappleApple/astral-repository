@@ -1,0 +1,6 @@
+{
+  "parent": "astral_repository:item/network_node",
+  "textures": {
+    "particle": "astral_repository:block/node_crystal"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "condition": {
+        "type": "minecraft:survives_explosion"
+      },
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "astral_repository:astral_geode"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "astral_repository:blocks/astral_geode"
+}

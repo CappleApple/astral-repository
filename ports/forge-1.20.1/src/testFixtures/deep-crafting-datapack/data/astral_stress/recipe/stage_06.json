@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "result": {
+    "id": "minecraft:danger_pottery_sherd",
+    "count": 1
+  },
+  "ingredients": [
+    {
+      "item": "minecraft:burn_pottery_sherd"
+    }
+  ]
+}

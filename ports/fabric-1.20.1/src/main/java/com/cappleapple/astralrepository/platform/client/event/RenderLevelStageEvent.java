@@ -1,0 +1,3 @@
+package com.cappleapple.astralrepository.platform.client.event;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+public record RenderLevelStageEvent(Stage stage,WorldRenderContext context){public enum Stage{AFTER_SKY,AFTER_BLOCK_ENTITIES,AFTER_PARTICLES,AFTER_LEVEL}public Stage getStage(){return stage;}public com.mojang.blaze3d.vertex.PoseStack getPoseStack(){return context.matrixStack();}public net.minecraft.client.Camera getCamera(){return context.camera();}public float getPartialTick(){return context.tickDelta();}public net.minecraft.client.renderer.culling.Frustum getFrustum(){return context.frustum();}public org.joml.Matrix4f getModelViewMatrix(){return context.matrixStack().last().pose();}}

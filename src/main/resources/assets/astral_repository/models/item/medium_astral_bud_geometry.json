@@ -1,0 +1,15 @@
+{
+  "parent": "item/amethyst_bud",
+  "textures": {
+    "layer0": "astral_repository:block/medium_astral_bud"
+  },
+  "display": {
+    "fixed": {
+      "translation": [
+        0,
+        6,
+        0
+      ]
+    }
+  }
+}

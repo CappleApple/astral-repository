@@ -1,0 +1,6 @@
+{
+  "name": "Network Crystals",
+  "description": "What each crystal does, how to connect it, and which controls are available. Ranges and capacities below use the default pack settings.",
+  "icon": "astral_repository:relay_crystal",
+  "sortnum": 1
+}

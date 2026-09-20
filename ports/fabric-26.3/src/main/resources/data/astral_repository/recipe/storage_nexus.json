@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " S ",
+    "SCS",
+    "III"
+  ],
+  "key": {
+    "S": "astral_repository:astral_gem",
+    "C": "minecraft:crafting_table",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {
+    "id": "astral_repository:storage_nexus",
+    "count": 1
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "required": true,
+  "package": "com.cappleapple.astralrepository.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "StorageDirtyMixin",
+    "RouteOcclusionMixin",
+    "AstralMineralPistonMixin",
+    "FabricRegistryAliasMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "client": [
+    "CreativeTabsAccessor",
+    "TestMouseMixin",
+    "TestAudioMixin",
+    "TestKeyboardMixin",
+    "BundledInventoryRailMixin",
+    "BundledInventoryOverlayMixin",
+    "TestWindowMixin",
+    "AstralArmorTrimMixin",
+    "AstralTrimItemMixin",
+    "AstralViewBobbingMixin",
+    "AstralPreparedMaterialMixin",
+    "AstralGuiMaterialMixin",
+    "AstralUniformLifecycleMixin",
+    "ItemRenderStateAccessor",
+    "ItemLayerStateAccessor",
+    "AstralRenderTypeMixin",
+    "RuneCompositeGuiMixin",
+    "AstralTrimSelectionMixin",
+    "FabricAttackMixin"
+  ]
+}

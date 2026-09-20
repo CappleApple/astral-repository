@@ -1,0 +1,1 @@
+package com.cappleapple.astralrepository.platform.event.entity.player;public class PlayerEvent {public record PlayerLoggedInEvent(net.minecraft.world.entity.player.Player player){public net.minecraft.world.entity.player.Player getEntity(){return player;}}}

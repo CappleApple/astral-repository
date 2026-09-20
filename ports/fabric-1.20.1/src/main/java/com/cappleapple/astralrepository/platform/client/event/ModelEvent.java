@@ -1,0 +1,2 @@
+package com.cappleapple.astralrepository.platform.client.event;
+public final class ModelEvent {public static class BakingCompleted {}public record RegisterAdditional(net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin.Context context){public void register(net.minecraft.resources.ResourceLocation model){context.addModels(new net.minecraft.resources.ResourceLocation(model.getNamespace(),model.getPath()));}}}

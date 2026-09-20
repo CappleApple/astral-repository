@@ -1,0 +1,5 @@
+package com.cappleapple.astralrepository.platform.event;
+public final class AddReloadListenerEvent {
+ private static int next;
+ public void addListener(net.minecraft.server.packs.resources.PreparableReloadListener listener){var id=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("astral_repository","server_reload_"+next++);net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.server.packs.PackType.SERVER_DATA).registerReloadListener(new net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener(){public net.minecraft.resources.ResourceLocation getFabricId(){return id;}public java.util.concurrent.CompletableFuture<Void> reload(PreparationBarrier barrier,net.minecraft.server.packs.resources.ResourceManager manager,net.minecraft.util.profiling.ProfilerFiller prepare,net.minecraft.util.profiling.ProfilerFiller apply,java.util.concurrent.Executor background,java.util.concurrent.Executor game){return listener.reload(barrier,manager,prepare,apply,background,game);}});}
+}

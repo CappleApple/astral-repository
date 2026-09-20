@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:diamond",
+    "astral_repository:astral_gem",
+    "minecraft:gold_ingot"
+  ],
+  "result": {
+    "id": "astral_repository:moon_attunement",
+    "count": 1
+  }
+}

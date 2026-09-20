@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " S ",
+    "CRC",
+    "III"
+  ],
+  "key": {
+    "S": "astral_repository:astral_gem",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone_block",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {
+    "id": "astral_repository:power_node",
+    "count": 1
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "astral_repository:item/moon_attunement",
+    "tints": [
+      {
+        "type": "astral_repository:item_color"
+      }
+    ]
+  }
+}

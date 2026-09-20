@@ -1,0 +1,10 @@
+package com.cappleapple.astralrepository.porttest;
+import net.fabricmc.fabric.api.transfer.v1.storage.base.SingleVariantStorage;import net.fabricmc.fabric.api.transfer.v1.fluid.FluidVariant;import net.minecraft.world.level.material.Fluids;import com.cappleapple.astralrepository.platform.capabilities.FabricTransfer;import com.cappleapple.astralrepository.platform.fluids.FluidStack;import com.cappleapple.astralrepository.platform.fluids.capability.IFluidHandler.FluidAction;
+public class FabricFluidTransferTest {
+ public static void run(){var checks=new FabricFluidTransferTest();checks.simulationAndWholeMillibucketBoundaryPreserveExactDroplets();checks.fractionalOnlyAcceptanceIsRolledBack();}
+ private static void assertEquals(long expected,long actual){if(expected!=actual)throw new AssertionError(expected+" != "+actual);}private static void assertTrue(boolean pass){if(!pass)throw new AssertionError();}
+ private static class Tank extends SingleVariantStorage<FluidVariant>{final long capacity;Tank(long capacity){this.capacity=capacity;}protected FluidVariant getBlankVariant(){return FluidVariant.blank();}protected long getCapacity(FluidVariant variant){return capacity;}}
+ void simulationAndWholeMillibucketBoundaryPreserveExactDroplets(){var tank=new Tank(202);var bridge=new FabricTransfer.FluidHandler(tank);var water=new FluidStack(Fluids.WATER,3);assertEquals(2,bridge.fill(water,FluidAction.SIMULATE));assertEquals(0,tank.amount);assertEquals(2,bridge.fill(water,FluidAction.EXECUTE));assertEquals(162,tank.amount);assertEquals(1,bridge.drain(1,FluidAction.SIMULATE).getAmount());assertEquals(162,tank.amount);assertEquals(1,bridge.drain(1,FluidAction.EXECUTE).getAmount());assertEquals(81,tank.amount);}
+ void fractionalOnlyAcceptanceIsRolledBack(){var tank=new Tank(40);var bridge=new FabricTransfer.FluidHandler(tank);assertEquals(0,bridge.fill(new FluidStack(Fluids.WATER,1),FluidAction.EXECUTE));assertEquals(0,tank.amount);assertTrue(tank.getResource().isBlank());}
+}
+

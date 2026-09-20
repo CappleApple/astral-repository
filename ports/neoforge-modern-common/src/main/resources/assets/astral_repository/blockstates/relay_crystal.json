@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "astral_repository:block/relay_crystal"
+    }
+  }
+}

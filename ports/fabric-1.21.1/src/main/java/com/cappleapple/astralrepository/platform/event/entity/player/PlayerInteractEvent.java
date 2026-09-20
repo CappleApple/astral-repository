@@ -1,0 +1,8 @@
+package com.cappleapple.astralrepository.platform.event.entity.player;
+import net.minecraft.world.entity.player.Player;import net.minecraft.world.level.Level;import net.minecraft.world.InteractionHand;import net.minecraft.world.InteractionResult;import net.minecraft.core.BlockPos;import net.minecraft.core.Direction;import net.minecraft.world.phys.BlockHitResult;
+public class PlayerInteractEvent {
+ protected final Player player;protected final Level level;protected final InteractionHand hand;protected final BlockHitResult hit;private boolean canceled;private InteractionResult result=InteractionResult.PASS;
+ public PlayerInteractEvent(Player p,Level l,InteractionHand h,BlockHitResult hit){player=p;level=l;hand=h;this.hit=hit;}public Player getEntity(){return player;}public Level getLevel(){return level;}public InteractionHand getHand(){return hand;}public net.minecraft.world.item.ItemStack getItemStack(){return player.getItemInHand(hand);}public BlockPos getPos(){return hit.getBlockPos();}public Direction getFace(){return hit.getDirection();}public BlockHitResult getHitVec(){return hit;}public void setCanceled(boolean value){canceled=value;}public boolean isCanceled(){return canceled;}public void setCancellationResult(InteractionResult result){this.result=result;}public InteractionResult result(){return result;}
+ public static class RightClickBlock extends PlayerInteractEvent {public RightClickBlock(Player p,Level l,InteractionHand h,BlockHitResult hit){super(p,l,h,hit);}}
+ public static class LeftClickBlock extends PlayerInteractEvent {public LeftClickBlock(Player p,Level l,InteractionHand h,BlockHitResult hit){super(p,l,h,hit);}}
+}

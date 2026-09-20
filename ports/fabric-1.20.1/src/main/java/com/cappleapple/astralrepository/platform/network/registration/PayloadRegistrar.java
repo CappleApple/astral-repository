@@ -1,0 +1,10 @@
+package com.cappleapple.astralrepository.platform.network.registration;
+import java.util.*;import java.util.function.BiConsumer;import net.minecraft.network.FriendlyByteBuf;import net.minecraft.world.entity.player.Player;import net.minecraft.resources.ResourceLocation;import com.cappleapple.astralrepository.platform.*;import net.fabricmc.fabric.api.networking.v1.*;
+public final class PayloadRegistrar {
+ public record Context(Player player) {}private static final List<Runnable> CLIENT=new ArrayList<>();private static final Map<ResourceLocation,StreamCodec<FriendlyByteBuf,?>> CODECS=new HashMap<>();
+ public <T extends CustomPacketPayload> void playToServer(CustomPacketPayload.Type<T> type,StreamCodec<FriendlyByteBuf,T> codec,BiConsumer<T,Context> handler){CODECS.put(type.id(),codec);ServerPlayNetworking.registerGlobalReceiver(type.id(),(server,player,network,buffer,sender)->{T payload=codec.decode(buffer);server.execute(()->handler.accept(payload,new Context(player)));});}
+ public <T extends CustomPacketPayload> void playToClient(CustomPacketPayload.Type<T> type,StreamCodec<FriendlyByteBuf,T> codec,BiConsumer<T,Context> handler){CODECS.put(type.id(),codec);CLIENT.add(()->ClientRegistration.register(type,codec,handler));}
+ @SuppressWarnings("unchecked") public static FriendlyByteBuf encode(CustomPacketPayload payload){var buffer=PacketByteBufs.create();((StreamCodec<FriendlyByteBuf,CustomPacketPayload>)CODECS.get(payload.type().id())).encode(buffer,payload);return buffer;}
+ public static void registerClient(){CLIENT.forEach(Runnable::run);CLIENT.clear();}
+ private static class ClientRegistration {static <T extends CustomPacketPayload> void register(CustomPacketPayload.Type<T> type,StreamCodec<FriendlyByteBuf,T> codec,BiConsumer<T,Context> handler){net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(type.id(),(client,network,buffer,sender)->{T payload=codec.decode(buffer);client.execute(()->{if(client.player!=null)handler.accept(payload,new Context(client.player));});});}}
+}

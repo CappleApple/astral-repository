@@ -1,0 +1,51 @@
+plugins { id 'java-library'; id 'net.minecraftforge.gradle' version '6.0.42'; id 'org.spongepowered.mixin' version '0.7.38' }
+version = '1.11.8'
+group = 'com.cappleapple.astralrepository'
+base { archivesName = 'astral_repository-1.20.1-forge' }
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+minecraft {
+ mappings channel: 'official', version: '1.20.1'
+ copyIdeResources = true
+ runs {
+  configureEach { workingDirectory project.file('run-server'); mods { astral_repository { source sourceSets.main } }; property 'mixin.env.remapRefMap', 'true'; property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg" }
+  client { workingDirectory project.file('run-client'); property 'astral_repository.testClient', 'true'; if(project.hasProperty('clientSmoke')) property 'astral_repository.portClientSmoke', 'true' }
+  server { args '--nogui' }
+  gameTestServer { workingDirectory project.file('run-gametest'); property 'forge.enabledGameTestNamespaces', 'astral_repository' }
+ }
+}
+repositories {
+ mavenCentral()
+ maven { url = "https://maven.minecraftforge.net/"; content { includeGroup "net.minecraftforge" } }
+ maven { url = 'https://maven.theillusivec4.top/'; content { includeGroup 'top.theillusivec4.curios' } }
+ maven { url = 'https://maven.blamejared.com'; content { includeGroup 'mezz.jei'; includeGroup 'vazkii.patchouli' } }
+ maven { url = 'https://maven.terraformersmc.com/releases'; content { includeGroup 'dev.emi' } }
+ maven { url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+}
+mixin { add sourceSets.main, 'astral_repository.refmap.json'; config 'astral_repository.mixins.json' }
+dependencies {
+ annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+ minecraft 'net.minecraftforge:forge:1.20.1-47.4.23'
+ compileOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
+ compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.20.0.106')
+ compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.20.0.106')
+ compileOnly fg.deobf('dev.emi:emi-forge:1.1.24+1.20.1:api')
+ compileOnly fg.deobf('vazkii.patchouli:Patchouli:1.20.1-84.1-FORGE')
+ compileOnly fg.deobf('maven.modrinth:jade:11.13.2+forge')
+ testImplementation platform('org.junit:junit-bom:5.11.4')
+ testImplementation 'org.junit.jupiter:junit-jupiter'
+ testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+sourceSets.main.java.exclude 'com/cappleapple/astralrepository/gametest/**'
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.compilerArgs += ['-Xmaxerrs', '1000', '-Xlint:-removal']; options.release = 17 }
+test { useJUnitPlatform(); maxHeapSize = '2G' }
+processResources { inputs.property 'version', project.version; filesMatching('META-INF/mods.toml') { expand version: project.version } }
+jar { exclude 'com/cappleapple/astralrepository/porttest/**'; exclude 'data/astral_repository/structures/empty_*.nbt'; manifest { attributes 'MixinConfigs': 'astral_repository.mixins.json' }; finalizedBy 'reobfJar' }
+
+tasks.named('jar') { from('LICENSE') }
+
+// MixinGradle writes its annotation-processor refmap into the compile task's
+// temporary directory. Declare it so clean builds restored from cache retain it.
+tasks.named('compileJava') {
+    outputs.file(layout.buildDirectory.file('tmp/compileJava/compileJava-refmap.json'))
+    outputs.file(layout.buildDirectory.file('tmp/compileJava/astral_repository.refmap.json'))
+}

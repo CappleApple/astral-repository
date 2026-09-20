@@ -1,0 +1,32 @@
+{
+  "name": "Moving Items",
+  "icon": "astral_repository:seed_storage_crystal",
+  "category": "astral_repository:workshop",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "$(li)Left-click: take a stack.$(li)Right-click: take half.$(li)With cursor items: left deposits all; right deposits one.$(li)Shift-left-click storage: take a stack into inventory.$(li)Shift-click inventory: deposit.$(br2)Scroll the grid or drag its scrollbar. Items that do not fit stay put."
+    },
+    {
+      "type": "patchouli:image",
+      "images": [
+        "astral_repository:textures/gui/guide/nexus_cursor.png"
+      ],
+      "title": "Carry and place",
+      "border": true,
+      "text": "Place cursor items in your inventory or the crafting grid."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Search by name, ID, $(bold)@mod$(), or $(bold)#tag$(). Right-click search to clear.$(br2)The 3x3 grid refills ingredients from storage after crafting. Shift-click the result for one output stack. The return icon clears ingredients into storage.$(br2)Shift-right-click a craftable item to queue a stack. Middle-click selects an amount for the hammer button.",
+      "title": "Search and craft"
+    },
+    {
+      "type": "patchouli:crafting",
+      "title": "Storage and relay",
+      "recipe": "astral_repository:seed_storage_crystal",
+      "recipe2": "astral_repository:relay_crystal"
+    }
+  ]
+}

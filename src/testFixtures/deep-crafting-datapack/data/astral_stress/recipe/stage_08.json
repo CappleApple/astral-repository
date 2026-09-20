@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:blasting",
+  "result": {
+    "id": "minecraft:friend_pottery_sherd",
+    "count": 1
+  },
+  "ingredient": {
+    "item": "minecraft:explorer_pottery_sherd"
+  },
+  "experience": 0,
+  "cookingtime": 4
+}

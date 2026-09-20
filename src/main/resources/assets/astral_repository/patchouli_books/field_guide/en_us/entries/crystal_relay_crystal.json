@@ -1,0 +1,28 @@
+{
+  "name": "Relay Crystal",
+  "icon": "astral_repository:relay_crystal",
+  "category": "astral_repository:crystals",
+  "sortnum": 1,
+  "pages": [
+    {
+      "type": "patchouli:spotlight",
+      "item": "astral_repository:relay_crystal",
+      "text": "Extends the network to another part of your workshop. Each linked Relay discovers nearby inventories and workstations within five blocks.$(br2)It has no internal inventory."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Relays automatically connect to nearby same-channel Relays, Nexuses, and Storage Crystals. Ordinary range is 16 blocks.$(br2)Apply $(item)Range Attunements$() to both Relays for longer automatic links. Apply a $(item)Dimensional Attunement$() to each upgraded Relay, then pair them with the wand for dimensional links. Each successful upgrade consumes one attunement in survival.",
+      "title": "Relay upgrades"
+    },
+    {
+      "type": "patchouli:crafting",
+      "recipe": "astral_repository:range_attunement",
+      "recipe2": "astral_repository:dimensional_attunement"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Ordinary links reach 16 blocks; two range-upgraded Relays reach 4,096. Rune endpoint reach defaults to 64.$(br2)Each leg needs clear sight through loaded chunks. Glass and other transparent blocks pass; opaque shapes block it.$(br2)Relays take the shortest visible route around obstructions. These ranges are configurable.",
+      "title": "Range and sight"
+    }
+  ]
+}

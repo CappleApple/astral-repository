@@ -1,0 +1,10 @@
+{
+  "model": {
+    "type": "minecraft:special",
+    "base": "astral_repository:item/astral_cluster",
+    "model": {
+      "type": "astral_repository:astral_mineral",
+      "item": "astral_repository:astral_cluster"
+    }
+  }
+}

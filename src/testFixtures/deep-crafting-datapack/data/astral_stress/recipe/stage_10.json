@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "result": {
+    "id": "minecraft:heartbreak_pottery_sherd",
+    "count": 1
+  },
+  "ingredient": {
+    "item": "minecraft:heart_pottery_sherd"
+  }
+}

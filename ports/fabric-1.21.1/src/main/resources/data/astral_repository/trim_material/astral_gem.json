@@ -1,0 +1,9 @@
+{
+  "asset_name": "astral_repository_astral_gem",
+  "ingredient": "astral_repository:astral_gem",
+  "item_model_index": 1.0,
+  "description": {
+    "translate": "trim_material.astral_repository.astral_gem",
+    "color": "#487CFA"
+  }
+}

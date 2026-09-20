@@ -1,0 +1,1 @@
+package com.cappleapple.astralrepository.platform.client;public final class FabricModels {public static net.minecraft.client.resources.model.ModelResourceLocation standalone(net.minecraft.resources.ResourceLocation id){return new net.minecraft.client.resources.model.ModelResourceLocation(id,"fabric_resource");}}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "SSS",
+    "IBI",
+    "SSS"
+  ],
+  "key": {
+    "S": "astral_repository:astral_gem",
+    "I": "minecraft:iron_ingot",
+    "B": "minecraft:barrel"
+  },
+  "result": {
+    "id": "astral_repository:seed_storage_crystal",
+    "count": 1
+  }
+}

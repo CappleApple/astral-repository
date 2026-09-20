@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "result": {
+    "id": "minecraft:archer_pottery_sherd",
+    "count": 1
+  },
+  "ingredients": [
+    {
+      "item": "minecraft:angler_pottery_sherd"
+    }
+  ]
+}

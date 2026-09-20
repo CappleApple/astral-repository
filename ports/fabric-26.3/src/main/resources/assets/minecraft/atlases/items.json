@@ -1,0 +1,17 @@
+{
+  "sources": [
+    {
+      "type": "paletted_permutations",
+      "textures": [
+        "trims/items/leggings_trim",
+        "trims/items/chestplate_trim",
+        "trims/items/helmet_trim",
+        "trims/items/boots_trim"
+      ],
+      "palette_key": "minecraft:trim_base",
+      "permutations": {
+        "astral_repository_astral_gem": "astral_repository:trim/astral_gem"
+      }
+    }
+  ]
+}

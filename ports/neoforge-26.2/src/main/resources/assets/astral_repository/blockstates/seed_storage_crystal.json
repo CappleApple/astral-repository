@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "astral_repository:block/seed_storage_crystal"
+    }
+  }
+}
