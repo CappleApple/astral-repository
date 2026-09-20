@@ -1,39 +1,25 @@
-#version 150
+#version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <fog.glsl>
+#include <minecraft:dynamictransforms.glsl>
+#include <minecraft:projection.glsl>
+#include <astral_repository:astral_parameters.glsl>
+#ifndef ASTRAL_INTERFACE
+#include <minecraft:fog.glsl>
+#endif
 
 uniform sampler2D Sampler0;
-uniform vec4 ColorModulator;
-uniform mat4 ProjMat;
-uniform float AstralLayerDriftTime;
-uniform float AstralLayerWobbleTime;
-uniform float AstralParticleTime;
-uniform float AstralTwinkleTime;
-uniform float AstralShootingStarTime;
-uniform float AstralMeteorStartTime;
-uniform mat4 AstralMeteorWorldToView;
-uniform vec3 AstralMeteorEyeOffset;
-uniform vec3 AstralCameraPosition;
-uniform float AstralOverlayOpacity;
-uniform float AstralRetintBase;
-uniform float AstralItemMode;
-uniform vec4 AstralSpriteBounds;
-uniform float AstralInterfaceMode;
-uniform float AstralWorldMode;
-uniform float AstralShootingStars;
-uniform float FogStart;
-uniform float FogEnd;
-uniform vec4 FogColor;
 
-in vec2 crystalUV;
-in vec3 viewPosition;
-in vec3 astralWorldPosition;
-in vec3 astralWorldRay;
-in vec4 surfaceColor;
-in vec4 overlayColor;
-in vec4 lightColor;
-in float vertexDistance;
-out vec4 fragColor;
+layout(location = 0) in vec2 crystalUV;
+layout(location = 1) in vec3 viewPosition;
+layout(location = 2) in vec3 astralWorldPosition;
+layout(location = 3) in vec3 astralWorldRay;
+layout(location = 4) in vec4 surfaceColor;
+layout(location = 5) in vec4 overlayColor;
+layout(location = 6) in vec4 lightColor;
+layout(location = 7) in float vertexDistance;
+layout(location = 8) in float vertexCylindricalDistance;
+layout(location = 0) out vec4 fragColor;
 
 // Repository-owned procedural field. No End sky or End portal texture is sampled.
 float astralHash(vec2 p) {
@@ -254,7 +240,11 @@ void main() {
         color = mix(overlayColor.rgb, color, overlayColor.a);
     }
     vec4 shaded = vec4(color, mineral.a) * surfaceColor * ColorModulator;
-    fragColor = interfaceMode ? shaded : linear_fog(shaded, vertexDistance, FogStart, FogEnd, FogColor);
+    #ifdef ASTRAL_INTERFACE
+    fragColor = shaded;
+    #else
+    fragColor = apply_fog(shaded, vertexDistance, vertexCylindricalDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
+    #endif
 }
 
 

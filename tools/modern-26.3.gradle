@@ -1,0 +1,74 @@
+// Minecraft26.3 moved GPU objects to RenderPearl and replaced GLFW input with SDL.
+// Generate a target-specific view of shared26.2 sources, then apply small backend overrides.
+def commonSource = file(project.ext.modernCommonSource)
+def overrides = file('support/minecraft263-overrides/src/main/java')
+def sourceRoots = [commonSource]
+if (project.hasProperty('clientSmoke')) sourceRoots.add(file(project.ext.modernClientSmokeSource))
+def generated = layout.buildDirectory.dir('generated/sources/minecraft263/main')
+def renames = [
+    'com.mojang.blaze3d.PrimitiveTopology': 'com.mojang.renderpearl.api.pipeline.PrimitiveTopology',
+    'com.mojang.blaze3d.platform.CompareOp': 'com.mojang.renderpearl.api.pipeline.CompareOp',
+    'com.mojang.blaze3d.shaders.UniformType': 'com.mojang.renderpearl.api.pipeline.UniformType',
+    'com.mojang.blaze3d.systems.RenderPass': 'com.mojang.renderpearl.api.commands.RenderPass',
+    'com.mojang.blaze3d.pipeline.RenderPipeline': 'com.mojang.renderpearl.api.pipeline.RenderPipeline',
+    'com.mojang.blaze3d.GpuFormat': 'com.mojang.renderpearl.api.GpuFormat',
+    'com.mojang.blaze3d.buffers.GpuBuffer': 'com.mojang.renderpearl.api.buffers.GpuBuffer',
+    'com.mojang.blaze3d.IndexType': 'com.mojang.renderpearl.api.vertex.IndexType',
+    'com.mojang.blaze3d.textures.GpuTexture': 'com.mojang.renderpearl.api.textures.GpuTexture',
+    'net.minecraft.client.renderer.DynamicUniforms': 'net.minecraft.client.renderer.DynamicGpuData'
+]
+def generator = tasks.register('generateMinecraft263Sources', Sync) {
+    inputs.file(file('tools/modern-26.3.gradle'))
+    into generated
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(file('src/overrides/java')) { include '**/*.java' }
+    from(overrides) { include '**/*.java' }
+    from(sourceRoots) {
+        include '**/*.java'
+        filter { String line ->
+            renames.each { before, after -> line = line.replace(before, after).replace(before.replace('.', '/'), after.replace('.', '/')) }
+            line = line.replace('import com.mojang.blaze3d.pipeline.*;', 'import com.mojang.blaze3d.pipeline.*; import com.mojang.renderpearl.api.pipeline.*;')
+            line = line.replace('DynamicUniforms.class', 'DynamicGpuData.class')
+            line = line.replace('DynamicUniformStorage.DynamicUniform', 'DynamicGpuDataStorage.DynamicGpuData')
+            line = line.replace('DynamicUniformStorage<', 'DynamicGpuDataStorageMapped<')
+            line = line.replace('("Astral material UBO",352,32)', '("Astral material UBO",352,com.mojang.renderpearl.api.buffers.GpuBuffer.USAGE_UNIFORM,32)')
+            line = line.replace('uniforms.writeUniform(', 'uniforms.writeData(')
+            line = line.replace('.scancode()', '.keycode()')
+            line = line.replace('InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key)', 'InputConstants.isKeyDown(key)')
+            line = line.replace('com.mojang.blaze3d.platform.Window window,int key', 'int key')
+            line = line.replace('executeGroup(FeatureFrameContext context,int groupIndex', 'executeGroup(FeatureFrameContext context,net.minecraft.client.renderer.oit.OitStage stage,com.mojang.renderpearl.api.commands.RenderPass renderPass,int groupIndex')
+            line = line.replace('draw.material().drawFromBuffer(info);', 'if(stage==null)draw.material().drawFromBuffer(info,renderPass);else draw.material().drawFromBufferOit(info,stage,renderPass);')
+            if(line.contains('submit.geometry().render(')) line += '\n            context.stagedVertexBuffer().requestIndexCount(draw);'
+            line = line.replace('player.drop(live,false)', 'player.drop(live,false,net.minecraft.util.Prediction.SERVER_ONLY)')
+            if(line.contains('ContextMap')) line = line.replace('new net.minecraft.util.context.ContextMap.Builder()', 'net.minecraft.util.context.ContextMap.builder()').replace('.withParameter(', '.set(').replace('.create(net.minecraft.world.item.crafting.display.SlotDisplayContext.CONTEXT)', '.buildAndValidate(net.minecraft.world.item.crafting.display.SlotDisplayContext.CONTEXT)')
+            line = line.replace('new ContextMap.Builder()', 'ContextMap.builder()').replace('.create(SlotDisplayContext.CONTEXT)', '.buildAndValidate(SlotDisplayContext.CONTEXT)')
+            line = line.replace('.mulPose(Axis.', '.rotate(Axis.').replace('.mulPose(camera)', '.rotate(camera)').replace('.mulPose(event.getCamera().rotation())', '.rotate(event.getCamera().rotation())')
+            line = line.replace('resolution,resolution,true,GpuFormat.RGBA8_UNORM', 'resolution,resolution,GpuFormat.RGBA8_UNORM,GpuFormat.D32_FLOAT')
+            line = line.replace('swing(InteractionHand.MAIN_HAND)', 'swing(InteractionHand.MAIN_HAND,net.minecraft.world.item.component.SwingAnimation.DEFAULT,false)')
+            line = line.replace('RenderTypes.entityGlint()', 'RenderTypes.patternedShieldGlint()')
+            line = line.replace('name.startsWith("armor_trim")?Sheets.ARMOR_TRIMS_SHEET:TextureAtlas.LOCATION_BLOCKS', 'TextureAtlas.LOCATION_BLOCKS')
+            line = line.replace('model.usesBlockLight()&&info.shade()?faceShade(quad):1', 'model.usesBlockLight()?faceShade(quad):1')
+            line = line.replace('switch(quad.direction())', 'switch(quad.materialInfo().shadeDirectionOverride()!=null?quad.materialInfo().shadeDirectionOverride():quad.direction())')
+            line = line.replace('info.shade()', '(info.shadeDirectionOverride()!=null)')
+            line = line.replace('float nz,float width)', 'float nz,float width,float gu,float gv)')
+            line = line.replace('.setLineWidth(width);', '.setLineWidth(width).setUv3(gu,gv);')
+            line = line.replace('nz,width=1;', 'nz,width=1,gu,gv;')
+            line = line.replace('nx,ny,nz,width));', 'nx,ny,nz,width,gu,gv));')
+            if(line.contains('@Override public VertexConsumer setUv2(')) line += '\n        @Override public VertexConsumer setUv3(float u,float v){gu=u;gv=v;return this;}'
+            line = line.replace('layer.prepareQuadList()', 'access.astral$quads().all()')
+            line = line.replace('var quads = access.astral$layers()[i].prepareQuadList();', 'var layer=access.astral$layers()[i]; var quads=new java.util.ArrayList<>(((com.cappleapple.astralrepository.mixin.ItemLayerStateAccessor)layer).astral$quads().all());')
+            if(line.contains('quads.replaceAll(')) line += '\n            layer.setQuads(net.minecraft.client.resources.model.geometry.ItemQuads.split(quads));'
+            line = line.replace('-1, (info.shadeDirectionOverride()!=null), info.lightEmission()', 'info.itemGlintRenderType(), info.itemGlintSpecialRenderType(), -1, info.shadeDirectionOverride(), info.lightEmission()')
+            if(line.contains('@Accessor("specialRenderer")')) line += '\n    @Accessor("quads") net.minecraft.client.resources.model.geometry.ItemQuads astral$quads();'
+            line = line.replace('DeltaTracker ticks, CallbackInfo ci', 'CallbackInfo ci')
+            line = line.replace('float tick, org.joml.Matrix4fc view, CallbackInfo ci', 'net.minecraft.client.renderer.state.level.PlayerRenderState player, com.mojang.renderpearl.api.textures.GpuTextureView depth, CallbackInfo ci')
+            line = line.replace('if(translucent)builder.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT));', 'if(translucent)builder.withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT));else builder.withColorTargetState(ColorTargetState.DEFAULT);')
+            line = line.replace('MaterialInfo.of(material,material.sprite().transparency(),tint,shade,0)', 'MaterialInfo.of(material,material.sprite().transparency(),tint,shade?null:Direction.UP,0)')
+            return line
+        }
+    }
+}
+sourceSets.main.java.setSrcDirs([generated])
+tasks.named('compileJava') { dependsOn generator }
+
+// Fabric test sources are generated by tools/fabric-validation.gradle.

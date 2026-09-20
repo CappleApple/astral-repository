@@ -7,18 +7,10 @@
     "III"
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "C": {
-      "item": "minecraft:copper_ingot"
-    },
-    "R": {
-      "item": "minecraft:redstone_block"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    }
+    "S": "astral_repository:astral_gem",
+    "C": "minecraft:copper_ingot",
+    "R": "minecraft:redstone_block",
+    "I": "minecraft:iron_ingot"
   },
   "result": {
     "id": "astral_repository:power_node",

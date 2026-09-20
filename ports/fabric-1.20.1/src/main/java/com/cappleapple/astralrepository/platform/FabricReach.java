@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform;
-public final class FabricReach {public static double range(net.minecraft.world.entity.player.Player player){return com.jamieswhiteshirt.reachentityattributes.ReachEntityAttributes.getReachDistance(player,player.isCreative()?5:4.5);}public static boolean canReach(net.minecraft.world.entity.player.Player player,net.minecraft.core.BlockPos pos){return player.getEyePosition().distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(pos))<=Math.pow(range(player)+.5,2);}}

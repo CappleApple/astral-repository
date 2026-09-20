@@ -7,15 +7,9 @@
     "I  "
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "G": {
-      "item": "minecraft:gold_ingot"
-    },
-    "I": {
-      "item": "minecraft:stick"
-    }
+    "S": "astral_repository:astral_gem",
+    "G": "minecraft:gold_ingot",
+    "I": "minecraft:stick"
   },
   "result": {
     "id": "astral_repository:attunement_wand",

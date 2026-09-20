@@ -1,5 +1,4 @@
 {
-  "loader": "neoforge:obj",
   "model": "astral_repository:models/block/node_meshes/gateway_crystal.obj",
   "automatic_culling": false,
   "shade_quads": true,
@@ -7,5 +6,6 @@
   "emissive_ambient": false,
   "textures": {
     "particle": "astral_repository:block/node_crystal"
-  }
+  },
+  "fabric:type": "astral_repository:obj"
 }

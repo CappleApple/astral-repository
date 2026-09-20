@@ -1,5 +1,4 @@
 {
-  "parent": "builtin/entity",
   "gui_light": "side",
   "display": {
     "gui": {
@@ -104,5 +103,8 @@
         0.4
       ]
     }
+  },
+  "textures": {
+    "particle": "astral_repository:block/astral_geode"
   }
 }

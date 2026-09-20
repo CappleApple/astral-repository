@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform.registry;
-public final class RegistryObject<T> implements java.util.function.Supplier<T>{private final net.minecraft.resources.ResourceLocation id;private final java.util.function.Supplier<T> factory;private T value;RegistryObject(net.minecraft.resources.ResourceLocation id,java.util.function.Supplier<T> factory){this.id=id;this.factory=factory;}public T get(){if(value==null)value=factory.get();return value;}public net.minecraft.resources.ResourceLocation getId(){return id;}}
