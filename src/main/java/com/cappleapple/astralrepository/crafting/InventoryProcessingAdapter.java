@@ -8,8 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 import java.util.*;
 
 /** Executes deterministic single-input recipes through real sided machine capabilities. */
@@ -79,8 +79,8 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
         var rule = bindings.get(node.recipe().id()).rule();
         ServerLevel level = VanillaProcessingAdapter.world(access, position);
         var original = level.getBlockEntity(position.pos());
-        IItemHandler input = level.getCapability(Capabilities.ItemHandler.BLOCK, position.pos(), rule.inputSide());
-        IItemHandler output = level.getCapability(Capabilities.ItemHandler.BLOCK, position.pos(), rule.outputSide());
+        IItemHandler input = com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, position.pos(), rule.inputSide());
+        IItemHandler output = com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, position.pos(), rule.outputSide());
         if (input == null || output == null) return null;
         List<Integer> inputSlots = slots(rule.inputSlots(), input), outputSlots = slots(rule.outputSlots(), output);
         if (outputSlots.stream().anyMatch(slot -> !output.getStackInSlot(slot).isEmpty())) return null;

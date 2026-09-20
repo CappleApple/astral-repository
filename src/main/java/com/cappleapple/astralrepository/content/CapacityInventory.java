@@ -10,7 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 
 /** Dense virtual positions. Capacity is an exact rational sum, never rounded per individual item. */
 public final class CapacityInventory implements IItemHandler {

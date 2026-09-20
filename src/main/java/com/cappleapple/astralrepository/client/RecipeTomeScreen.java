@@ -15,7 +15,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** Inventory and recipe-viewer samples select an output; the server resolves every recipe. */
 public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMenu> implements GhostIngredientScreen {
@@ -56,7 +56,7 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
         boolean handled=super.mouseClicked(x,y,button);if(handled&&getFocused() instanceof Button)setFocused(null);return handled;
     }
     @Override protected void renderLabels(GuiGraphics g,int x,int y){}
-    @Override protected void renderSlotHighlight(GuiGraphics g,Slot slot,int x,int y,float partial){}
+    protected void renderSlotHighlight(GuiGraphics g,Slot slot,int x,int y,float partial){}
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         g.setColor(.94f,1,.99f,1);g.blit(BookViewScreen.BOOK_LOCATION,leftPos,topPos,0,0,192,192);g.setColor(1,1,1,1);
         g.drawString(font,"Recipe Tome",leftPos+36,topPos+16,INK,false);

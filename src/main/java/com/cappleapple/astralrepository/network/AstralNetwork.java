@@ -396,7 +396,7 @@ public final class AstralNetwork implements NetworkAccess {
         if(!movingVisualsObserved(from))return;
         var route=manager.route(from,to,nodes.getFirst().channel(),range);
         // Fuel and recipe inputs arrive together. A separate fuel port keeps both visible.
-        TransferVisuals.Endpoint arrival=!stack.isEmpty()&&stack.getBurnTime(net.minecraft.world.item.crafting.RecipeType.SMELTING)>0?furnacePort(to):null;
+        TransferVisuals.Endpoint arrival=!stack.isEmpty()&&fuelTime(stack)>0?furnacePort(to):null;
         TransferVisuals.send(server,route,stack,color(nodes.getFirst()),style,furnacePort(from),arrival,fluid);
     }
     private boolean movingVisualsObserved(GlobalPos from){
@@ -554,6 +554,7 @@ public final class AstralNetwork implements NetworkAccess {
     public String status(){return nodes.size()+" crystals · "+storages.size()+" stores · "+activeJobs()+" jobs\n"+(powered?throughput+" moved": "Needs power")+(!scans.isEmpty()||!dirty.isEmpty()?" · discovering":"")+(failed.isEmpty()?"":" · "+failed.size()+" unavailable");}
     private void quarantine(String id,RuntimeException failure){if(failed.add(id))AstralRepository.LOGGER.error("Astral provider {} unavailable in {}: {}",id,origin,failure.toString(),failure);revision++;}
     public void close(){crafting.cancelAll();power.close();for(Object identity:identities.keySet())manager.unwatchProvider(identity,this);}
+    private static int fuelTime(net.minecraft.world.item.ItemStack stack){Integer ticks=net.fabricmc.fabric.api.registry.FuelRegistry.INSTANCE.get(stack.getItem());return ticks==null?0:ticks;}
 }
 
 

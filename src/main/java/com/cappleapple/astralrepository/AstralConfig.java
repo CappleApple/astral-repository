@@ -1,6 +1,6 @@
 package com.cappleapple.astralrepository;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import io.github.fabricators_of_create.porting_lib.config.ModConfigSpec;
 
 public final class AstralConfig {
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();

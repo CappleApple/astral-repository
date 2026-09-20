@@ -5,9 +5,9 @@ import java.util.Optional;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import com.cappleapple.astralrepository.platform.ModList;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredItem;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredRegister;
 
 /** Optional book registration; the API bridge is loaded only when Patchouli is installed. */
 public final class PatchouliIntegration {

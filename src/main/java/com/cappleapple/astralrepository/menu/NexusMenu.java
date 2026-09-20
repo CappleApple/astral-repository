@@ -77,7 +77,7 @@ public final class NexusMenu extends AbstractContainerMenu {
     }
     private ItemStack deposit(AstralNetwork network,ItemStack stack){
         if(localStorage==null)return network.insertAt(stack,origin);
-        ItemStack rest=net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(localStorage,stack,false);
+        ItemStack rest=com.cappleapple.astralrepository.platform.items.ItemHandlerHelper.insertItem(localStorage,stack,false);
         if(rest.getCount()!=stack.getCount())network.providerChanged(origin);return rest;
     }
     private boolean payForAccess(AstralNetwork network,ServerPlayer player){return localStorage!=null||network.payForAccess(player,origin,remote);}
@@ -317,9 +317,9 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(!fitInventory(inventory,output))return false;
         var positioned=grid.asPositionedCraftInput();var input=positioned.input();
         net.minecraft.core.NonNullList<ItemStack> remainders;
-        net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(player);
+        com.cappleapple.astralrepository.platform.common.CommonHooks.setCraftingPlayer(player);
         try{remainders=player.level().getRecipeManager().getRemainingItemsFor(RecipeType.CRAFTING,input,player.level());}
-        finally{net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(null);}
+        finally{com.cappleapple.astralrepository.platform.common.CommonHooks.setCraftingPlayer(null);}
         for(int y=0;y<input.height();y++)for(int x=0;x<input.width();x++){
             ItemStack original=grid.getItem(x+positioned.left()+(y+positioned.top())*grid.getWidth());
             ItemStack remainder=remainders.get(x+y*input.width());

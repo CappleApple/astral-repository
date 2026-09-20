@@ -2,7 +2,7 @@ package com.cappleapple.astralrepository.client;
 
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 public interface GhostIngredientScreen {
     Rect2i ingredientArea();

@@ -5,8 +5,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.InventoryMenu;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.client.extensions.common.IClientFluidTypeExtensions;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 /** Shared textured slots; tint is drawn before item/fluid contents. */
 public final class RuneUi {

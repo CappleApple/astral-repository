@@ -47,7 +47,7 @@ final class ResourceTransferRenderer extends RenderType {
         var key=id==null?ResourceLocation.withDefaultNamespace("water"):id;
         return FLUIDS.computeIfAbsent(key,k->{
             var fluid=net.minecraft.core.registries.BuiltInRegistries.FLUID.get(k);
-            var properties=net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions.of(fluid);
+            var properties=com.cappleapple.astralrepository.platform.client.extensions.common.IClientFluidTypeExtensions.of(fluid);
             var texture=properties.getFlowingTexture();if(texture==null)texture=properties.getStillTexture();
             if(texture==null)texture=MissingTextureAtlasSprite.getLocation();
             var sprite=Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(texture);

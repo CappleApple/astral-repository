@@ -9,7 +9,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** One ordered editor session; acknowledgements update the model, never the active text widgets. */
 public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<com.cappleapple.astralrepository.menu.RuneSettingsMenu> implements GhostIngredientScreen {
@@ -166,7 +166,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     private int cell(double x,double y){return x>=left+7&&x<left+223&&y>=top+32&&y<top+80?(int)(x-left-7)/24+(int)(y-top-32)/24*9:-1;}
     @Override public net.minecraft.client.renderer.Rect2i ingredientArea(){return new net.minecraft.client.renderer.Rect2i(left+7,top+32,216,48);}
     @Override public boolean acceptItem(net.minecraft.world.item.ItemStack stack){return !stack.isEmpty()&&chooseFilter(RuneSettingsPackets.sampleRule(stack));}
-    @Override public boolean acceptFluid(net.neoforged.neoforge.fluids.FluidStack fluid){return !fluid.isEmpty()&&chooseFilter("fluid:"+net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getFluid()));}
+    @Override public boolean acceptFluid(com.cappleapple.astralrepository.platform.fluids.FluidStack fluid){return !fluid.isEmpty()&&chooseFilter("fluid:"+net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getFluid()));}
     @Override protected void slotClicked(net.minecraft.world.inventory.Slot slot,int id,int button,net.minecraft.world.inventory.ClickType type){
         if(type==net.minecraft.world.inventory.ClickType.QUICK_MOVE){if(slot!=null&&!slot.getItem().isEmpty()&&!closeRequested)enqueue(Operation.ADD_INVENTORY,"",id);return;}
         super.slotClicked(slot,id,button,type);
@@ -213,7 +213,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
         for(var slot:menu.slots)RuneUi.slot(g,left+slot.x-1,top+slot.y-1,18,isHovering(slot.x,slot.y,16,16,mx,my));
     }
     @Override protected void renderLabels(GuiGraphics g,int mx,int my){}
-    @Override protected void renderSlotHighlight(GuiGraphics g,net.minecraft.world.inventory.Slot slot,int mx,int my,float partial){}
+    protected void renderSlotHighlight(GuiGraphics g,net.minecraft.world.inventory.Slot slot,int mx,int my,float partial){}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         super.render(g,cadenceOpen?-1:mx,cadenceOpen?-1:my,partial);
         if(cadenceOpen){

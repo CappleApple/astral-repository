@@ -10,11 +10,13 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.EnergyStorage;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
-import javax.annotation.Nullable;
+import com.cappleapple.astralrepository.platform.energy.EnergyStorage;
+import com.cappleapple.astralrepository.platform.fluids.capability.templates.FluidTank;
+import org.jetbrains.annotations.Nullable;
 
 public final class CrystalNodeBlockEntity extends BlockEntity implements com.cappleapple.astralrepository.network.NetworkAnchor {
+    private final CompoundTag persistentData=new CompoundTag();
+    @Override public CompoundTag getPersistentData(){return persistentData;}
     private int storageTier;
     private boolean longRange;
     public int storageTier(){return storageTier==0?((CrystalNodeBlock)getBlockState().getBlock()).tier():storageTier;}
@@ -73,11 +75,11 @@ public final class CrystalNodeBlockEntity extends BlockEntity implements com.cap
         changed();
         if (level instanceof ServerLevel server) ContentHooks.topologyChanged.accept(server, worldPosition);
     }
-    @Override public void onLoad() { super.onLoad(); if (level instanceof ServerLevel server) ContentHooks.topologyChanged.accept(server, worldPosition); }
+    public void onLoad() { if (level instanceof ServerLevel server) ContentHooks.topologyChanged.accept(server, worldPosition); }
     @Override public void setRemoved() { if (level instanceof ServerLevel server) ContentHooks.topologyChanged.accept(server, worldPosition); super.setRemoved(); }
 
     @Override protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+        super.saveAdditional(tag, registries);tag.put("AstralPersistentData",persistentData.copy());
         writeSettings(tag, registries);
         if (hasInventory()) { tag.put("Storage", inventory.save(registries)); tag.put("Tank", tank.writeToNBT(registries, new CompoundTag())); tag.put("Energy", energy.serializeNBT(registries)); }
     }
@@ -89,7 +91,7 @@ public final class CrystalNodeBlockEntity extends BlockEntity implements com.cap
         if (partner != null) GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, partner).result().ifPresent(value -> tag.put("Partner", value));
     }
     @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+        super.loadAdditional(tag, registries);for(var key:java.util.Set.copyOf(persistentData.getAllKeys()))persistentData.remove(key);persistentData.merge(tag.getCompound("AstralPersistentData"));
         channel = tag.contains("Channel") ? Math.clamp(tag.getInt("Channel"), -1, 15) : -1;
         priority = Math.clamp(tag.getInt("Priority"), -999, 999); dimensional = tag.getBoolean("Dimensional");
         editingExtraction = tag.getBoolean("EditingExtraction"); excludeNext = tag.getBoolean("ExcludeNext"); enabled = !tag.contains("Enabled") || tag.getBoolean("Enabled");

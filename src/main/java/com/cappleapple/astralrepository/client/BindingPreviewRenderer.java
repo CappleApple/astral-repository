@@ -9,14 +9,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.*;
+import com.cappleapple.astralrepository.platform.client.event.*;
 import org.joml.Vector3f;
 
 /** Cosmetic preview of server-resolved routes. Only the actively held binding wand displays them. */
-@EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.CLIENT)
 public final class BindingPreviewRenderer {
     private static BindingPreviewPackets.Preview preview=BindingPreviewPackets.Preview.EMPTY;
     private static List<List<Vec3>> curves=List.of();
@@ -37,7 +33,7 @@ public final class BindingPreviewRenderer {
         var wand=mc.player.getMainHandItem();var selection=RuneProgramming.selection(wand);
         return wand.is(AstralContent.ATTUNEMENT_WAND.get())&&selection!=null&&selection.layer()!=null&&selection.layer().equals(preview.rune())&&selection.address().position().dimension().equals(mc.level.dimension())?preview:BindingPreviewPackets.Preview.EMPTY;
     }
-    @SubscribeEvent public static void tick(ClientTickEvent.Post event){
+    public static void tick(ClientTickEvent.Post event){
         var state=active();if(state.rune()==null||state.particleOrigin()==null)return;var mc=Minecraft.getInstance();if(mc.level.getGameTime()%3!=0)return;
         var normal=Vec3.atLowerCornerOf(state.particleFace().getNormal());
         var right=Math.abs(normal.y)>.5?new Vec3(1,0,0):normal.cross(new Vec3(0,1,0)).normalize();var up=normal.cross(right);
@@ -45,7 +41,7 @@ public final class BindingPreviewRenderer {
         mc.level.addParticle(new DustParticleOptions(new Vector3f((color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f),.45f),
                 point.x,point.y,point.z,normal.x*.006,normal.y*.006+.008,normal.z*.006);emittedParticles++;
     }
-    @SubscribeEvent public static void render(RenderLevelStageEvent event){
+    public static void render(RenderLevelStageEvent event){
         if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
         renderedSegments=0;var state=active();if(state.rune()==null)return;
         var mc=Minecraft.getInstance();var buffers=mc.renderBuffers().bufferSource();var type=BindingBeamRenderType.BEAM;var vertex=buffers.getBuffer(type);var camera=event.getCamera().getPosition();
@@ -70,6 +66,6 @@ public final class BindingPreviewRenderer {
     private static void ribbon(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,Vec3 startSide,Vec3 endSide,int color,int alpha){
         for(Vec3 point:List.of(a.add(startSide),b.add(endSide),b.subtract(endSide),a.subtract(startSide)))vertex.addVertex(pose.last().pose(),(float)point.x,(float)point.y,(float)point.z).setColor(color>>16&255,color>>8&255,color&255,alpha);
     }
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event){preview=BindingPreviewPackets.Preview.EMPTY;curves=List.of();level=null;}
+    public static void logout(ClientPlayerNetworkEvent.LoggingOut event){preview=BindingPreviewPackets.Preview.EMPTY;curves=List.of();level=null;}
     private BindingPreviewRenderer(){}
 }

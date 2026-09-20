@@ -1,6 +1,6 @@
 package com.cappleapple.astralrepository.compat;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import io.github.fabricators_of_create.porting_lib.config.ModConfigSpec;
 
 public final class CompatConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();

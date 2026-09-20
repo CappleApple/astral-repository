@@ -15,7 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** Personal instance library, pixel editor, independent item layers, and preset behavior. */
 public final class WandScreen extends Screen implements GhostIngredientScreen {
@@ -118,15 +118,15 @@ public final class WandScreen extends Screen implements GhostIngredientScreen {
         else {if(icons.size()>=8)return false;icons.add(new RuneDesign.Icon(BuiltInRegistries.ITEM.getKey(item.getItem()),resolution()/2f,resolution()/2f,resolution()/2f,0));selectedIcon=icons.size()-1;}
         changed();rebuild();return true;
     }
-    @Override public boolean acceptFluid(net.neoforged.neoforge.fluids.FluidStack fluid){
+    @Override public boolean acceptFluid(com.cappleapple.astralrepository.platform.fluids.FluidStack fluid){
         if(!editing||draft==null||!behavior||fluid.isEmpty())return false;
         rules.add(FilterRules.Kind.FLUID,BuiltInRegistries.FLUID.getKey(fluid.getFluid()).toString(),false,ItemStack.EMPTY);changed();rebuild();return true;
     }
     private void refresh(){
         if(behavior){
             var samples=new ArrayList<RuneFilterSearch.Option>();
-            var handler=minecraft.player.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.ENTITY_AUTOMATION,null);
-            if(handler==null)handler=new net.neoforged.neoforge.items.wrapper.PlayerInvWrapper(minecraft.player.getInventory());
+            var handler=new com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper(minecraft.player.getInventory());
+            if(handler==null)handler=new com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper(minecraft.player.getInventory());
             for(int i=0;i<Math.min(handler.getSlots(),8192);i++){var item=handler.getStackInSlot(i);if(!item.isEmpty()){var option=catalogue.option(RuneSettingsPackets.sampleRule(item));if(option!=null&&samples.stream().noneMatch(o->o.rule().equals(option.rule())))samples.add(option);}}
             results=List.copyOf(samples);
         }else results=catalogue.search(search.getValue(),RuneFilterSearch.Category.ITEMS);resultOffset=Math.min(resultOffset,Math.max(0,results.size()-12));}

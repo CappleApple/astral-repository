@@ -4,7 +4,7 @@ import com.cappleapple.astralrepository.api.*;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import com.cappleapple.astralrepository.platform.energy.IEnergyStorage;
 
 public final class EnergyResourceProvider implements ResourceProvider {
     private final String id;

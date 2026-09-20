@@ -18,15 +18,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.client.event.RenderGuiEvent;
+import com.cappleapple.astralrepository.platform.client.event.RenderLevelStageEvent;
 
 /** The same visible cells select independent runes for editing, hover details, and link previews. */
-@EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.CLIENT)
 public final class RuneRenderer {
     public record Hover(RunePackets.Face face,RunePackets.Layer layer,int index,RuneLayout.Cell cell) {}
     private static final ResourceLocation WHITE=ResourceLocation.withDefaultNamespace("textures/block/white_concrete.png");
@@ -102,8 +98,8 @@ public final class RuneRenderer {
             default->{}
         }
     }
-    @SubscribeEvent public static void disconnect(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event){faces=List.of();RuneDesignRenderer.disconnect();}
-    @SubscribeEvent public static void render(RenderLevelStageEvent event){
+    public static void disconnect(com.cappleapple.astralrepository.platform.client.event.ClientPlayerNetworkEvent.LoggingOut event){faces=List.of();RuneDesignRenderer.disconnect();}
+    public static void render(RenderLevelStageEvent event){
         if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES)return;
         rendered=0;if(!current())faces=List.of();var mc=Minecraft.getInstance();if(mc.level==null||mc.player==null)return;var pose=event.getPoseStack();var buffers=mc.renderBuffers().bufferSource();
         var vertex=buffers.getBuffer(RenderType.entityTranslucent(WHITE));Vec3 camera=event.getCamera().getPosition();var hovered=hover();var selected=RuneProgramming.selection(mc.player.getMainHandItem());
@@ -125,7 +121,7 @@ public final class RuneRenderer {
     }
     private static void line(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color){if(a.distanceToSqr(b)<0.000001)return;Vec3 n=b.subtract(a).normalize();for(Vec3 p:List.of(a,b))vertex.addVertex(pose.last().pose(),(float)p.x,(float)p.y,(float)p.z).setColor(color>>16&255,color>>8&255,color&255,220).setNormal(pose.last(),(float)n.x,(float)n.y,(float)n.z);}
     private static void arrow(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color,long time){line(vertex,pose,a,b,color);Vec3 d=b.subtract(a).normalize(),side=d.cross(new Vec3(0,1,0));if(side.lengthSqr()<0.01)side=d.cross(new Vec3(1,0,0));side=side.normalize().scale(0.10);Vec3 tip=a.lerp(b,0.2+(time%50)/50.0*0.65),back=tip.subtract(d.scale(0.18));line(vertex,pose,back.add(side),tip,color);line(vertex,pose,back.subtract(side),tip,color);}
-    @SubscribeEvent public static void hud(RenderGuiEvent.Post event){
+    public static void hud(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();if(mc.screen!=null||!current())return;
         var selection=RuneProgramming.selection(mc.player.getMainHandItem());
         if(ModList.get().isLoaded("jade")||!(mc.hitResult instanceof BlockHitResult hit))return;

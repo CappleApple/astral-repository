@@ -19,15 +19,15 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.item.context.UseOnContext;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.registries.DeferredBlock;
-import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.capabilities.RegisterCapabilitiesEvent;
+
+import com.cappleapple.astralrepository.platform.event.entity.player.PlayerInteractEvent;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredBlock;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredHolder;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredItem;
+import io.github.fabricators_of_create.porting_lib.registry.DeferredRegister;
 
 public final class AstralContent {
     public static final String MOD_ID = "astral_repository";
@@ -74,7 +74,7 @@ public final class AstralContent {
     public static final DeferredItem<ResonanceGogglesItem> RESONANCE_GOGGLES = ITEMS.register("resonance_goggles", () -> new ResonanceGogglesItem(new Item.Properties().stacksTo(1)));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CrystalNodeBlockEntity>> NODE_ENTITY = BLOCK_ENTITIES.register("crystal_node",
             () -> BlockEntityType.Builder.of(CrystalNodeBlockEntity::new, NODES.stream().map(Supplier::get).toArray(Block[]::new)).build(null));
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> CREATIVE_TAB = TABS.register("astral_repository", () -> CreativeModeTab.builder()
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> CREATIVE_TAB = TABS.register("astral_repository", () -> net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup.builder()
             .title(Component.translatable("itemGroup.astral_repository")).icon(() -> new ItemStack(STORAGE_NEXUS.get()))
             .displayItems((parameters, output) -> ITEMS.getEntries().stream().filter(entry -> PowerNodeVisibility.visible(entry.get())).forEach(entry -> output.accept(entry.get()))).build());
     private AstralContent() {}
@@ -93,9 +93,9 @@ public final class AstralContent {
         return ITEMS.register(id, () -> new AstralToolItem(new Item.Properties().stacksTo(id.equals("attunement_wand") ? 1 : 64), "hint.astral_repository." + id));
     }
     public static void setup(IEventBus bus) {
-        BLOCKS.register(bus); ITEMS.register(bus); BLOCK_ENTITIES.register(bus); TABS.register(bus);
-        bus.addListener(AstralContent::capabilities);
-        NeoForge.EVENT_BUS.addListener(RuneProgramming::interact);
+        BLOCKS.register(); ITEMS.register(); BLOCK_ENTITIES.register(); TABS.register();
+        capabilities(new com.cappleapple.astralrepository.platform.capabilities.RegisterCapabilitiesEvent());
+        
     }
     private static void capabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, NODE_ENTITY.get(), (node, side) -> node.hasInventory() ? node.inventory() : null);

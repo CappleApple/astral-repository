@@ -6,7 +6,7 @@ import dev.emi.emi.api.*;
 import dev.emi.emi.api.stack.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 @EmiEntrypoint
 public final class AstralEmiPlugin implements EmiPlugin {

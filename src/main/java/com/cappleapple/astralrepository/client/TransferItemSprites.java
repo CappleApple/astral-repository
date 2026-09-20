@@ -27,7 +27,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.ClientHooks;
+import com.cappleapple.astralrepository.platform.client.ClientHooks;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -123,7 +123,7 @@ final class TransferItemSprites extends RenderType {
         pose.translate(-.5, -.5, -.5);
         var quads = new ArrayList<float[]>(); var colors = new ArrayList<int[]>(); var random = RandomSource.create(42);
         int examined = 0;
-        for (var pass : model.getRenderPasses(stack, true)) for (int face = 0; face <= DIRECTIONS.length; face++) {
+        for (var pass : java.util.List.of(model)) for (int face = 0; face <= DIRECTIONS.length; face++) {
             random.setSeed(42);
             for (var quad : pass.getQuads(null, face == DIRECTIONS.length ? null : DIRECTIONS[face], random)) {
                 if (++examined > 512) return null;
@@ -139,7 +139,7 @@ final class TransferItemSprites extends RenderType {
                 if (normal.z <= 1e-7f) continue;
                 if (quads.size() >= MAX_QUADS) return null;
                 float[] vertices = new float[20]; int[] tint = new int[4];
-                int color = quad.isTinted() ? Minecraft.getInstance().getItemColors().getColor(stack, quad.getTintIndex()) : -1;
+                int color = quad.isTinted() ? color(stack,quad.getTintIndex()) : -1;
                 float shade = model.isGui3d() && quad.isShade() ? faceShade(quad) : 1;
                 for (int vertex = 0; vertex < 4; vertex++) {
                     int offset = vertex * stride, target = vertex * 5;
@@ -189,10 +189,11 @@ final class TransferItemSprites extends RenderType {
             else if (stack.getItem() instanceof BlockItem block && BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace().equals("astral_repository"))
                 model = mc.getModelManager().getModel(CrystalModelRenderer.modelLocation(block.getBlock()));
         }
-        var sprite = model.getParticleIcon(); int color = mc.getItemColors().getColor(stack, 0);
+        var sprite = model.getParticleIcon(); int color = color(stack,0);
         return new Mesh(new float[]{-.5f,-.5f,0,sprite.getU0(),sprite.getV1(), .5f,-.5f,0,sprite.getU1(),sprite.getV1(),
                 .5f,.5f,0,sprite.getU1(),sprite.getV0(), -.5f,.5f,0,sprite.getU0(),sprite.getV0()}, new int[]{color,color,color,color});
     }
 
     private TransferItemSprites() { super("unused", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 0, false, false, () -> {}, () -> {}); }
+    private static int color(ItemStack stack,int tint){var provider=net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry.ITEM.get(stack.getItem());return provider==null?-1:provider.getColor(stack,tint);}
 }

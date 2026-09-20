@@ -11,11 +11,11 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
-import net.neoforged.neoforge.event.level.*;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.event.level.*;
+import com.cappleapple.astralrepository.platform.event.tick.ServerTickEvent;
+import com.cappleapple.astralrepository.platform.event.server.ServerStoppingEvent;
+import com.cappleapple.astralrepository.platform.event.server.ServerStoppedEvent;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 import java.util.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenCustomHashMap;
@@ -502,7 +502,7 @@ public final class NetworkManager {
             PacketDistributor.sendToPlayer(player,new NetworkPackets.Diagnostics(visible,edges));
         }
     }
-    public static void datapacks(net.neoforged.neoforge.event.OnDatapackSyncEvent event){if(event.getPlayer()!=null)return;NetworkManager manager=SERVERS.get(event.getPlayerList().getServer());if(manager!=null){manager.coverage.clear();manager.topologyDirty=true;manager.forceRebuild=true;}}
+    public static void datapacks(com.cappleapple.astralrepository.platform.event.OnDatapackSyncEvent event){if(event.getPlayer()!=null)return;NetworkManager manager=SERVERS.get(event.getPlayerList().getServer());if(manager!=null){manager.coverage.clear();manager.topologyDirty=true;manager.forceRebuild=true;}}
     void watchProvider(Object identity,AstralNetwork network){providerNetworks.computeIfAbsent(identity,k->new HashSet<>()).add(network);}
     void unwatchProvider(Object identity,AstralNetwork network){var watchers=providerNetworks.get(identity);if(watchers!=null&&watchers.remove(network)&&watchers.isEmpty())providerNetworks.remove(identity);}
     public void providerIdentitiesChanged(Set<Object> identities){

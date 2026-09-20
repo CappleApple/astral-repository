@@ -27,7 +27,7 @@ public final class RuneSavedData extends SavedData {
     private List<RuneSurface> surfaceSnapshot;
     private Set<Link> linkSnapshot;
     private static ChunkKey chunk(GlobalPos pos){return new ChunkKey(pos.dimension(),ChunkPos.asLong(pos.pos()));}
-    public static RuneSavedData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(RuneSavedData::new,(tag,registries)->load(server,tag,registries)),"astral_repository_runes");}
+    public static RuneSavedData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(RuneSavedData::new,(tag,registries)->load(server,tag,registries),null),"astral_repository_runes");}
     public Collection<RuneSurface> surfaces(){if(surfaceSnapshot==null)surfaceSnapshot=List.copyOf(surfaces.values());return surfaceSnapshot;}
     /** Stable immutable snapshots, rebuilt only when a surface is added or removed. */
     public List<RuneSurface> surfaces(GlobalPos position){return byPosition.getOrDefault(position,List.of());}

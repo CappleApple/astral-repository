@@ -9,8 +9,8 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 /** An exact layer request cannot turn into a pickup of a neighboring or newly reflowed rune. */
 public final class RunePickupPackets {
@@ -22,7 +22,7 @@ public final class RunePickupPackets {
                 buffer -> new Pickup(buffer.readBlockPos(), buffer.readEnum(Direction.class), buffer.readUUID()));
         @Override public Type<Pickup> type() { return TYPE; }
     }
-    public static void setup(IEventBus bus) { bus.addListener(RunePickupPackets::register); }
+    public static void setup(IEventBus bus) { register(new RegisterPayloadHandlersEvent()); }
     private static void register(RegisterPayloadHandlersEvent event) {
         event.registrar("1").playToServer(Pickup.TYPE, Pickup.CODEC, (packet, context) -> {
             if (context.player() instanceof ServerPlayer player) RuneProgramming.pickup(player, packet.pos(), packet.face(), packet.layer());

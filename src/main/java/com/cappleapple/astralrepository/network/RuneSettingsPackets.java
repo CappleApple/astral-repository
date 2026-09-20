@@ -11,9 +11,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 /** The server issues a short-lived editor session for exactly one nearby rune layer. */
 public final class RuneSettingsPackets {
@@ -40,7 +40,7 @@ public final class RuneSettingsPackets {
     private record Session(UUID token,RuneSurface surface,UUID layer,long expires,net.minecraft.nbt.CompoundTag configuration){}
     private static final Map<ServerPlayer,Session> SESSIONS=new WeakHashMap<>();
     public static Consumer<Page> receiver=page->{};
-    public static void setup(IEventBus bus){bus.addListener(RuneSettingsPackets::register);}
+    public static void setup(IEventBus bus){register(new RegisterPayloadHandlersEvent());}
     private static void register(RegisterPayloadHandlersEvent event){var registrar=event.registrar("5");registrar.playToClient(Page.TYPE,Page.CODEC,(p,c)->receiver.accept(p));registrar.playToServer(Action.TYPE,Action.CODEC,(p,c)->{if(c.player() instanceof ServerPlayer player)handle(player,p);});}
     public static void open(ServerPlayer player,RuneSurface surface,RuneLayer layer){
         if(!nearby(player,surface)||surface.get(layer.id())!=layer)return;
@@ -100,7 +100,7 @@ public final class RuneSettingsPackets {
         if(action.operation!=Operation.SAVE)SESSIONS.put(player,new Session(session.token,session.surface,session.layer,session.expires,configuration(session.surface,layer)));send(player,session,layer,status,action.operation==Operation.SAVE);if(action.operation==Operation.SAVE)SESSIONS.remove(player);
     }
     public static String sampleRule(ItemStack sample){
-        var fluid=net.neoforged.neoforge.fluids.FluidUtil.getFluidContained(sample);
+        var fluid=com.cappleapple.astralrepository.platform.fluids.FluidUtil.getFluidContained(sample);
         return fluid.isPresent()?"fluid:"+BuiltInRegistries.FLUID.getKey(fluid.get().getFluid()):BuiltInRegistries.ITEM.getKey(sample.getItem()).toString();
     }
     private static ItemStack heldSample(ServerPlayer player, String id) {

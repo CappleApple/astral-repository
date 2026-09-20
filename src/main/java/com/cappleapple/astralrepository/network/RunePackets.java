@@ -12,10 +12,10 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.event.tick.ServerTickEvent;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 /** Bounded nearby visual state. A looked-at face remains editable without special equipment. */
 public final class RunePackets {
@@ -54,7 +54,7 @@ public final class RunePackets {
     private static final Map<net.minecraft.server.level.ServerPlayer,Set<String>> sentArt=new WeakHashMap<>();
     private static final Map<net.minecraft.server.level.ServerPlayer,Faces> lastFaces=new WeakHashMap<>();
     public static Consumer<Faces> receiver=packet->{};
-    public static void setup(IEventBus bus){bus.addListener(RunePackets::register);}
+    public static void setup(IEventBus bus){register(new RegisterPayloadHandlersEvent());}
     private static void register(RegisterPayloadHandlersEvent event){var registrar=event.registrar("11");BindingPreviewPackets.register(registrar);registrar.playToClient(Faces.TYPE,Faces.CODEC,(packet,context)->receiver.accept(packet));registrar.playToClient(Art.TYPE,Art.CODEC,(p,c)->artReceiver.accept(p));}
     public static void tick(ServerTickEvent.Post event){
         if(event.getServer().getTickCount()%5!=0)return;

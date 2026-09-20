@@ -20,7 +20,7 @@ final class CraftRecoveryData extends SavedData {
     record Entry(GlobalPos origin, Map<ItemKey, Long> items, boolean uncertain) {}
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
     static CraftRecoveryData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(CraftRecoveryData::new, CraftRecoveryData::load), "astral_repository_craft_recovery");
+        return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(CraftRecoveryData::new,CraftRecoveryData::load,null), "astral_repository_craft_recovery");
     }
     void put(UUID id, GlobalPos origin, Map<ItemKey, Long> items) {
         Entry next = new Entry(origin, Map.copyOf(items), false);

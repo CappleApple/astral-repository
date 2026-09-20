@@ -9,7 +9,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import com.cappleapple.astralrepository.platform.event.AddReloadListenerEvent;
 import java.util.*;
 
 /** Datapack descriptions of real, single-item-input machine inventory boundaries. */

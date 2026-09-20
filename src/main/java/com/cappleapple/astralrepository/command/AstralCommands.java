@@ -4,7 +4,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import com.cappleapple.astralrepository.platform.event.RegisterCommandsEvent;
 /** Read-only operator diagnostics; all programming remains in-world. */
 public final class AstralCommands {
     public static void register(RegisterCommandsEvent event){

@@ -13,10 +13,10 @@ import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.capabilities.BlockCapability;
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
-import net.neoforged.neoforge.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.capabilities.BlockCapability;
+import com.cappleapple.astralrepository.platform.capabilities.BlockCapabilityCache;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
 
 /** Registration and bounded, loaded-world-only discovery. Register adapters during common setup. */
 public final class CompatibilityRegistry {
@@ -164,7 +164,7 @@ public final class CompatibilityRegistry {
             cache=BlockCapabilityCache.create(capability,level,pos,context,() -> !invalidated,() -> invalidated=true);
             handler=cache.getCapability();
         }
-        boolean valid() { return !invalidated && physical.getAsBoolean(); }
+        boolean valid() { return !invalidated && physical.getAsBoolean() && cache.isValid(); }
     }
     private static <T,C> TrackedCapability<T,C> track(BlockCapability<T,C> capability,ServerLevel level,BlockPos pos,C context) {
         return new TrackedCapability<>(capability,level,pos,context);
@@ -219,7 +219,7 @@ public final class CompatibilityRegistry {
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static Object capability(ServerLevel level,BlockPos pos,Object capability,Direction side) {
-        return level.getCapability((BlockCapability)capability,pos,side);
+        return com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,(BlockCapability)capability,pos,side);
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static TrackedCapability<Object,Object> trackOptional(ServerLevel level,BlockPos pos,Object capability,Object context) {

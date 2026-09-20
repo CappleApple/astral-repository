@@ -12,9 +12,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.*;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.registration.PayloadRegistrar;
 
 /** Only the selected hotbar wand receives route previews; unchanged geometry is refreshed once per second. */
 public final class BindingPreviewPackets {

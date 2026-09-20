@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.Slot;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -327,7 +327,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
         if (n >= 10_000) return n / 1_000 + "k";
         return Long.toString(n);
     }
-    @Override protected void renderSlotHighlight(GuiGraphics g, Slot slot, int mouseX, int mouseY, float partial) {
+    protected void renderSlotHighlight(GuiGraphics g, Slot slot, int mouseX, int mouseY, float partial) {
         // Native crafting/inventory slots receive the same tint in renderBg, before their items.
     }
     @Override protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {

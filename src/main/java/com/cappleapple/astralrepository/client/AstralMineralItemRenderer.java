@@ -26,7 +26,7 @@ public final class AstralMineralItemRenderer extends BlockEntityWithoutLevelRend
         boolean wand = stack.is(com.cappleapple.astralrepository.content.AstralContent.ATTUNEMENT_WAND.get());
         boolean remote = stack.is(com.cappleapple.astralrepository.content.AstralContent.ASTRAL_NEXUS.get());
         var location = goggles ? AstralMineralClient.gogglesModel(context) : wand ? AstralMineralClient.WAND_MODEL : remote ? AstralMineralClient.REMOTE_MODEL : stack.getItem() instanceof BlockItem
-                ? net.minecraft.client.resources.model.ModelResourceLocation.standalone(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("astral_repository",
+                ? com.cappleapple.astralrepository.platform.client.FabricModels.standalone(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("astral_repository",
                         "item/" + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + "_geometry"))
                 : AstralMineralClient.GEM_MODEL;
         var model = client.getModelManager().getModel(location);

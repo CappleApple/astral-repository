@@ -9,14 +9,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 import java.util.*;
 
 /** Confirmed uninserted resources retry safely; indeterminate third-party commits are retained for inspection only. */
 public final class TransferRecoveryData extends SavedData {
     public record Entry(UUID id,GlobalPos source,ResourceKey resource,long amount,boolean uncertain,String provider,Direction side) {}
     private final Map<UUID,Entry> entries=new LinkedHashMap<>();
-    public static TransferRecoveryData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(TransferRecoveryData::new,TransferRecoveryData::load),"astral_repository_transfer_recovery");}
+    public static TransferRecoveryData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(TransferRecoveryData::new,TransferRecoveryData::load,null),"astral_repository_transfer_recovery");}
     public void put(GlobalPos source,ResourceKey key,long amount,boolean uncertain,String provider){put(source,key,amount,uncertain,provider,null);}
     public void put(GlobalPos source,ResourceKey key,long amount,boolean uncertain,String provider,Direction side){if(amount<=0)return;UUID id=UUID.randomUUID();entries.put(id,new Entry(id,source,key,amount,uncertain,provider,side));setDirty();if(uncertain)AstralRepository.LOGGER.error("Uncertain transfer {}: {} x {} at {} via {}. Recorded in astral_repository_transfer_recovery.dat; not replayed automatically.",id,amount,key,source,provider);}
     public List<Entry> confirmed(){return entries.values().stream().filter(e->!e.uncertain).toList();}

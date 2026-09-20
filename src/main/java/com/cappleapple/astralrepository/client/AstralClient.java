@@ -5,15 +5,11 @@ import com.cappleapple.astralrepository.network.NetworkPackets;
 import com.cappleapple.astralrepository.content.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.DyeColor;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.*;
+import com.cappleapple.astralrepository.platform.client.event.*;
 
-@EventBusSubscriber(modid=AstralRepository.MOD_ID,bus=EventBusSubscriber.Bus.MOD,value=Dist.CLIENT)
 public final class AstralClient {
-    @SubscribeEvent public static void tooltips(RegisterClientTooltipComponentFactoriesEvent event){event.register(RecipeTomeItem.OutputTooltip.class,TomeOutputTooltip::new);}
-    @SubscribeEvent public static void screens(RegisterMenuScreensEvent event){
+    public static void tooltips(RegisterClientTooltipComponentFactoriesEvent event){event.register(RecipeTomeItem.OutputTooltip.class,TomeOutputTooltip::new);}
+    public static void screens(RegisterMenuScreensEvent event){
         RunePickupClient.setup();
         com.cappleapple.astralrepository.network.BindingPreviewPackets.receiver=BindingPreviewRenderer::update;
         com.cappleapple.astralrepository.network.RunePackets.artReceiver=RuneDesignRenderer::receive;
@@ -28,14 +24,14 @@ public final class AstralClient {
         NetworkPackets.pageReceiver=p->{if(Minecraft.getInstance().screen instanceof NexusScreen screen)screen.update(p);};
         NetworkPackets.visualReceiver=WorldVisuals::add;NetworkPackets.visualResetReceiver=WorldVisuals::clearStationDisplays;NetworkPackets.diagnosticsReceiver=WorldVisuals::diagnostics;
     }
-    @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event){event.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager->RuneDesignRenderer.clearTextures());}
-    @SubscribeEvent public static void blockColors(RegisterColorHandlersEvent.Block event){
+    public static void reload(RegisterClientReloadListenersEvent event){event.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager->RuneDesignRenderer.clearTextures());}
+    public static void blockColors(RegisterColorHandlersEvent.Block event){
         for(var block:AstralContent.BLOCKS.getEntries())event.register((state,level,pos,tint)->{
             if(level!=null&&pos!=null&&level.getBlockEntity(pos) instanceof CrystalNodeBlockEntity node)return node.channel()<0?0x65D6CF:DyeColor.byId(node.channel()).getTextureDiffuseColor();return 0x65D6CF;
         },block.get());
     }
-    @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event){event.registerBlockEntityRenderer(AstralContent.NODE_ENTITY.get(),CrystalRenderer::new);}
-    @SubscribeEvent public static void itemColors(RegisterColorHandlersEvent.Item event){
+    public static void renderers(EntityRenderersEvent.RegisterRenderers event){event.registerBlockEntityRenderer(AstralContent.NODE_ENTITY.get(),CrystalRenderer::new);}
+    public static void itemColors(RegisterColorHandlersEvent.Item event){
         for(var item:AstralContent.ITEMS.getEntries())event.register(AstralClient::itemColor,item.get());
     }
     private static int itemColor(net.minecraft.world.item.ItemStack stack,int tint){

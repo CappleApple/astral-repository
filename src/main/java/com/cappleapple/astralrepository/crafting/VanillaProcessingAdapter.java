@@ -52,10 +52,9 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         return result;
     }
     static String ingredientTag(Ingredient ingredient) {
-        if(!ingredient.isSimple())return "";
-        net.minecraft.world.item.crafting.Ingredient.Value[] values;
-        try{values=ingredient.getValues();}catch(IllegalStateException custom){return "";}
-        return values.length==1 && values[0] instanceof Ingredient.TagValue tag ? tag.tag().location().toString() : "";
+        var encoded=Ingredient.CODEC.encodeStart(com.mojang.serialization.JsonOps.INSTANCE,ingredient).result();
+        if(encoded.isEmpty()||!encoded.get().isJsonObject())return "";
+        var value=encoded.get().getAsJsonObject();return value.size()==1&&value.has("tag")?value.get("tag").getAsString():"";
     }
     private static String process(Recipe<?> recipe) {
         if (recipe instanceof CraftingRecipe && recipe.canCraftInDimensions(3, 3)) return "crafting";
@@ -149,8 +148,8 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
     }
     private record FuelDelivery(ItemStack stack,int ticks){static final FuelDelivery EMPTY=new FuelDelivery(ItemStack.EMPTY,0);}
     private static FuelDelivery takeFuel(CraftingService.NetworkAccess access, RecipeType<?> type, GlobalPos position) {
-        for (var entry : access.snapshot().entrySet().stream().sorted(Comparator.<Map.Entry<ItemKey, Long>>comparingInt(e -> e.getKey().sample().getBurnTime(type)).reversed()).toList()) {
-            if (entry.getValue() <= 0 || entry.getKey().sample().getBurnTime(type) <= 0) continue;
+        for (var entry : access.snapshot().entrySet().stream().sorted(Comparator.<Map.Entry<ItemKey, Long>>comparingInt(e -> fuelTime(e.getKey().sample())).reversed()).toList()) {
+            if (entry.getValue() <= 0 || fuelTime(entry.getKey().sample()) <= 0) continue;
             int[] delay={0};
             ItemStack extracted = access.extractForDelivery(entry.getKey(),1,position,(from,stack)->{
                 delay[0]=Math.max(delay[0],access.travelTicks(from,position));CraftingService.animate(access,from,position,stack,Math.max(1,delay[0]));
@@ -227,9 +226,10 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             if (ownedFuel.isEmpty()) return;
             ItemStack current = original.getItem(1);
             if (ItemStack.isSameItemSameComponents(current, ownedFuel)) add(result, original.removeItem(1, ownedFuel.getCount()));
-            else if (ownedFuel.hasCraftingRemainingItem() && ItemStack.isSameItemSameComponents(current, ownedFuel.getCraftingRemainingItem()))
-                add(result, original.removeItem(1, ownedFuel.getCraftingRemainingItem().getCount()));
+            else if (!ownedFuel.getRecipeRemainder().isEmpty() && ItemStack.isSameItemSameComponents(current, ownedFuel.getRecipeRemainder()))
+                add(result, original.removeItem(1, ownedFuel.getRecipeRemainder().getCount()));
             ownedFuel = ItemStack.EMPTY;
         }
     }
+    private static int fuelTime(net.minecraft.world.item.ItemStack stack){Integer ticks=net.fabricmc.fabric.api.registry.FuelRegistry.INSTANCE.get(stack.getItem());return ticks==null?0:ticks;}
 }

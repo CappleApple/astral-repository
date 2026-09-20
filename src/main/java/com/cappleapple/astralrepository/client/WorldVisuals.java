@@ -15,16 +15,12 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import com.cappleapple.astralrepository.platform.client.event.RenderLevelStageEvent;
+import com.cappleapple.astralrepository.platform.client.event.ClientTickEvent;
 import org.joml.Vector3f;
 import java.util.*;
 
 /** Bounded, client-only presentation. These representations never own inventory contents. */
-@EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.CLIENT)
 public final class WorldVisuals {
     private record Flight(NetworkPackets.Visual packet,long started,long seed,ResourceArrival arrival,ResourceTrailSchedule trailSchedule,PreparedTransferPath route,boolean detailedItem) {
         private Flight(NetworkPackets.Visual packet,long started,long seed,boolean detailedItem){
@@ -72,7 +68,7 @@ public final class WorldVisuals {
     /** Internal diagnostic snapshot; all limits affect presentation only. */
     public record Performance(int active,int trails,long admitted,long sampled,int itemsDrawn,int iconsDrawn,int resourcesDrawn,int trailsDrawn,int iconModelResolutions,long renderNanos) {}
     public static Performance performance(){return new Performance(flights.size(),resourceTrails.size(),admitted,sampled,lastRenderedItems,lastRenderedIcons,lastRenderedResources,lastRenderedTrails,TransferItemSprites.modelResolutions(),lastRenderNanos);}
-    @SubscribeEvent public static void tick(ClientTickEvent.Post event){
+    public static void tick(ClientTickEvent.Post event){
         var mc=Minecraft.getInstance();level(mc.level);if(mc.level==null||mc.isPaused()||!mc.level.tickRateManager().runsNormally())return;
         // Server time-sync packets may correct gameTime. Existing flights use a local monotonic tick age.
         visualTicks++;
@@ -116,13 +112,13 @@ public final class WorldVisuals {
         if(from.equals(to))return to.add(Math.cos(t*Math.PI*2)*.25,.4+Math.sin(t*Math.PI)*.5,Math.sin(t*Math.PI*2)*.25);
         return com.cappleapple.astralrepository.network.TransferVisuals.position(p,t);
     }
-    @SubscribeEvent public static void astralCoordinates(RenderLevelStageEvent event) {
+    public static void astralCoordinates(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY)
             AstralPlaneRenderType.beginWorld(event.getModelViewMatrix(), event.getCamera().getPosition());
         else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL)
             AstralPlaneRenderType.endWorld();
     }
-    @SubscribeEvent public static void render(RenderLevelStageEvent event){
+    public static void render(RenderLevelStageEvent event){
         if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
         var mc=Minecraft.getInstance();if(mc.level==null||mc.player==null)return;
         PoseStack pose=event.getPoseStack();Vec3 camera=event.getCamera().getPosition();var buffers=mc.renderBuffers().bufferSource();

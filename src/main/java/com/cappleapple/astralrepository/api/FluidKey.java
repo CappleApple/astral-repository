@@ -3,7 +3,7 @@ package com.cappleapple.astralrepository.api;
 import java.util.Objects;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 /** Fluid identity retaining data components. Quantities are measured in millibuckets. */
 public final class FluidKey implements ResourceKey {

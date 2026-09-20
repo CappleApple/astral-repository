@@ -1,343 +1,46 @@
-plugins {
-    id 'java-library'
-    id 'net.neoforged.moddev' version '2.0.143'
-    id 'idea'
-}
-version = mod_version
-group = mod_group_id
-base { archivesName = mod_id }
+plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
+version = '1.11.8'
+group = 'com.cappleapple.astralrepository'
+base { archivesName = 'astral_repository-fabric-1.21.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-neoForge {
-    version = project.neo_version
-    parchment {
-        mappingsVersion = '2024.11.17'
-        minecraftVersion = '1.21.1'
-    }
-    runs {
-        configureEach {
-            if (project.hasProperty("curiosTest")) systemProperty "astral_repository.curiosTest", "true"
-            if (project.hasProperty("patchouliTest") || project.hasProperty("compatTest")) systemProperty "astral_repository.patchouliTest", "true"
-        }
-        client { client(); systemProperty 'astral_repository.testClient', 'true'; gameDirectory = project.layout.projectDirectory.dir('run-client') }
-        clientSmoke {
-            client()
-            gameDirectory = project.layout.projectDirectory.dir('run-client-smoke')
-            systemProperty 'astral_repository.clientSmoke', 'true'
-            if (project.hasProperty('captureGuide')) systemProperty 'astral_repository.captureGuide', 'true'
-            if (project.hasProperty('guideOnly')) systemProperty 'astral_repository.guideOnly', 'true'
-            if (project.hasProperty('jadeTest')) systemProperty 'astral_repository.jadeTest', 'true'
-            if (project.hasProperty('bundledTest')) systemProperty 'astral_repository.bundledTest', 'true'
-            if (project.hasProperty('routingOnly')) systemProperty 'astral_repository.routingOnly', 'true'
-            if (project.hasProperty('powerVisibilityOnly')) systemProperty 'astral_repository.powerVisibilityOnly', 'true'
-            if (project.hasProperty('trimOnly')) systemProperty 'astral_repository.trimOnly', 'true'
-            if (project.hasProperty('gogglesOnly')) systemProperty 'astral_repository.gogglesOnly', 'true'
-            if (project.hasProperty('resourceArrivalOnly')) systemProperty 'astral_repository.resourceArrivalOnly', 'true'
-            if (project.hasProperty('presentationOnly')) systemProperty 'astral_repository.presentationOnly', 'true'
-            if (project.hasProperty('feedbackOnly')) systemProperty 'astral_repository.feedbackOnly', 'true'
-            if (project.hasProperty('crystalStorageOnly')) systemProperty 'astral_repository.crystalStorageOnly', 'true'
-            if (project.hasProperty('furnaceOnly')) systemProperty 'astral_repository.furnaceOnly', 'true'
-            if (project.hasProperty('bindingOnly')) systemProperty 'astral_repository.bindingOnly', 'true'
-            if (project.hasProperty('editorOnly')) systemProperty 'astral_repository.editorOnly', 'true'
-            if (project.hasProperty('wandOnly')) systemProperty 'astral_repository.wandOnly', 'true'
-            if (project.hasProperty('transferStressUnique')) systemProperty 'astral_repository.transferStressUnique', 'true'
-            if (project.hasProperty('transferStressItems')) systemProperty 'astral_repository.transferStressItems', 'true'
-            if (project.hasProperty('transferStress')) systemProperty 'astral_repository.transferStress', 'true'
-            if (project.hasProperty('nodeModels')) systemProperty 'astral_repository.nodeModels', 'true'
-            systemProperty 'astral_repository.testClient', 'true'
-            programArgument '--width'
-            programArgument '1100'
-            programArgument '--height'
-            programArgument '750'
-        }
-        server { server(); gameDirectory = project.layout.projectDirectory.dir('run-server'); programArgument '--nogui' }
-        runeStress {
-            server()
-            gameDirectory = project.layout.projectDirectory.dir('build/rune-stress/server')
-            programArgument '--nogui'
-            systemProperty 'astral_repository.runeStress', 'true'
-            systemProperty 'astral_repository.runeStressOutput', project.layout.buildDirectory.dir('rune-stress').get().asFile.absolutePath
-            if (project.hasProperty('runeStressWarmup')) systemProperty 'astral_repository.runeStressWarmup', project.property('runeStressWarmup').toString()
-            if (project.hasProperty('runeStressSamples')) systemProperty 'astral_repository.runeStressSamples', project.property('runeStressSamples').toString()
-            if (project.hasProperty('runeStressObservers')) systemProperty 'astral_repository.runeStressObservers', project.property('runeStressObservers').toString()
-        }
-
-        networkRuneStress {
-            server()
-            gameDirectory = project.layout.projectDirectory.dir('build/network-rune-stress/server')
-            programArgument '--nogui'
-            systemProperty 'astral_repository.networkRuneStress', 'true'
-            if (project.hasProperty('networkRuneStressDense')) systemProperty 'astral_repository.networkRuneStressDense', 'true'
-            systemProperty 'astral_repository.networkRuneStressOutput', project.layout.buildDirectory.dir('network-rune-stress').get().asFile.absolutePath
-            if (project.hasProperty('runeStressWarmup')) systemProperty 'astral_repository.runeStressWarmup', project.property('runeStressWarmup').toString()
-            if (project.hasProperty('runeStressSamples')) systemProperty 'astral_repository.runeStressSamples', project.property('runeStressSamples').toString()
-            if (project.hasProperty('runeStressObservers')) systemProperty 'astral_repository.runeStressObservers', project.property('runeStressObservers').toString()
-        }
-        tenThousandRuneStress {
-            server()
-            gameDirectory = project.layout.projectDirectory.dir('build/ten-thousand-rune-stress/server')
-            programArgument '--nogui'
-            systemProperty 'astral_repository.tenThousandRuneStress', 'true'
-            systemProperty 'astral_repository.tenThousandRuneStressOutput', project.layout.buildDirectory.dir('ten-thousand-rune-stress').get().asFile.absolutePath
-            ['tenThousandRuneMode','tenThousandRuneWarmup','tenThousandRuneSamples','tenThousandRuneObservers'].each { key ->
-                if (project.hasProperty(key)) systemProperty 'astral_repository.' + key, project.property(key).toString()
-            }
-        }
-        deepCraftStress {
-            server()
-            gameDirectory = project.layout.projectDirectory.dir('build/deep-craft-stress/server')
-            programArgument '--nogui'
-            systemProperty 'astral_repository.deepCraftStress', 'true'
-            systemProperty 'astral_repository.deepCraftStressOutput', project.layout.buildDirectory.dir('deep-craft-stress').get().asFile.absolutePath
-            ['deepCraftStressOrders','deepCraftStressCount','deepCraftStressTimeout'].each { key ->
-                if (project.hasProperty(key)) systemProperty 'astral_repository.' + key, project.property(key).toString()
-            }
-        }
-        persistenceCreate {
-            server()
-            gameDirectory = project.layout.projectDirectory.dir('run-persistence-smoke-v3')
-            programArgument '--nogui'
-            systemProperty 'astral_repository.persistenceSmoke', 'create'
-            systemProperty 'astral_repository.persistenceOutput', project.layout.buildDirectory.dir('persistence-smoke-v3').get().asFile.absolutePath
-        }
-        persistenceVerify {
-            server()
-            gameDirectory = project.layout.projectDirectory.dir('run-persistence-smoke-v3')
-            programArgument '--nogui'
-            systemProperty 'astral_repository.persistenceSmoke', 'verify'
-            systemProperty 'astral_repository.persistenceOutput', project.layout.buildDirectory.dir('persistence-smoke-v3').get().asFile.absolutePath
-        }
-        gameTestServer {
-            type = 'gameTestServer'
-            gameDirectory = project.layout.projectDirectory.dir(project.hasProperty('compatTest') ? 'run-gametest-compat' : 'run-gametest')
-            if (project.hasProperty('compatTest')) systemProperty 'astral_repository.compatTest', 'true'
-            systemProperty 'neoforge.enabledGameTestNamespaces', 'astral_repository,minecraft'
-        }
-    }
-    mods { astral_repository { sourceSet(sourceSets.main) } }
-    unitTest { enable(); testedMod = mods.astral_repository }
-}
 repositories {
-    maven { url = "https://maven.theillusivec4.top/" }
-    maven { url = "https://api.modrinth.com/maven" }
-    maven { url = "https://maven.blamejared.com" }
-    maven { url = "https://maven.terraformersmc.com/releases" }
+ maven { url = 'https://mvn.devos.one/snapshots/' }
+ maven { url = 'https://mvn.devos.one/releases/' }
+ maven { url = 'https://maven.blamejared.com' }
+ maven { url = 'https://maven.terraformersmc.com/releases' }
+ maven { url = 'https://api.modrinth.com/maven' }
+ maven { url = 'https://maven.ladysnake.org/releases' }
+ maven { url = 'https://maven.fzzyhmstrs.me/' }
 }
 dependencies {
-    if (project.hasProperty('lithiumTest') || project.hasProperty('performanceClientTest'))
-        runtimeOnly fileTree(dir: 'test-libs/performance', include: ['lithium-*.jar'])
-    if (project.hasProperty('performanceClientTest'))
-        runtimeOnly fileTree(dir: 'test-libs/performance', include: ['sodium-*.jar', 'AsyncParticles-*.jar'])
-    compileOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1:api"
-    if (project.hasProperty("curiosTest")) runtimeOnly "top.theillusivec4.curios:curios-neoforge:9.5.1+1.21.1"
-
-    compileOnly "mezz.jei:jei-1.21.1-common-api:19.21.0.247"
-    compileOnly "mezz.jei:jei-1.21.1-neoforge-api:19.21.0.247"
-    compileOnly "dev.emi:emi-neoforge:1.1.24+1.21.1:api"
-    if(project.hasProperty("jeiTest")) runtimeOnly "mezz.jei:jei-1.21.1-neoforge:19.21.0.247"
-    if(project.hasProperty("emiTest")) runtimeOnly "dev.emi:emi-neoforge:1.1.24+1.21.1"
-
-    compileOnly "vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE"
-    if (project.hasProperty("patchouliTest") || project.hasProperty("compatTest")) runtimeOnly "vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE"
-    compileOnly "maven.modrinth:jade:15.10.6+neoforge"
-    if (project.hasProperty("jadeTest")) runtimeOnly files("test-libs/Jade-1.21.1-NeoForge-15.10.6.jar")
-    if (project.hasProperty('bundledTest')) {
-        runtimeOnly fileTree(dir: 'test-libs/bundled', include: ['*.jar'])
-        if (!project.hasProperty('compatTest')) runtimeOnly files('test-libs/stacksnotslots-1.0.jar')
-    }
-    if (project.hasProperty('compatTest')) runtimeOnly fileTree(dir: 'test-libs', include: ['*.jar'], exclude: ['Patchouli-*.jar'])
-    testImplementation platform('org.junit:junit-bom:5.11.4')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+ minecraft 'com.mojang:minecraft:1.21.1'
+ mappings loom.officialMojangMappings()
+ modImplementation 'net.fabricmc:fabric-loader:0.19.5'
+ modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.16+1.21.1'
+ ['config','registry','obj_loader','models','model_data','fluids','client_extensions','items','blocks','core','data','model_loader','transfer','common','resources','render_types','gametest'].each { module -> modImplementation include("io.github.fabricators_of_create.Porting-Lib:${module}:3.1.0-beta.90+1.21.1") }
+ modImplementation include('teamreborn:energy:4.1.0')
+ modCompileOnly 'dev.emi:emi-fabric:1.1.24+1.21.1:api'
+ modCompileOnly 'mezz.jei:jei-1.21.1-fabric-api:19.21.0.247'
+ modCompileOnly 'vazkii.patchouli:Patchouli:1.21.1-93-FABRIC'
+ modCompileOnly 'maven.modrinth:jade:15.10.6+fabric'
 }
-tasks.named('test', Test).configure { useJUnitPlatform(); maxHeapSize = '2G' }
-tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21 }
-def buildVersion = project.version
-tasks.named('processResources').configure {
-    inputs.property 'version', buildVersion
-    filesMatching('META-INF/neoforge.mods.toml') { expand version: buildVersion }
-}
-tasks.named('jar', Jar).configure { exclude 'com/cappleapple/astralrepository/gametest/**'; exclude 'data/astral_repository/structure/empty_workshop.nbt'; exclude 'data/astral_repository/structure/empty_geode.nbt' }
+sourceSets.main.java.exclude 'com/cappleapple/astralrepository/gametest/**'
+sourceSets.main.java.exclude 'com/cappleapple/astralrepository/compat/Curios*.java'
 
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8'; options.release = 21; options.compilerArgs += ['-Xmaxerrs','1000'] }
+processResources { inputs.property 'version', project.version; filesMatching('fabric.mod.json') { expand version: project.version } }
 
+tasks.named('compileJava').configure { doFirst { layout.buildDirectory.file('compile-classpath.txt').get().asFile.text = classpath.asPath } }
 
+dependencies {testImplementation platform('org.junit:junit-bom:5.11.4');testImplementation 'org.junit.jupiter:junit-jupiter';testImplementation 'org.junit.platform:junit-platform-launcher'}
+tasks.named('test', Test).configure { useJUnitPlatform(); maxHeapSize='2G' }
+loom { runs { server { server(); runDir 'run-server'; programArg '--nogui' } } }
 
+sourceSets { portTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath; runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath } }
+loom { mods { astral_repository {sourceSet sourceSets.main}; astral_repository_port_test {sourceSet sourceSets.portTest} }; runs { serverSmoke {server(); name 'Fabric dedicated smoke'; runDir 'run-server-smoke'; vmArg '-Dastral_repository.portSmoke=true'; source sourceSets.portTest; programArg '--nogui' } } }
 
-def smokeResult = layout.buildDirectory.file('client-smoke/result.txt')
-tasks.named('runClientSmoke').configure {
-    doFirst {
-        def result = smokeResult.get().asFile
-        result.parentFile.mkdirs()
-        result.text = 'RUNNING'
-    }
-    doLast {
-        def result = smokeResult.get().asFile.text
-        if (!result.startsWith('PASS:')) throw new GradleException("Client smoke failed: " + result)
-    }
-}
+loom { runs { clientSmoke {client(); name 'Fabric background client smoke'; runDir 'run-client-smoke'; source sourceSets.portTest; vmArg '-Dastral_repository.testClient=true'; vmArg '-Dastral_repository.portClientSmoke=true' } } }
 
-
-def persistenceDirectory = layout.projectDirectory.dir('run-persistence-smoke-v3').asFile
-def persistenceOutput = layout.buildDirectory.dir('persistence-smoke-v3')
-def acceptedServerEula = layout.projectDirectory.file('run-server/eula.txt').asFile
-['Create': 'create', 'Verify': 'verify'].each { suffix, phase ->
-    tasks.named("runPersistence${suffix}").configure {
-        doFirst {
-            def worldFile = new File(persistenceDirectory, 'world/level.dat')
-            def manifest = new File(persistenceDirectory, 'world/astral-persistence-fixture-v3.txt')
-            if (phase == 'create' && worldFile.exists()) throw new GradleException('Persistence fixture world already exists; create refuses to overwrite it. Run runPersistenceVerify for the saved world.')
-            if (phase == 'verify' && (!worldFile.exists() || !manifest.exists())) throw new GradleException('Run runPersistenceCreate successfully before verifying the saved world.')
-            persistenceDirectory.mkdirs()
-            def accepted = acceptedServerEula.exists() ? acceptedServerEula.text : ''
-            if (!(accepted =~ /(?m)^\s*eula\s*=\s*true\s*$/).find()) throw new GradleException('This isolated fixture requires the already accepted run-server/eula.txt.')
-            new File(persistenceDirectory, 'eula.txt').text = accepted
-            if (phase == 'create') new File(persistenceDirectory, 'server.properties').text = '''server-ip=127.0.0.1
-server-port=0
-level-name=world
-level-type=minecraft:flat
-level-seed=42
-generate-structures=false
-online-mode=false
-spawn-protection=0
-view-distance=2
-simulation-distance=2
-sync-chunk-writes=true
-max-tick-time=120000
-allow-nether=false
-gamemode=creative
-difficulty=peaceful
-enable-rcon=false
-enable-query=false
-'''
-            def result = new File(persistenceOutput.get().asFile, phase + '-result.txt')
-            result.parentFile.mkdirs()
-            result.text = 'RUNNING'
-        }
-        doLast {
-            def result = new File(persistenceOutput.get().asFile, phase + '-result.txt').text
-            if (!result.startsWith('PASS:')) throw new GradleException('Dedicated persistence smoke failed: ' + result)
-        }
-    }
-}
-tasks.named('runPersistenceVerify').configure { mustRunAfter 'runPersistenceCreate' }
-
-
-
-def runeStressServerDirectory = layout.buildDirectory.dir('rune-stress/server').get().asFile
-def runeStressResultFile = layout.buildDirectory.file('rune-stress/result.txt').get().asFile
-tasks.named('runRuneStress').configure {
-    doFirst {
-        def serverDir = runeStressServerDirectory
-        serverDir.mkdirs()
-        def accepted = acceptedServerEula.exists() ? acceptedServerEula.text : ''
-        if (!(accepted =~ /(?m)^\s*eula\s*=\s*true\s*$/).find()) throw new GradleException('This isolated fixture requires the already accepted run-server/eula.txt.')
-        new File(serverDir, 'eula.txt').text = accepted
-        new File(serverDir, 'server.properties').text = '''server-ip=127.0.0.1
-server-port=0
-level-name=world
-level-type=minecraft:flat
-level-seed=42
-generate-structures=false
-online-mode=false
-spawn-protection=0
-view-distance=2
-simulation-distance=2
-sync-chunk-writes=true
-max-tick-time=120000
-allow-nether=false
-gamemode=creative
-difficulty=peaceful
-enable-rcon=false
-enable-query=false
-'''
-        runeStressResultFile.text = 'RUNNING'
-    }
-    doLast {
-        def result = runeStressResultFile.text
-        if (!result.startsWith('PASS:')) throw new GradleException('Dedicated rune stress failed: ' + result)
-    }
-}
-
-def networkRuneStressServerDirectory = layout.buildDirectory.dir('network-rune-stress/server').get().asFile
-def networkRuneStressResultFile = layout.buildDirectory.file('network-rune-stress/result.txt').get().asFile
-tasks.named('runNetworkRuneStress').configure {
-    doFirst {
-        def serverDir = networkRuneStressServerDirectory
-        serverDir.mkdirs()
-        def accepted = acceptedServerEula.exists() ? acceptedServerEula.text : ''
-        if (!(accepted =~ /(?m)^\s*eula\s*=\s*true\s*$/).find()) throw new GradleException('This isolated fixture requires the already accepted run-server/eula.txt.')
-        new File(serverDir, 'eula.txt').text = accepted
-        new File(serverDir, 'server.properties').text = '''server-ip=127.0.0.1
-server-port=0
-level-name=world
-level-type=minecraft:flat
-level-seed=42
-generate-structures=false
-online-mode=false
-spawn-protection=0
-view-distance=2
-simulation-distance=2
-sync-chunk-writes=true
-max-tick-time=120000
-allow-nether=false
-gamemode=creative
-difficulty=peaceful
-enable-rcon=false
-enable-query=false
-'''
-        networkRuneStressResultFile.text = 'RUNNING'
-    }
-    doLast {
-        def result = networkRuneStressResultFile.text
-        if (!result.startsWith('PASS:')) throw new GradleException('Dedicated aggregate rune stress failed: ' + result)
-    }
-}
-
-def deepCraftStressDatapack = layout.projectDirectory.dir('src/testFixtures/deep-crafting-datapack').asFile
-['TenThousandRuneStress': 'ten-thousand-rune-stress', 'DeepCraftStress': 'deep-craft-stress'].each { suffix, fixtureName ->
-    def fixtureServerDirectory = layout.buildDirectory.dir(fixtureName + '/server').get().asFile
-    def fixtureResultFile = layout.buildDirectory.file(fixtureName + '/result.txt').get().asFile
-    def fixtureDatapackDirectory = new File(fixtureServerDirectory, 'world/datapacks/deep-crafting-stress')
-    tasks.named('run' + suffix).configure {
-        doFirst {
-            fixtureServerDirectory.mkdirs()
-            def accepted = acceptedServerEula.exists() ? acceptedServerEula.text : ''
-            if (!(accepted =~ /(?m)^\s*eula\s*=\s*true\s*$/).find()) throw new GradleException('This isolated fixture requires the already accepted run-server/eula.txt.')
-            new File(fixtureServerDirectory, 'eula.txt').text = accepted
-            new File(fixtureServerDirectory, 'server.properties').text = '''server-ip=127.0.0.1
-server-port=0
-level-name=world
-level-type=minecraft:flat
-level-seed=42
-generate-structures=false
-online-mode=false
-spawn-protection=0
-view-distance=2
-simulation-distance=2
-sync-chunk-writes=true
-max-tick-time=120000
-allow-nether=false
-gamemode=creative
-difficulty=peaceful
-enable-rcon=false
-enable-query=false
-'''
-            if (suffix == 'DeepCraftStress') {
-                if (!deepCraftStressDatapack.isDirectory()) throw new GradleException('Deep crafting stress datapack is missing from src/testFixtures/deep-crafting-datapack.')
-                java.nio.file.Files.walk(deepCraftStressDatapack.toPath()).withCloseable { files ->
-                    files.filter { java.nio.file.Files.isRegularFile(it) }.forEach { source ->
-                        def target = fixtureDatapackDirectory.toPath().resolve(deepCraftStressDatapack.toPath().relativize(source))
-                        java.nio.file.Files.createDirectories(target.parent)
-                        java.nio.file.Files.copy(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-                    }
-                }
-            }
-            fixtureResultFile.text = 'RUNNING'
-        }
-        doLast {
-            def result = fixtureResultFile.text
-            if (!result.startsWith('PASS:')) throw new GradleException('Dedicated stress fixture failed: ' + result)
-        }
-    }
-}
+tasks.named('jar') { from('LICENSE') }
 
 tasks.named('jar') { from('LICENSE') }

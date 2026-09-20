@@ -1,7 +1,7 @@
 package com.cappleapple.astralrepository.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.BakedQuad;
@@ -18,7 +18,7 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.model.data.ModelData;
+
 
 /** Shared world/item draw of the baked node mesh, partitioned by its OBJ material tint indices. */
 public final class CrystalModelRenderer {
@@ -27,10 +27,10 @@ public final class CrystalModelRenderer {
 
     public static ModelResourceLocation modelLocation(Block block) {
         var id = BuiltInRegistries.BLOCK.getKey(block);
-        return ModelResourceLocation.standalone(ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "item/" + id.getPath() + "_geometry"));
+        return com.cappleapple.astralrepository.platform.client.FabricModels.standalone(ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "item/" + id.getPath() + "_geometry"));
     }
 
-    public static ModelResourceLocation modelLocation(String name){return ModelResourceLocation.standalone(ResourceLocation.fromNamespaceAndPath("astral_repository","item/"+name+"_geometry"));}
+    public static ModelResourceLocation modelLocation(String name){return com.cappleapple.astralrepository.platform.client.FabricModels.standalone(ResourceLocation.fromNamespaceAndPath("astral_repository","item/"+name+"_geometry"));}
     public static String upgradedModel(com.cappleapple.astralrepository.content.NodeKind kind,int tier,boolean range,boolean dimensional){
         if(kind==com.cappleapple.astralrepository.content.NodeKind.STORAGE&&tier>=2)return tier==3?"star_storage_crystal":"moon_storage_crystal";
         if(kind==com.cappleapple.astralrepository.content.NodeKind.RELAY&&range)return dimensional?"gateway_crystal":"remote_crystal";return null;
@@ -61,7 +61,7 @@ public final class CrystalModelRenderer {
         for (int face = 0; face <= DIRECTIONS.length; face++) {
             var direction = face == DIRECTIONS.length ? null : DIRECTIONS[face];
             random.setSeed(42);
-            for (var quad : model.getQuads(state, direction, random, ModelData.EMPTY, null)) {
+            for (var quad : model.getQuads(state, direction, random)) {
                 boolean accent = isChannelAccent(quad);
                 // Preserve the OBJ's per-vertex colors and non-axis-aligned facet normals.
                 buffers.getBuffer(materialFor(quad)).putBulkData(poses.last(), quad, BRIGHTNESS,

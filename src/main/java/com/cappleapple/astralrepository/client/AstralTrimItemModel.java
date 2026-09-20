@@ -16,46 +16,38 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.model.BakedModelWrapper;
+import net.fabricmc.fabric.api.renderer.v1.model.ForwardingBakedModel;
 
 /** Keeps armor's normal render passes and shades only its trim-mask quads. */
-public final class AstralTrimItemModel extends BakedModelWrapper<BakedModel> {
+public final class AstralTrimItemModel extends ForwardingBakedModel {
     private static final Map<BakedModel, BakedModel> CACHE = new IdentityHashMap<>();
     private final Map<BakedModel, List<BakedModel>> passes = new IdentityHashMap<>();
 
-    private AstralTrimItemModel(BakedModel model) { super(model); }
+    private AstralTrimItemModel(BakedModel model) { this.wrapped=model; }
     public static BakedModel wrap(BakedModel model) {
         if (model instanceof AstralTrimItemModel || model.isCustomRenderer()) return model;
         return CACHE.computeIfAbsent(model, AstralTrimItemModel::new);
     }
     public static void clearCache() { CACHE.clear(); }
 
-    @Override public BakedModel applyTransform(ItemDisplayContext context, PoseStack poses, boolean left) {
-        BakedModel transformed = originalModel.applyTransform(context, poses, left);
-        return transformed == originalModel ? this : wrap(transformed);
-    }
-    @Override public List<BakedModel> getRenderPasses(ItemStack stack, boolean fabulous) {
-        var result = new ArrayList<BakedModel>();
-        for (var pass : originalModel.getRenderPasses(stack, fabulous))
-            result.addAll(passes.computeIfAbsent(pass, model -> List.of(new Pass(model, false), new Pass(model, true))));
-        return result;
+    public void render(net.minecraft.client.renderer.entity.ItemRenderer renderer,ItemStack stack,ItemDisplayContext context,boolean left,PoseStack poses,net.minecraft.client.renderer.MultiBufferSource buffers,int light,int overlay){
+        var passesForModel=passes.computeIfAbsent(wrapped,model->List.of(new Pass(model,false),new Pass(model,true)));
+        renderer.render(stack,context,left,poses,buffers,light,overlay,passesForModel.get(0));
+        var material=AstralPlaneRenderType.ready()?AstralPlaneRenderType.ITEM_TRIM:RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS);
+        renderer.render(stack,context,left,poses,ignored->buffers.getBuffer(material),light,overlay,passesForModel.get(1));
     }
     public static boolean isTrim(BakedQuad quad) {
         var name = quad.getSprite().contents().name();
         return name.getNamespace().equals("minecraft") && name.getPath().startsWith("trims/items/")
                 && name.getPath().contains("_trim_");
     }
-    private static final class Pass extends BakedModelWrapper<BakedModel> {
+    private static final class Pass extends ForwardingBakedModel {
         private final boolean trim;
         private final Map<BakedQuad, BakedQuad> remapped = new IdentityHashMap<>();
-        Pass(BakedModel model, boolean trim) { super(model); this.trim = trim; }
-        @Override public List<RenderType> getRenderTypes(ItemStack stack, boolean fabulous) {
-            return trim ? List.of(AstralPlaneRenderType.ready() ? AstralPlaneRenderType.ITEM_TRIM
-                    : RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS)) : originalModel.getRenderTypes(stack, fabulous);
-        }
+        Pass(BakedModel model, boolean trim) { this.wrapped=model; this.trim = trim; }
         @Override public List<BakedQuad> getQuads(BlockState state, Direction side, RandomSource random) {
             var result = new ArrayList<BakedQuad>();
-            for (var quad : originalModel.getQuads(state, side, random)) {
+            for (var quad : wrapped.getQuads(state, side, random)) {
                 if (isTrim(quad) != trim) continue;
                 result.add(trim ? remapped.computeIfAbsent(quad, Pass::retexture) : quad);
             }
@@ -75,7 +67,7 @@ public final class AstralTrimItemModel extends BakedModelWrapper<BakedModel> {
                 vertices[at + 4] = Float.floatToRawIntBits(sprite.getU0() + u * (sprite.getU1() - sprite.getU0()));
                 vertices[at + 5] = Float.floatToRawIntBits(sprite.getV0() + v * (sprite.getV1() - sprite.getV0()));
             }
-            return new BakedQuad(vertices, -1, quad.getDirection(), sprite, quad.isShade(), quad.hasAmbientOcclusion());
+            return new BakedQuad(vertices, -1, quad.getDirection(), sprite, quad.isShade());
         }
     }
 }

@@ -21,4 +21,9 @@ public abstract class AstralTrimItemMixin {
         if (AstralTrims.isAstral(stack.get(DataComponents.TRIM)))
             ci.setReturnValue(AstralTrimItemModel.wrap(ci.getReturnValue()));
     }
+
+    @Inject(method="render",at=@At("HEAD"),cancellable=true)
+    private void astral$renderTrim(ItemStack stack,net.minecraft.world.item.ItemDisplayContext context,boolean left,com.mojang.blaze3d.vertex.PoseStack poses,net.minecraft.client.renderer.MultiBufferSource buffers,int light,int overlay,BakedModel model,org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci){
+        if(model instanceof AstralTrimItemModel trim){trim.render((ItemRenderer)(Object)this,stack,context,left,poses,buffers,light,overlay);ci.cancel();}
+    }
 }

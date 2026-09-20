@@ -9,9 +9,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 public final class RecipeTomePackets {
     public static Consumer<Page> pageReceiver = page -> {};
@@ -45,7 +45,7 @@ public final class RecipeTomePackets {
         });
         @Override public Type<Page> type() { return TYPE; }
     }
-    public static void setup(IEventBus bus) { bus.addListener(RecipeTomePackets::register); }
+    public static void setup(IEventBus bus) { register(new RegisterPayloadHandlersEvent()); }
     private static void register(RegisterPayloadHandlersEvent event) {
         var registrar = event.registrar("1");
         registrar.playToServer(Action.TYPE, Action.CODEC, (payload, context) -> {

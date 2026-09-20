@@ -1,6 +1,6 @@
 package com.cappleapple.astralrepository;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import io.github.fabricators_of_create.porting_lib.config.ModConfigSpec;
 
 /** Local visual preferences. Registered only on the physical client. */
 public final class AstralClientConfig {

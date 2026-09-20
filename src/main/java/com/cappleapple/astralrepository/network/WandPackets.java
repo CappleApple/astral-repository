@@ -13,9 +13,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 /** Small editor messages carry one preset at a time, never the entire artwork library. */
 public final class WandPackets {
@@ -34,7 +34,7 @@ public final class WandPackets {
         public Type<Page> type(){return TYPE;}
     }
     public static Consumer<Page> receiver=p->{};
-    public static void setup(IEventBus bus){bus.addListener((RegisterPayloadHandlersEvent e)->{var r=e.registrar("3");r.playToClient(Page.TYPE,Page.CODEC,(p,c)->receiver.accept(p));r.playToServer(Action.TYPE,Action.CODEC,(p,c)->{if(c.player() instanceof ServerPlayer player)handle(player,p);});});}
+    public static void setup(IEventBus bus){{var r=new RegisterPayloadHandlersEvent().registrar("3");r.playToClient(Page.TYPE,Page.CODEC,(p,c)->receiver.accept(p));r.playToServer(Action.TYPE,Action.CODEC,(p,c)->{if(c.player() instanceof ServerPlayer player)handle(player,p);});}}
     private static ItemStack wand(ServerPlayer p){if(p.getMainHandItem().is(AstralContent.ATTUNEMENT_WAND.get()))return p.getMainHandItem();if(p.getOffhandItem().is(AstralContent.ATTUNEMENT_WAND.get()))return p.getOffhandItem();return ItemStack.EMPTY;}
     public static boolean placing(ItemStack stack){return stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag().getBoolean("PlaceRune");}
     public static UUID selected(ItemStack stack){var t=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();return t.hasUUID("RunePreset")?t.getUUID("RunePreset"):null;}
@@ -42,14 +42,14 @@ public final class WandPackets {
     public static RunePreset preset(ServerPlayer player,ItemStack wand){return RuneLibraryData.get(player.getServer()).library(player.getUUID()).get(selected(wand));}
     public static void open(ServerPlayer player){if(wand(player).isEmpty())return;openEditor(player,null);}
     public static void openPreset(ServerPlayer player,RunePreset preset){openEditor(player,preset);}
-    private static void openEditor(ServerPlayer player,RunePreset preset){if(!player.isAlive()||player.isSpectator())return;UUID session=UUID.randomUUID();player.getPersistentData().putUUID("AstralWandSession",session);
+    private static void openEditor(ServerPlayer player,RunePreset preset){if(!player.isAlive()||player.isSpectator())return;UUID session=UUID.randomUUID();com.cappleapple.astralrepository.platform.PlayerSessionData.get(player).putUUID("AstralWandSession",session);
         var data=RuneLibraryData.get(player.getServer());data.library(player.getUUID()).clear();data.setDirty();
-        var opening=new CompoundTag();if(preset!=null)opening.put("EditPreset",preset.save());player.getPersistentData().putBoolean("AstralPresetEditor",preset!=null);
+        var opening=new CompoundTag();if(preset!=null)opening.put("EditPreset",preset.save());com.cappleapple.astralrepository.platform.PlayerSessionData.get(player).putBoolean("AstralPresetEditor",preset!=null);
         PacketDistributor.sendToPlayer(player,new Page(session,opening,true));
         for(var packPreset:RunePresetFiles.pack(player.registryAccess())){CompoundTag value=new CompoundTag();value.put("PackPreset",packPreset.save());PacketDistributor.sendToPlayer(player,new Page(session,value,false));}
     }
     private static void handle(ServerPlayer player,Action action){
-        ItemStack wand=wand(player);var state=player.getPersistentData();if((wand.isEmpty()&&!state.getBoolean("AstralPresetEditor"))||!player.isAlive()||player.isSpectator()||!state.hasUUID("AstralWandSession")||!state.getUUID("AstralWandSession").equals(action.session))return;
+        ItemStack wand=wand(player);var state=com.cappleapple.astralrepository.platform.PlayerSessionData.get(player);if((wand.isEmpty()&&!state.getBoolean("AstralPresetEditor"))||!player.isAlive()||player.isSpectator()||!state.hasUUID("AstralWandSession")||!state.getUUID("AstralWandSession").equals(action.session))return;
         long tick=player.serverLevel().getGameTime();if(state.getLong("AstralWandWindow")!=tick/20){state.putLong("AstralWandWindow",tick/20);state.putInt("AstralWandActions",0);}int actions=state.getInt("AstralWandActions");if(actions>=192)return;state.putInt("AstralWandActions",actions+1);
         var data=RuneLibraryData.get(player.getServer());var library=data.library(player.getUUID());UUID selected=action.preset;String error="";
         try{switch(action.op){

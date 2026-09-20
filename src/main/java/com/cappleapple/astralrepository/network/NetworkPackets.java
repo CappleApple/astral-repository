@@ -10,9 +10,9 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 public final class NetworkPackets {
     public static final int SEARCH=0, QUICK_WITHDRAW=1, DEPOSIT=2, CRAFT=3, CANCEL=4, PICKUP=5, CRAFT_STACK=6, CLEAR_GRID=7;
@@ -132,7 +132,7 @@ public final class NetworkPackets {
         public static final StreamCodec<RegistryFriendlyByteBuf,Diagnostics> CODEC=StreamCodec.of((b,p)->{b.writeVarInt(p.nodes.size());for(var n:p.nodes){b.writeBlockPos(n.pos);b.writeInt(n.color);b.writeUtf(n.text,256);}b.writeVarInt(p.edges.size());for(var e:p.edges){b.writeBlockPos(e.from);b.writeBlockPos(e.to);b.writeInt(e.color);}},b->{int n=b.readVarInt();if(n<0||n>256)throw new IllegalArgumentException();List<DiagnosticNode> nodes=new ArrayList<>();for(int i=0;i<n;i++)nodes.add(new DiagnosticNode(b.readBlockPos(),b.readInt(),b.readUtf(256)));int m=b.readVarInt();if(m<0||m>512)throw new IllegalArgumentException();List<DiagnosticEdge> edges=new ArrayList<>();for(int i=0;i<m;i++)edges.add(new DiagnosticEdge(b.readBlockPos(),b.readBlockPos(),b.readInt()));return new Diagnostics(nodes,edges);});
         @Override public Type<Diagnostics> type(){return TYPE;}
     }
-    public static void setup(IEventBus bus) { bus.addListener(NetworkPackets::register); }
+    public static void setup(IEventBus bus) { register(new RegisterPayloadHandlersEvent()); }
     private static void register(RegisterPayloadHandlersEvent event) {
         var r=event.registrar("8");
         r.playToServer(Action.TYPE,Action.CODEC,(payload,context)-> { if(context.player() instanceof ServerPlayer p && p.containerMenu instanceof NexusMenu menu && menu.containerId==payload.menu) menu.action(payload); });

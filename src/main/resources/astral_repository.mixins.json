@@ -20,6 +20,8 @@
     "TestWindowMixin",
     "AstralArmorTrimMixin",
     "AstralTrimItemMixin",
-    "AstralViewBobbingMixin"
+    "AstralViewBobbingMixin",
+    "FabricAttackMixin",
+    "FabricSlotHighlightMixin"
   ]
 }

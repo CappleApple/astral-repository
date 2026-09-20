@@ -5,8 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.capability.IFluidHandler;
 
 public final class FluidResourceProvider implements ResourceProvider {
     private final String id;

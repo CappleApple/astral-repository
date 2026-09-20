@@ -24,11 +24,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.common.CommonHooks;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
-import net.neoforged.neoforge.items.wrapper.PlayerMainInvWrapper;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.common.CommonHooks;
+import com.cappleapple.astralrepository.platform.items.ItemHandlerHelper;
+import com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper;
+import com.cappleapple.astralrepository.platform.event.entity.player.PlayerInteractEvent;
 
 /** Each visible Push/Pull rune has its own target and filter. All mutations are server-owned. */
 public final class RuneProgramming {
@@ -178,9 +178,9 @@ public final class RuneProgramming {
         return false;
     }
     public static boolean isContainer(ServerLevel level, BlockPos pos, Direction face) {
-        return level.hasChunkAt(pos) && (level.getCapability(Capabilities.ItemHandler.BLOCK, pos, face) != null
-                || level.getCapability(Capabilities.FluidHandler.BLOCK, pos, face) != null
-                || level.getCapability(Capabilities.EnergyStorage.BLOCK,pos,face)!=null
+        return level.hasChunkAt(pos) && (com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, pos, face) != null
+                || com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.FluidHandler.BLOCK, pos, face) != null
+                || com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.EnergyStorage.BLOCK,pos,face)!=null
                 || !com.cappleapple.astralrepository.compat.CompatibilityRegistry.discoverStorage(level,pos,face).isEmpty()
                 || !com.cappleapple.astralrepository.compat.CompatibilityRegistry.discoverResources(level,pos,face).isEmpty());
     }
