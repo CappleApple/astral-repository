@@ -28,14 +28,26 @@ public final class FabricPersistenceSmoke implements net.fabricmc.api.ModInitial
                     node.tank().fill(new com.cappleapple.astralrepository.platform.fluids.FluidStack(net.minecraft.world.level.material.Fluids.WATER,1500),com.cappleapple.astralrepository.platform.fluids.capability.IFluidHandler.FluidAction.EXECUTE);node.energy().receiveEnergy(2200,false);
                     var layer=RuneSurfaces.getOrCreate(level,HOST,Direction.SOUTH).addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);layer.filter().setTarget(17);layer.setPriority(8);layer.setEnabled(false);
                     var a=AnchorAddress.crystal(level,STORAGE);var b=AnchorAddress.crystal(level,NEXUS);var data=RuneSavedData.get(server);if(!data.linked(a,b))data.toggle(a,b);
-                    result="PASS: populated persistent crystal, rune and link; server completed clean save/shutdown.";
+                    var transit=RuneTransitData.get(server);transit.tick(100,flight->{throw new AssertionError("Unexpected existing flight");});
+                    var from=new RuneTransitData.Endpoint(GlobalPos.of(level.dimension(),STORAGE),Direction.SOUTH,"restart-source",null);
+                    var to=new RuneTransitData.Endpoint(GlobalPos.of(level.dimension(),HOST),Direction.NORTH,"restart-target",null);
+                    var transitId=java.util.UUID.fromString("ffd1c5a8-ff1d-4f9e-a56c-3054fb212309");
+                    var keys=java.util.List.of(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.EMERALD)),new com.cappleapple.astralrepository.api.FluidKey(new com.cappleapple.astralrepository.platform.fluids.FluidStack(net.minecraft.world.level.material.Fluids.WATER,1)),com.cappleapple.astralrepository.api.ResourceKinds.FE,com.cappleapple.astralrepository.api.ResourceKinds.ARS_SOURCE);
+                    for(int i=0;i<keys.size();i++)transit.enqueue(120,new RuneTransitData.Flight(transitId,from,to,keys.get(i),37+i));
+                    transit.tick(107,flight->{throw new AssertionError("Flight arrived before restart");});
+                    result="PASS: populated persistent crystal, rune, link and four media in flight; server completed clean save/shutdown.";
                 }else{
                     var node=(CrystalNodeBlockEntity)level.getBlockEntity(STORAGE);check(node!=null,"Persisted crystal exists");var stack=node.inventory().getStackInSlot(0);
                     check(stack.is(Items.DIAMOND)&&stack.getCount()==512&&stack.getHoverName().getString().equals("Restart identity"),"Restart restores named inventory");
                     check(node.storageTier()==2&&node.longRange()&&node.channel()==5&&node.tank().getFluidAmount()==1500&&node.energy().getEnergyStored()==2200,"Restart restores upgrades, channel, fluid and energy");
                     var surface=RuneSurfaces.get(level,HOST,Direction.SOUTH);check(surface!=null&&surface.layers().size()==1,"Restart restores rune surface");var layer=surface.layers().get(0);check(layer.filter().target()==17&&layer.priority()==8&&!layer.enabled(),"Restart restores rune policy");
                     check(RuneSavedData.get(server).linked(AnchorAddress.crystal(level,STORAGE),AnchorAddress.crystal(level,NEXUS)),"Restart restores explicit link");
-                    result="PASS: separate production server restart restored512 named items, storage upgrades, channel, fluid, energy, rune policy and explicit link.";
+                    var transit=RuneTransitData.get(server);var delivered=new java.util.ArrayList<RuneTransitData.Flight>();
+                    transit.tick(5,delivered::add);transit.tick(17,delivered::add);check(delivered.isEmpty(),"Restart preserves thirteen remaining flight ticks");
+                    transit.tick(18,delivered::add);check(delivered.size()==4,"Restart delivers each saved medium once");
+                    for(var flight:delivered)check(flight.from().position().pos().equals(STORAGE)&&flight.to().position().pos().equals(HOST)&&flight.from().side()==Direction.SOUTH&&flight.to().side()==Direction.NORTH&&flight.from().live()==null&&flight.to().live()==null&&flight.amount()>=37&&flight.amount()<=40,"Restart restores physical flight endpoints, amounts and faces");
+                    transit.tick(1000,delivered::add);check(delivered.size()==4,"Saved flight cannot replay after arrival");
+                    result="PASS: separate production server restart restored four in-flight media and their remaining travel time,512 named items, storage upgrades, channel, fluid, energy, rune policy and explicit link.";
                 }
             }catch(Throwable failure){result="FAIL: "+failure;com.mojang.logging.LogUtils.getLogger().error("Persistence regression failed",failure);}
             finally{server.halt(false);}

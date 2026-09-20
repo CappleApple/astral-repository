@@ -1,10 +1,10 @@
 # Astral Repository — Fabric 1.21.1
 
-A magical storage and automation network for Minecraft 1.21.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.11.9**, on branch `CappleApple/fabric-1.21.1`.
+A magical storage and automation network for Minecraft 1.21.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.11.11**, on branch `CappleApple/fabric-1.21.1`.
 
 ## Installation
 
-Install `astral_repository-fabric-1.21.1-1.11.9.jar` on the client and server. Requires **Minecraft 1.21.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.116.17+1.21.1**, and **Java 21**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-1.21.1-1.11.11.jar` on the client and server. Requires **Minecraft 1.21.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.116.17+1.21.1**, and **Java 21**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
 
 Trinkets enables the goggles face slot; goggles also work in the normal helmet slot. Patchouli enables the Astral Field Guide. EMI adds recipe and menu integration, and Jade adds block information. These optional mods are not bundled. The explicit Refined Storage Fabric 1.21.1 adapter was not exercised with a complete optional storage network during these checks.
 
@@ -25,21 +25,22 @@ Run Gradle with **JDK 21**.
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.21.1-1.11.9.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.21.1-1.11.11.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
 
 ## Validation
 
-The release checks include 146 JUnit tests and dedicated-server storage, transaction, recipe, and loot assertions. The packaged client fixture uses the remapped release JAR with a separate test mod. It covers all ten blocks on all six placement faces, survival item consumption, stateful storage break/re-place, stock-limited rune transfer, translated item names and tooltips, Nexus withdrawal and deposit packets, ordinary crafting, Recipe Tome inscription, bookshelf discovery, and a completed autocrafting job.
+The release checks include 146 JUnit tests and 12 packaged-server rune transfer regressions. These cover delayed and instant transfers, one-tick pipelines, stock limits, rejected deliveries, saved shipments, and actual storage endpoints for network-bound runes. The packaged client fixture uses the remapped release JAR with a separate test mod. It covers all ten blocks on all six placement faces, survival item consumption, stateful storage break/re-place, stock-limited rune transfer, translated item names and tooltips, Nexus withdrawal and deposit packets, ordinary crafting, Recipe Tome inscription, bookshelf discovery, and a completed autocrafting job.
 
 ```powershell
+.\gradlew.bat productionRuneTransitSmoke
 .\gradlew.bat productionGameplaySmoke
 .\gradlew.bat productionPersistenceRead
 .\gradlew.bat productionIntegrationGameplaySmoke
 ```
 
-`productionPersistenceRead` first runs a separate write process, then reopens its saved world in a second server JVM. It checks large named item stacks, fluid, energy, upgrades, channel settings, rune settings, and explicit links. The tasks create isolated worlds under `build/` and fail if their fixture does not report success. The persistence fixture accepts the Minecraft EULA for those local test servers. Client fixtures are hidden, muted, and release the mouse.
+`productionPersistenceRead` first runs a separate write process, then reopens its saved world in a second server JVM. It checks large named item stacks, fluid, energy, upgrades, channel settings, rune settings, explicit links, and the resources and remaining travel time of saved shipments. The tasks create isolated worlds under `build/` and fail if their fixture does not report success. The persistence fixture accepts the Minecraft EULA for those local test servers. Client fixtures are hidden, muted, and release the mouse. The gameplay fixture also checks foreground, cloud, and opaque-block depth for resource sprites, trails, and rune beams in Fast, Fancy, and Fabulous graphics.
 
-The optional profile uses Jade **15.10.6+fabric**, Patchouli **1.21.1-93-fabric**, EMI **1.1.24+1.21.1+fabric**, and Trinkets **3.10.0**. It repeats the gameplay workflow, opens the real Field Guide, checks EMI registration, and equips goggles in the Trinkets face slot with client/server synchronization. This does not establish compatibility with every optional-mod combination or cross-version world conversion.
+The optional profile, last checked for 1.11.9, uses Jade **15.10.6+fabric**, Patchouli **1.21.1-93-fabric**, EMI **1.1.24+1.21.1+fabric**, and Trinkets **3.10.0**. It repeats the gameplay workflow, opens the real Field Guide, checks EMI registration, and equips goggles in the Trinkets face slot with client/server synchronization. This does not establish compatibility with every optional-mod combination or cross-version world conversion.
 
 The [main branch](https://github.com/CappleApple/astral-repository/tree/main) retains the original NeoForge 1.21.1 version and its documentation. Its loader APIs and compatibility descriptions do not automatically apply to this Fabric branch. See [port validation](https://github.com/CappleApple/astral-repository/blob/main/ports/VALIDATION.md) for the broader version matrix.
 

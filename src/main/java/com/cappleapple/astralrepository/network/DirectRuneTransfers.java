@@ -60,6 +60,7 @@ public final class DirectRuneTransfers {
     }
     private final MinecraftServer server;
     private long clock;
+    private final RuneTransitData transit;
     private final Map<UUID,Work> known=new HashMap<>();
     private final ArrayDeque<UUID> queue=new ArrayDeque<>();
     private final Map<GlobalPos,List<Endpoint>> endpointsByPosition=SpatialHash.positions();
@@ -76,7 +77,7 @@ public final class DirectRuneTransfers {
     private int itemBudget,fluidBudget;
     private List<GlobalPos> activeRoute=List.of();
     private final Map<UUID,Map<Object,Integer>> fluidCursors=new HashMap<>();
-    public DirectRuneTransfers(MinecraftServer server){this.server=server;clock=server.getTickCount()-1L;}
+    public DirectRuneTransfers(MinecraftServer server){this.server=server;transit=RuneTransitData.get(server);clock=server.getTickCount()-1L;}
     public void track(RuneSurface surface){
         for(RuneLayer layer:surface.layers()){
             Work previous=known.get(layer.id());
@@ -100,6 +101,7 @@ public final class DirectRuneTransfers {
     }
     public void tick(){
         clock=Math.max(clock+1,server.getTickCount());
+        transit.tick(clock,this::arriveSafely);
         if(LogisticsTiming.automaticDue(server.getTickCount()))retryRecovery();
         // Cadence is per rune, independent of the inventory reconciliation budget. Every loaded
         // due rune gets its turn; round-robin ordering still breaks ties between equal priorities.
@@ -195,7 +197,7 @@ public final class DirectRuneTransfers {
                 for(int i=0;i<attempts;i++){
                     ItemKey key=from.next(layer.id());if(key==null||!layer.filter().unrestricted()&&!layer.filter().matches(key.sample()))continue;
                     long available=Math.max(0,itemTotal(source,key)-layer.filter().minimum());
-                    long room=layer.filter().target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,layer.filter().target()-itemTotal(destination,key));
+                    long room=layer.filter().target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,layer.filter().target()-itemTotal(destination,key)-incoming(destination,key));
                     int wanted=(int)Math.min(itemBudget,Math.min(available,room));if(wanted<=0){layer.report(available<=0?"Source reserve reached":"Stock target reached");continue;}
                     int result=moveItem(layer,source,destination,from,to,key,wanted);
                     if(result!=0)return result>0;
@@ -206,6 +208,7 @@ public final class DirectRuneTransfers {
     }
     /** 1: committed movement; 0: try another identity; -1: stop after uncertain work/exhausted budget. */
     private int moveItem(RuneLayer layer,Endpoint source,Endpoint destination,ItemView from,ItemView to,ItemKey key,int wanted){
+        if(!AstralConfig.instantAutomaticLogistics.get())return dispatchItems(layer,source,destination,from.provider,to.provider,key,wanted);
         ItemStack offered=from.provider.extract(key,wanted,true);if(offered.isEmpty())return 0;
         verifyStack(offered,key,wanted);
         ItemStack simulated=to.provider.insert(offered,true);verifyRemainder(simulated,key,offered.getCount());
@@ -244,9 +247,13 @@ public final class DirectRuneTransfers {
                     if(!to.resourceType().equals(kind))continue;
                     if(from.identity().equals(to.identity())){layer.report("Same inventory");continue;}
                     long available=Math.max(0,fluidTotal(sourceAmounts,key)-layer.filter().minimum());
-                    long room=layer.filter().target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,layer.filter().target()-fluidTotal(destinationAmounts,key));
+                    long room=layer.filter().target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,layer.filter().target()-fluidTotal(destinationAmounts,key)-incoming(destination,key));
                     long amount=Math.min(fluidBudget,Math.min(available,room));
                     if(amount<=0){layer.report(available<=0?"Source reserve reached":"Stock target reached");continue;}
+                    if(!AstralConfig.instantAutomaticLogistics.get()){
+                        if(dispatchResources(layer,source,destination,from,to,key,amount))return true;
+                        continue;
+                    }
                     amount=checked(from.extract(key,amount,true),amount);if(amount<=0){layer.report("Source face rejects fluid extraction");continue;}
                     amount=checked(to.insert(key,amount,true),amount);if(amount<=0){layer.report("Target full or rejects matching fluid");continue;}
                     long extracted;
@@ -263,6 +270,167 @@ public final class DirectRuneTransfers {
             }
         }
         return false;
+    }
+    private List<GlobalPos> deliveryRoute(RuneLayer layer,Endpoint source,Endpoint destination,GlobalPos from,GlobalPos to){
+        if(source.target.face()!=null&&destination.target.face()!=null)
+            return from.equals(layer.surface().address().position())?activeRoute:activeRoute.reversed();
+        if(!from.dimension().equals(to.dimension()))return List.of(from,to);
+        return NetworkManager.get(server).route(from,to,layer.surface().channel(),com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.get());
+    }
+    private long pendingAt(GlobalPos position,ResourceKey key){
+        long amount=transit.pendingAmount(position,key);var level=server.getLevel(position.dimension());
+        if(level!=null&&level.hasChunkAt(position.pos())){
+            var state=level.getBlockState(position.pos());
+            if(state.getBlock() instanceof net.minecraft.world.level.block.ChestBlock&&state.getValue(net.minecraft.world.level.block.ChestBlock.TYPE)!=net.minecraft.world.level.block.state.properties.ChestType.SINGLE){
+                var other=position.pos().relative(net.minecraft.world.level.block.ChestBlock.getConnectedDirection(state));
+                amount=NetworkInventoryIndex.saturatingAdd(amount,transit.pendingAmount(GlobalPos.of(position.dimension(),other),key));
+            }
+        }
+        return amount;
+    }
+    private long incoming(Endpoint destination,ResourceKey key){
+        if(destination.target.face()!=null)return pendingAt(destination.target.position(),key);
+        long amount=0;Set<Object> seen=new HashSet<>();
+        if(key instanceof ItemKey item){
+            for(var view:destination.items)if(view.provider instanceof RuneRouting.Items routed)
+                for(var target:routed.destinations(item))if(seen.add(target.provider().identity()))amount=NetworkInventoryIndex.saturatingAdd(amount,pendingAt(target.position(),key));
+        }else{
+            for(var provider:destination.fluids)if(provider instanceof RuneRouting.Resources routed&&provider.resourceType().equals(key.type()))
+                for(var target:routed.destinations(key))if(seen.add(target.provider().identity()))amount=NetworkInventoryIndex.saturatingAdd(amount,pendingAt(target.position(),key));
+        }
+        return amount;
+    }
+    private int dispatchItems(RuneLayer layer,Endpoint source,Endpoint destination,StorageProvider from,StorageProvider to,ItemKey key,int wanted){
+        var sources=from instanceof RuneRouting.Items routed?routed.sources(key):List.of(new RuneRouting.ItemEndpoint(source.target.position(),source.target.face(),from));
+        var targets=to instanceof RuneRouting.Items routed?routed.destinations(key):List.of(new RuneRouting.ItemEndpoint(destination.target.position(),destination.target.face(),to));
+        int sent=0;
+        for(var origin:sources)for(var target:targets){
+            if(!origin.provider().valid()||!target.provider().valid()||origin.provider().identity().equals(target.provider().identity()))continue;
+            var route=deliveryRoute(layer,source,destination,origin.position(),target.position());if(route.size()<2)continue;
+            int offer=Math.min(wanted-sent,itemBudget);if(offer<=0)return sent>0?1:0;
+            ItemStack available=origin.provider().extract(key,offer,true);verifyStack(available,key,offer);if(available.isEmpty())continue;
+            ItemStack rest=target.provider().insert(available,true);verifyRemainder(rest,key,available.getCount());
+            int accepting=available.getCount()-rest.getCount();
+            if(target.provider() instanceof RuneRouting.ItemPolicy policy&&policy.insertionLimit(key)!=Long.MAX_VALUE)
+                accepting=(int)Math.min(accepting,Math.max(0,policy.insertionLimit(key)-pendingAt(target.position(),key)));
+            if(accepting<=0)continue;
+            var start=address(origin.position(),origin.side(),origin.provider());var end=address(target.position(),target.side(),target.provider());
+            ItemStack actual;
+            try{actual=origin.provider().extract(key,accepting,false);verifyStack(actual,key,accepting);}
+            catch(RuntimeException failure){uncertainFlight(layer.id(),start,key,accepting);notice(start);return -1;}
+            if(actual.isEmpty())continue;
+            enqueue(layer,start,end,key,actual.getCount(),route);notice(start);itemBudget-=actual.getCount();sent+=actual.getCount();
+            if(sent>=wanted||itemBudget<=0)return 1;
+        }
+        return sent>0?1:0;
+    }
+    private boolean dispatchResources(RuneLayer layer,Endpoint source,Endpoint destination,ResourceProvider from,ResourceProvider to,ResourceKey key,long wanted){
+        var sources=from instanceof RuneRouting.Resources routed?routed.sources(key):List.of(new RuneRouting.ResourceEndpoint(source.target.position(),source.target.face(),from));
+        var targets=to instanceof RuneRouting.Resources routed?routed.destinations(key):List.of(new RuneRouting.ResourceEndpoint(destination.target.position(),destination.target.face(),to));
+        long sent=0;
+        for(var origin:sources)for(var target:targets){
+            if(!origin.provider().valid()||!target.provider().valid()||origin.provider().identity().equals(target.provider().identity()))continue;
+            var route=deliveryRoute(layer,source,destination,origin.position(),target.position());if(route.size()<2)continue;
+            long offer=Math.min(wanted-sent,fluidBudget);if(offer<=0)return sent>0;
+            long available=checked(origin.provider().extract(key,offer,true),offer);if(available<=0)continue;
+            long accepting=checked(target.provider().insert(key,available,true),available);
+            if(target.provider() instanceof RuneRouting.ResourcePolicy policy&&policy.insertionLimit(key)!=Long.MAX_VALUE)
+                accepting=Math.min(accepting,Math.max(0,policy.insertionLimit(key)-pendingAt(target.position(),key)));
+            if(accepting<=0)continue;
+            var start=address(origin.position(),origin.side(),origin.provider());var end=address(target.position(),target.side(),target.provider());
+            long actual;
+            try{actual=checked(origin.provider().extract(key,accepting,false),accepting);}
+            catch(RuntimeException failure){uncertainFlight(layer.id(),start,key,accepting);notice(start);return false;}
+            if(actual<=0)continue;
+            enqueue(layer,start,end,key,actual,route);notice(start);fluidBudget-=(int)actual;sent+=actual;
+            if(sent>=wanted||fluidBudget<=0)return true;
+        }
+        return sent>0;
+    }
+    private static RuneTransitData.Endpoint address(GlobalPos pos,Direction side,Object provider){
+        String id=provider instanceof StorageProvider items?items.id():((ResourceProvider)provider).id();
+        return new RuneTransitData.Endpoint(pos,side,id,provider);
+    }
+    private void enqueue(RuneLayer layer,RuneTransitData.Endpoint from,RuneTransitData.Endpoint to,ResourceKey resource,long amount,List<GlobalPos> route){
+        int duration=from.position().dimension().equals(to.position().dimension())?TransferVisuals.duration(TransferVisuals.projectedPath(route)):20;
+        transit.enqueue(clock+duration,new RuneTransitData.Flight(layer.id(),from,to,resource,amount));
+        int style=resource instanceof ItemKey?-1:resource.type().equals(ResourceKinds.FLUID)?-2:resource.type().equals(ResourceKinds.ENERGY)?-3:-4;
+        var fluid=resource instanceof FluidKey f?net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(f.sample().getFluid()):null;
+        if(!from.position().dimension().equals(to.position().dimension())){
+            for(var endpoint:List.of(from,to)){
+                var level=server.getLevel(endpoint.position().dimension());if(level==null||level.players().isEmpty()||AstralConfig.particleDensity.get()<=0)continue;
+                var point=endpoint.position().pos();var path=List.of(point,point);
+                TransferVisualDispatcher.enqueue(level,path,style,()->new NetworkPackets.Visual(point,point,resource instanceof ItemKey item?item.sample():ItemStack.EMPTY,AstralNetwork.color(layer.surface()),duration,style,path,null,null,fluid));
+            }
+            return;
+        }
+        java.util.function.Supplier<TransferVisuals.Endpoint> rune=()->TransferVisuals.rune(layer);
+        TransferVisuals.sendWithEndpoints(server,route,()->resource instanceof ItemKey item?item.sample():ItemStack.EMPTY,AstralNetwork.color(layer.surface()),style,
+                from.position().equals(layer.surface().address().position())?rune:null,to.position().equals(layer.surface().address().position())?rune:null,fluid);
+    }
+    private Object resolve(RuneTransitData.Endpoint endpoint,ResourceKey key){
+        if(!loaded(endpoint.position()))return null;
+        Object live=endpoint.live();
+        if(live instanceof StorageProvider items)return items.valid()?items:null;
+        if(live instanceof ResourceProvider resource)return resource.valid()?resource:null;
+        if(endpoint.policyAnchor()!=null){
+            var network=NetworkManager.get(server).networkAt(endpoint.policyAnchor());
+            if(network==null)return null;
+            return key instanceof ItemKey?network.restoreRuneItems(endpoint.position(),endpoint.side(),endpoint.provider()):network.restoreRuneResource(endpoint.position(),endpoint.side(),endpoint.provider(),key);
+        }
+        var level=server.getLevel(endpoint.position().dimension());
+        if(key instanceof ItemKey){for(var provider:CompatibilityRegistry.discoverStorage(level,endpoint.position().pos(),endpoint.side()))if(provider.id().equals(endpoint.provider())&&provider.valid())return provider;}
+        else for(var provider:CompatibilityRegistry.discoverResources(level,endpoint.position().pos(),endpoint.side()))if(provider.id().equals(endpoint.provider())&&provider.resourceType().equals(key.type())&&provider.valid())return provider;
+        return null;
+    }
+    private void arriveSafely(RuneTransitData.Flight flight){
+        try{arrive(flight);}catch(RuntimeException failure){
+            // A callback may throw after mutating. Never replay an indeterminate commit,
+            // and never discard the rest of this due bucket because one provider failed.
+            uncertainFlight(flight.rune(),flight.from(),flight.resource(),flight.amount());
+        }
+    }
+    private void arrive(RuneTransitData.Flight flight){
+        if(!loaded(flight.to().position())){
+            // Drop retained chunk/provider references while dormant; saved addresses retain ownership.
+            var to=flight.to();var suspended=new RuneTransitData.Endpoint(to.position(),to.side(),to.provider(),null,to.policyAnchor());
+            var from=flight.from();if(!loaded(from.position()))from=new RuneTransitData.Endpoint(from.position(),from.side(),from.provider(),null,from.policyAnchor());
+            transit.enqueue(clock+20,new RuneTransitData.Flight(flight.rune(),from,suspended,flight.resource(),flight.amount()));return;
+        }
+        long remaining=flight.amount();
+        try{
+            if(!CraftingService.isProcessorReserved(flight.to().position())){
+                Object target=resolve(flight.to(),flight.resource());
+                if(target instanceof StorageProvider items&&flight.resource() instanceof ItemKey key){
+                    var rest=items.insert(key.sample().copyWithCount((int)remaining),false);verifyRemainder(rest,key,(int)remaining);remaining=rest.getCount();
+                }else if(target instanceof ResourceProvider resources)remaining-=checked(resources.insert(flight.resource(),remaining,false),remaining);
+            }
+        }catch(RuntimeException failure){uncertainFlight(flight.rune(),flight.from(),flight.resource(),remaining,flight.to().provider());notice(flight.to());return;}
+        long delivered=flight.amount()-remaining;
+        if(delivered>0){var work=known.get(flight.rune());if(work!=null)work.layer.transferred(flight.resource() instanceof ItemKey?delivered:0,flight.resource() instanceof FluidKey?delivered:0);notice(flight.to());}
+        if(remaining<=0)return;
+        try{
+            Object source=resolve(flight.from(),flight.resource());
+            if(source instanceof StorageProvider items&&flight.resource() instanceof ItemKey key){var rest=items.insert(key.sample().copyWithCount((int)remaining),false);verifyRemainder(rest,key,(int)remaining);remaining=rest.getCount();}
+            else if(source instanceof ResourceProvider resources)remaining-=checked(resources.insert(flight.resource(),remaining,false),remaining);
+        }catch(RuntimeException failure){uncertainFlight(flight.rune(),flight.from(),flight.resource(),remaining);notice(flight.from());return;}
+        if(remaining>0)recoverFlight(flight.rune(),flight.from(),flight.resource(),remaining,false);
+        notice(flight.from());
+    }
+    private void recoverFlight(UUID rune,RuneTransitData.Endpoint source,ResourceKey key,long amount,boolean uncertain){
+        TransferRecoveryData.get(server).put(source.position(),key,amount,uncertain,"rune:"+rune+":"+source.provider(),source.side());
+    }
+    private void uncertainFlight(UUID rune,RuneTransitData.Endpoint source,ResourceKey key,long amount){
+        uncertainFlight(rune,source,key,amount,source.provider());
+    }
+    private void uncertainFlight(UUID rune,RuneTransitData.Endpoint source,ResourceKey key,long amount,String failedProvider){
+        TransferRecoveryData.get(server).put(source.position(),key,amount,true,"rune:"+rune+":"+failedProvider,source.side());
+        var work=known.get(rune);if(work!=null){work.layer.setEnabled(false);work.layer.report("Transfer outcome uncertain; paused");}
+    }
+    private void notice(RuneTransitData.Endpoint endpoint){
+        Object live=endpoint.live();Object identity=live instanceof StorageProvider items?items.identity():live instanceof ResourceProvider resource?resource.identity():null;
+        if(identity!=null){invalidateIdentity(identity);NetworkManager.get(server).providerIdentitiesChanged(Set.of(identity));}
+        invalidate(endpoint.position());
     }
     private void refundItems(RuneLayer layer,Endpoint source,StorageProvider provider,ItemKey key,ItemStack refund){
         ItemStack rest;
