@@ -23,5 +23,8 @@
   "item.astral_repository.moon_attunement": "Moon Attunement",
   "item.astral_repository.star_attunement": "Star Attunement",
   "item.astral_repository.dimensional_attunement": "Dimensional Attunement",
-  "trim_material.astral_repository.astral_gem": "Astral Gem"
+  "trim_material.astral_repository.astral_gem": "Astral Gem",
+  "tag.item.astral_repository.crystals": "Astral Crystals",
+  "tag.item.c.gems.astral": "Astral Gems",
+  "tag.item.forge.gems.astral": "Astral Gems"
 }

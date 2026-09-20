@@ -1,5 +1,5 @@
 plugins { id 'java-library'; id 'net.minecraftforge.gradle' version '6.0.42'; id 'org.spongepowered.mixin' version '0.7.38' }
-version = '1.11.8'
+version = '1.11.9'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-1.20.1-forge' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -8,7 +8,12 @@ minecraft {
  copyIdeResources = true
  runs {
   configureEach { workingDirectory project.file('run-server'); mods { astral_repository { source sourceSets.main } }; property 'mixin.env.remapRefMap', 'true'; property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg" }
-  client { workingDirectory project.file('run-client'); property 'astral_repository.testClient', 'true'; if(project.hasProperty('clientSmoke')) property 'astral_repository.portClientSmoke', 'true' }
+  client {
+   workingDirectory project.file(project.hasProperty('gameplaySmoke') ? 'run-gameplay' : 'run-client')
+   property 'astral_repository.testClient', 'true'
+   if(project.hasProperty('clientSmoke')) property 'astral_repository.portClientSmoke', 'true'
+   if(project.hasProperty('gameplaySmoke')) { property 'astral_repository.portGameplay', 'true'; args '--width','1280','--height','800' }
+  }
   server { args '--nogui' }
   gameTestServer { workingDirectory project.file('run-gametest'); property 'forge.enabledGameTestNamespaces', 'astral_repository' }
  }
@@ -24,13 +29,20 @@ repositories {
 mixin { add sourceSets.main, 'astral_repository.refmap.json'; config 'astral_repository.mixins.json' }
 dependencies {
  annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
- minecraft 'net.minecraftforge:forge:1.20.1-47.4.23'
+ minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
  compileOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
- compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.20.0.106')
- compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.20.0.106')
+ compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.56.0.205')
+ compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.56.0.205')
  compileOnly fg.deobf('dev.emi:emi-forge:1.1.24+1.20.1:api')
- compileOnly fg.deobf('vazkii.patchouli:Patchouli:1.20.1-84.1-FORGE')
- compileOnly fg.deobf('maven.modrinth:jade:11.13.2+forge')
+ compileOnly fg.deobf('vazkii.patchouli:Patchouli:1.20.1-85-FORGE')
+ compileOnly fg.deobf('maven.modrinth:jade:11.13.3+forge')
+ if(project.hasProperty('optionalRuntime')) {
+  runtimeOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
+  runtimeOnly fg.deobf('mezz.jei:jei-1.20.1-forge:15.56.0.205')
+  runtimeOnly fg.deobf('dev.emi:emi-forge:1.1.24+1.20.1')
+  runtimeOnly fg.deobf('vazkii.patchouli:Patchouli:1.20.1-85-FORGE')
+  runtimeOnly fg.deobf('maven.modrinth:jade:11.13.3+forge')
+ }
  testImplementation platform('org.junit:junit-bom:5.11.4')
  testImplementation 'org.junit.jupiter:junit-jupiter'
  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -43,9 +55,36 @@ jar { exclude 'com/cappleapple/astralrepository/porttest/**'; exclude 'data/astr
 
 tasks.named('jar') { from('LICENSE') }
 
-// MixinGradle writes its annotation-processor refmap into the compile task's
-// temporary directory. Declare it so clean builds restored from cache retain it.
+// MixinGradle writes refmaps and member mappings into the compile task's
+// temporary directory. Declare all three so cached builds retain reobfuscation inputs.
 tasks.named('compileJava') {
     outputs.file(layout.buildDirectory.file('tmp/compileJava/compileJava-refmap.json'))
     outputs.file(layout.buildDirectory.file('tmp/compileJava/astral_repository.refmap.json'))
+    outputs.file(layout.buildDirectory.file('tmp/compileJava/compileJava-mappings.tsrg'))
 }
+
+// Separate validation mod for an installed server. It is never part of the release JAR.
+sourceSets {
+ portTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath }
+}
+tasks.register('auditHarnessJar', Jar) {
+ archiveClassifier = 'audit-harness'
+ from(sourceSets.portTest.output)
+ finalizedBy 'reobfAuditHarnessJar'
+}
+reobf { auditHarnessJar {} }
+tasks.named('reobfAuditHarnessJar') { libraries.from(sourceSets.main.output) }
+
+tasks.named('processPortTestResources') {
+ inputs.property 'version', project.version
+ filesMatching('META-INF/mods.toml') { expand version: project.version }
+}
+// Reuse the client scenario in the separate production fixture with its own mod ID.
+def packagedGameplaySources = layout.buildDirectory.dir('generated/sources/packagedGameplay')
+tasks.register('generatePackagedGameplay', Copy) {
+ from('src/main/java/com/cappleapple/astralrepository/porttest/ForgeGameplaySmoke.java')
+ into(packagedGameplaySources.map { it.dir('com/cappleapple/astralrepository/porttest') })
+ filter { String line -> line.replace('modid="astral_repository"', 'modid="astral_port_test"') }
+}
+sourceSets.portTest.java.srcDir(packagedGameplaySources)
+tasks.named('compilePortTestJava') { dependsOn 'generatePackagedGameplay' }

@@ -1,6 +1,6 @@
 # Astral Repository ports
 
-These builds port Astral Repository 1.11.8 to seven additional Minecraft and loader combinations. The original Minecraft 1.21.1 NeoForge project remains at the repository root, with its original source and build configuration.
+Astral Repository 1.11.9 is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root.
 
 ## Installation
 
@@ -9,15 +9,15 @@ Install exactly one Astral Repository JAR matching the Minecraft version and loa
 | Minecraft | Loader used for validation | Java runtime | Project |
 | --- | --- | --- | --- |
 | 1.21.1 | NeoForge 21.1.244 | 21 | [Original](../README.md) |
-| 1.20.1 | Forge 47.4.23 | 17 | [forge-1.20.1](forge-1.20.1) |
+| 1.20.1 | Forge 47.4.10 | 17 | [forge-1.20.1](forge-1.20.1) |
 | 1.20.1 | Fabric Loader 0.19.5, Fabric API 0.92.12+1.20.1 | 17 | [fabric-1.20.1](fabric-1.20.1) |
-| 1.21.1 | Fabric Loader 0.19.5, Fabric API 0.116.16+1.21.1 | 21 | [fabric-1.21.1](fabric-1.21.1) |
+| 1.21.1 | Fabric Loader 0.19.5, Fabric API 0.116.17+1.21.1 | 21 | [fabric-1.21.1](fabric-1.21.1) |
 | 26.2 | Fabric Loader 0.19.5, Fabric API 0.161.0+26.2 | 25 | [fabric-26.2](fabric-26.2) |
 | 26.2 | NeoForge 26.2.0.88 | 25 | [neoforge-26.2](neoforge-26.2) |
 | 26.3 | Fabric Loader 0.19.5, Fabric API 0.161.0+26.3 | 25 | [fabric-26.3](fabric-26.3) |
-| 26.3 | NeoForge 26.3.0.6-beta | 25 | [neoforge-26.3](neoforge-26.3) |
+| 26.3 | NeoForge 26.3.0.7-beta | 25 | [neoforge-26.3](neoforge-26.3) |
 
-The 26.3 NeoForge build uses a beta loader. These are separate game-version builds; this port does not provide a Minecraft world downgrade or cross-loader world conversion tool.
+The Forge build targets the recommended 47.4.10 release. The 26.3 NeoForge build uses a beta loader. These are separate game-version builds; this port does not provide a Minecraft world downgrade or cross-loader world conversion tool.
 
 ## Building
 
@@ -34,7 +34,7 @@ Run these commands from the repository root. Set `JAVA_HOME` to the JDK used to 
 | 26.2 NeoForge | 25 | `.\gradlew.bat -p ports/neoforge-26.2 test build` |
 | 26.3 NeoForge | 25 | `.\gradlew.bat -p ports/neoforge-26.3 test build` |
 
-Each JAR is written to its project's `build/libs/`. Fabric outputs are remapped by Loom, and Forge outputs are reobfuscated by ForgeGradle. Do not distribute development runs made with `-PclientSmoke`.
+Each JAR is written to its project's `build/libs/`. Fabric outputs are remapped by Loom, and Forge outputs are reobfuscated by ForgeGradle. Distribute only the normal release JAR, excluding sources, development JARs, and audit fixtures. Rebuild without `-PclientSmoke` after a development client check.
 
 After building all targets, collect the eight installable JARs and SHA-256 hashes:
 
@@ -50,12 +50,14 @@ The collector writes `build/ports/`, including a manifest and an archive contain
 
 The core item, fluid, and energy adapters use each loader's native storage APIs. Fabric fluid amounts are converted between droplets and millibuckets through transactional adapters, including rollback when a transfer cannot represent a complete millibucket.
 
-Optional integrations remain optional. API compilation and adapter inspection do not establish that a third-party mod works in a complete pack. The port validation uses the mod's own content and native storage fixtures.
+Optional mods are not required for the core storage and crafting features. The audit ran installed recipe viewers, tooltips, books, and accessory mods; exact versions and coverage are listed in [Optional mod checks](VALIDATION.md#optional-mod-checks).
 
-- Forge and NeoForge retain Curios hooks. Fabric 1.20.1 and 1.21.1 use Trinkets for goggles; the normal helmet slot works without an accessory mod.
-- No public Patchouli or EMI release was available for 26.2 or 26.3 during this port. Their optional hooks remain inactive without those mods. The Patchouli Field Guide requires Patchouli.
-- Modern JEI and Jade APIs are used where available. Third-party recipe viewer interactions were not tested with the full optional mod installed.
-- AE2 and Refined Storage adapters are version-specific. Their API paths were inspected where published artifacts exist; full external storage networks were not part of the runtime checks.
+- Forge 1.20.1 was checked with Curios, JEI, EMI, Jade, and Patchouli together. Legacy Fabric was checked with Trinkets, EMI, Jade, and Patchouli, including equipped goggles and opening the Field Guide.
+- Modern Fabric was checked with JEI and Jade. Modern NeoForge was checked with JEI and Jade, plus actual Curios head-slot goggles on 26.2. The 26.3 Curios hook has not been runtime-tested.
+- The normal helmet slot works without an accessory mod. The Patchouli Field Guide requires Patchouli; Patchouli and EMI were not installed in the modern-target audit.
+- AE2 and Refined Storage adapters are version-specific. Published API paths were inspected where available, but complete external networks and crafting jobs were not part of the runtime checks.
+
+These checks cover the interactions described in the validation record, not every optional plugin feature or complete modpacks.
 
 ## Source layout
 

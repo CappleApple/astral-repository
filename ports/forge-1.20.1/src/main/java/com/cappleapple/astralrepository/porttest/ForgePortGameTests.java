@@ -56,7 +56,7 @@ public final class ForgePortGameTests {
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
     public static void recipeAndWorldgenResourcesLoad(GameTestHelper h){
         var recipes=h.getLevel().getRecipeManager();
-        for(String id:java.util.List.of("storage_nexus","seed_storage_crystal","relay_crystal","attunement_wand","recipe_tome","resonance_goggles","dimensional_attunement"))
+        for(String id:java.util.List.of("astral_geode","astral_nexus","storage_nexus","seed_storage_crystal","relay_crystal","power_node","attunement_wand","range_attunement","moon_attunement","star_attunement","recipe_tome","resonance_goggles","dimensional_attunement"))
             h.assertTrue(recipes.byKey(new net.minecraft.resources.ResourceLocation("astral_repository",id)).isPresent(),"Recipe loads: "+id);
         h.assertTrue(h.getLevel().registryAccess().registryOrThrow(net.minecraft.core.registries.Registries.CONFIGURED_FEATURE).containsKey(new net.minecraft.resources.ResourceLocation("astral_repository","astral_geode")),"Geode feature loads");h.succeed();
     }

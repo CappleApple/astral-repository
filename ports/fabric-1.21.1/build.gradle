@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
-version = '1.11.8'
+version = '1.11.9'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-fabric-1.21.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -16,7 +16,7 @@ dependencies {
  minecraft 'com.mojang:minecraft:1.21.1'
  mappings loom.officialMojangMappings()
  modImplementation 'net.fabricmc:fabric-loader:0.19.5'
- modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.16+1.21.1'
+ modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.17+1.21.1'
  ['config','registry','obj_loader','models','model_data','fluids','client_extensions','items','blocks','core','data','model_loader','transfer','common','resources','render_types','gametest'].each { module -> modImplementation include("io.github.fabricators_of_create.Porting-Lib:${module}:3.1.0-beta.90+1.21.1") }
  modImplementation include('teamreborn:energy:4.1.0')
  modCompileOnly 'dev.emi:emi-fabric:1.1.24+1.21.1:api'
@@ -42,3 +42,72 @@ loom { mods { astral_repository {sourceSet sourceSets.main}; astral_repository_p
 loom { runs { clientSmoke {client(); name 'Fabric background client smoke'; runDir 'run-client-smoke'; source sourceSets.portTest; vmArg '-Dastral_repository.testClient=true'; vmArg '-Dastral_repository.portClientSmoke=true' } } }
 
 tasks.named('jar') { from('LICENSE') }
+
+
+loom { runs { gameplaySmoke {client(); name 'Fabric gameplay regression'; runDir 'run-gameplay-smoke'; source sourceSets.portTest; vmArg '-Dastral_repository.testClient=true'; vmArg '-Dastral_repository.portGameplay=true' } } }
+
+// Runs the packaged mod with only the required public Fabric API and a separate test mod.
+configurations { gameplayApi { transitive = false } }
+def gameplayJar = tasks.register('gameplayTestJar', Jar) {
+    from sourceSets.portTest.output
+    archiveClassifier = 'gameplay-dev'
+    destinationDirectory = layout.buildDirectory.dir('test-mods')
+}
+def remappedGameplayJar = tasks.register('remapGameplayTestJar', net.fabricmc.loom.task.RemapJarTask) {
+    inputFile = gameplayJar.flatMap { it.archiveFile }
+    archiveClassifier = 'gameplay'
+    destinationDirectory = layout.buildDirectory.dir('test-mods')
+    addNestedDependencies = false
+    classpath.from(sourceSets.main.compileClasspath, sourceSets.main.output)
+}
+tasks.register('productionGameplaySmoke', net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    mods.setFrom(tasks.named('remapJar'), remappedGameplayJar, configurations.gameplayApi)
+    runDir = layout.buildDirectory.dir('production-gameplay')
+    jvmArgs.addAll('-Dastral_repository.testClient=true', '-Dastral_repository.portGameplay=true', '-Xmx2G')
+}
+dependencies { gameplayApi 'net.fabricmc.fabric-api:fabric-api:0.116.17+1.21.1' }
+tasks.named('productionGameplaySmoke') {
+    doFirst { delete layout.buildDirectory.file('production-gameplay/gameplay-captures/result.txt') }
+    doLast {
+        def result = layout.buildDirectory.file('production-gameplay/gameplay-captures/result.txt').get().asFile
+        if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Packaged gameplay regression failed: ${result.isFile() ? result.text : 'no result'}")
+    }
+}
+['write', 'read'].each { phase ->
+    tasks.register("productionPersistence${phase.capitalize()}", net.fabricmc.loom.task.prod.ServerProductionRunTask) {
+        mods.setFrom(tasks.named('remapJar'), remappedGameplayJar, configurations.gameplayApi)
+        installerVersion = '1.1.2'
+        runDir = layout.buildDirectory.dir('production-persistence')
+        jvmArgs.addAll("-Dastral_repository.persistence=${phase}", '-Xmx2G')
+        if (phase == 'read') dependsOn 'productionPersistenceWrite'
+        doFirst {
+            def directory = runDir.get().asFile
+            directory.mkdirs()
+            new File(directory, 'eula.txt').text = 'eula=true\n'
+            new File(directory, 'server.properties').text = 'online-mode=false\nserver-port=0\nlevel-type=minecraft:flat\ngenerator-settings={"layers":[{"height":1,"block":"minecraft:bedrock"},{"height":2,"block":"minecraft:dirt"},{"height":1,"block":"minecraft:grass_block"}],"biome":"minecraft:plains"}\nspawn-protection=0\nview-distance=2\nsimulation-distance=2\n'
+            delete new File(directory, "persistence-${phase}.txt")
+        }
+        doLast {
+            def result = new File(runDir.get().asFile, "persistence-${phase}.txt")
+            if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Production persistence ${phase} failed: ${result.isFile() ? result.text : 'no result'}")
+        }
+    }
+}
+
+configurations { gameplayIntegrations { transitive = false } }
+dependencies {
+    gameplayIntegrations 'maven.modrinth:jade:15.10.6+fabric'
+    gameplayIntegrations 'maven.modrinth:patchouli:1.21.1-93-fabric'
+    gameplayIntegrations 'maven.modrinth:emi:1.1.24+1.21.1+fabric'
+    gameplayIntegrations 'maven.modrinth:trinkets:3.10.0'
+}
+tasks.register('productionIntegrationGameplaySmoke', net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    mods.setFrom(tasks.named('remapJar'), remappedGameplayJar, configurations.gameplayApi, configurations.gameplayIntegrations)
+    runDir = layout.buildDirectory.dir('production-integrations')
+    jvmArgs.addAll('-Dastral_repository.testClient=true', '-Dastral_repository.portGameplay=true', '-Dastral_repository.integrationGameplay=true', '-Xmx2G')
+    doFirst { delete new File(runDir.get().asFile, 'gameplay-captures/result.txt') }
+    doLast {
+        def result = new File(runDir.get().asFile, 'gameplay-captures/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Optional integration gameplay failed: ${result.isFile() ? result.text : 'no result'}")
+    }
+}

@@ -5,10 +5,12 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.cappleapple.astralrepository.porttest.FabricPortSmoke"
+      "com.cappleapple.astralrepository.porttest.FabricPortSmoke",
+      "com.cappleapple.astralrepository.porttest.FabricPersistenceSmoke"
     ],
     "client": [
-      "com.cappleapple.astralrepository.porttest.FabricClientSmoke"
+      "com.cappleapple.astralrepository.porttest.FabricClientSmoke",
+      "com.cappleapple.astralrepository.porttest.FabricGameplaySmoke"
     ]
   },
   "depends": {

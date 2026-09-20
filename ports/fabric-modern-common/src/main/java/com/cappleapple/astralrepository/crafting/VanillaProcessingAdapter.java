@@ -31,10 +31,11 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             List<Integer> slots = new ArrayList<>();
             int index = 0;
             boolean valid = true;
-            for (Ingredient ingredient : com.cappleapple.astralrepository.port.RecipeCompat.ingredients(recipe)) {
+            for (var possibleIngredient : com.cappleapple.astralrepository.port.RecipeCompat.ingredients(recipe)) {
                 int slot = recipe instanceof ShapedRecipe shaped ? index % shaped.getWidth() + index / shaped.getWidth() * 3 : index;
                 index++;
-                if (ingredient.isEmpty()) continue;
+                if (possibleIngredient.isEmpty()) continue;
+                Ingredient ingredient = possibleIngredient.get();
                 LinkedHashSet<ItemKey> candidates = new LinkedHashSet<>();
                 for (ItemStack display : com.cappleapple.astralrepository.port.RecipeCompat.samples(ingredient,access.level().registryAccess())) stockByItem.getOrDefault(display.getItem(), List.of()).stream().filter(key -> ingredient.test(key.sample())).forEach(candidates::add);
                 for (ItemStack stack : com.cappleapple.astralrepository.port.RecipeCompat.samples(ingredient,access.level().registryAccess())) if (!stack.isEmpty()) candidates.add(new ItemKey(stack));

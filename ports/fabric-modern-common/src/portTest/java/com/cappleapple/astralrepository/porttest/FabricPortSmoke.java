@@ -3,7 +3,15 @@ import net.fabricmc.api.ModInitializer;import net.fabricmc.fabric.api.event.life
 public final class FabricPortSmoke implements ModInitializer {
  public void onInitialize(){if(!Boolean.getBoolean("astral_repository.portSmoke"))return;ServerLifecycleEvents.SERVER_STARTED.register(server->{try{
   FabricFluidTransferTest.run();check(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse("astral_repository:bridge_attunement"))==AstralContent.DIMENSIONAL_ATTUNEMENT.get(),"legacy item alias");
-  var world=server.overworld();var pos=new BlockPos(0,90,0);world.removeBlock(pos,false);world.setBlockAndUpdate(pos,AstralContent.SEED_STORAGE_CRYSTAL.get().defaultBlockState());var node=(CrystalNodeBlockEntity)world.getBlockEntity(pos);check(node!=null,"storage block entity");
+  var world=server.overworld();var pos=new BlockPos(0,90,0);world.getChunkAt(pos);
+  var persistenceMarker=java.nio.file.Path.of("gameplay-persistence.marker");
+  if(java.nio.file.Files.exists(persistenceMarker)){
+   var prior=(CrystalNodeBlockEntity)world.getBlockEntity(pos);check(prior!=null,"saved storage survives process restart");
+   check(prior.inventory().getStackInSlot(0).is(Items.DIAMOND)&&prior.inventory().getStackInSlot(0).getCount()==23,"stored items survive process restart");
+   check(prior.tank().getFluidAmount()==1000&&prior.energy().getEnergyStored()==500,"fluid and energy survive process restart");
+   com.mojang.logging.LogUtils.getLogger().info("FABRIC_GAMEPLAY_PROCESS_RESTART_OK");
+  }
+  world.removeBlock(pos,false);world.setBlockAndUpdate(pos,AstralContent.SEED_STORAGE_CRYSTAL.get().defaultBlockState());var node=(CrystalNodeBlockEntity)world.getBlockEntity(pos);check(node!=null,"storage block entity");
   var items=ItemStorage.SIDED.find(world,pos,null);check(items!=null,"Fabric item lookup");try(var tx=Transaction.openOuter()){check(items.insert(ItemVariant.of(Items.DIAMOND),23,tx)==23,"item insertion");}check(node.inventory().used()==0,"item transaction rollback");try(var tx=Transaction.openOuter()){check(items.insert(ItemVariant.of(Items.DIAMOND),23,tx)==23,"committed insertion");tx.commit();}check(node.inventory().getStackInSlot(0).getCount()==23,"committed item count");
   var fluids=FluidStorage.SIDED.find(world,pos,null);try(var tx=Transaction.openOuter()){check(fluids.insert(FluidVariant.of(net.minecraft.world.level.material.Fluids.WATER),81000,tx)==81000,"fluid insertion");tx.commit();}check(node.tank().getFluidAmount()==1000,"millibucket conversion");
   var energy=team.reborn.energy.api.EnergyStorage.SIDED.find(world,pos,null);try(var tx=Transaction.openOuter()){check(energy.insert(500,tx)==500,"energy insertion");}check(node.energy().getEnergyStored()==0,"energy rollback");
@@ -24,6 +32,8 @@ public final class FabricPortSmoke implements ModInitializer {
   drops=net.minecraft.world.level.block.Block.getDrops(cluster,world,pos,null,null,silk);check(drops.size()==1&&drops.getFirst().is(AstralContent.ASTRAL_CLUSTER.get().asItem())&&drops.getFirst().getCount()==1,"silk touch preserves cluster: "+drops);
   var bud=AstralContent.SMALL_ASTRAL_BUD.get().defaultBlockState();check(net.minecraft.world.level.block.Block.getDrops(bud,world,pos,null,null,pickaxe).isEmpty(),"bud requires silk touch");
   drops=net.minecraft.world.level.block.Block.getDrops(bud,world,pos,null,null,silk);check(drops.size()==1&&drops.getFirst().is(AstralContent.SMALL_ASTRAL_BUD.get().asItem()),"silk touch preserves bud: "+drops);
+  node.energy().receiveEnergy(500,false);server.saveEverything(true,true,true);
+  java.nio.file.Files.writeString(persistenceMarker,"23 diamonds; 1000 mB water; 500 energy");
   java.nio.file.Files.writeString(java.nio.file.Path.of("port-smoke-result.txt"),"PASS: Fabric item/fluid/energy lookups, transactional commit and rollback, block entity persistence, all 13 unconditional mod recipes, silk-touch and normal cluster/bud loot.");
  }catch(Throwable failure){try{java.nio.file.Files.writeString(java.nio.file.Path.of("port-smoke-result.txt"),"FAIL: "+failure);}catch(Exception ignored){}throw new RuntimeException(failure);}finally{server.halt(false);}});}
  private static void invalid(Runnable transfer){try{transfer.run();}catch(IllegalArgumentException expected){return;}throw new AssertionError("Invalid native transfer accepted");}

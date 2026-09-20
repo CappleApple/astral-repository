@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.9 - 2026-09-20
+
+### Changed
+
+- Forge 1.20.1 now targets the recommended Forge 47.4.10 release.
+- Updated the 1.21.1 Fabric API dependency to 0.116.17+1.21.1, the 26.3 NeoForge dependency to 26.3.0.7-beta, and optional integration API versions.
+
+### Fixed
+
+- Forge builds restored from Gradle cache now retain Mixin member mappings, preventing client startup failures in packaged builds.
+- Fixed a crystal-placement crash in packaged Fabric 1.20.1 and 1.21.1 builds caused by remapped block-entity methods.
+- Block items on Minecraft 26.2 and 26.3 now display their translated block names instead of raw translation keys.
+- Automatic crafting on Minecraft 26.2 and 26.3 no longer crashes while reading recipe ingredients.
+- Fabric 1.20.1 and 1.21.1 now assign the Trinkets face slot to players, allowing Astral Goggles to be equipped there.
+- Armor-trim atlas references in Fabric 1.20.1 now use textures available in that Minecraft version.
+- Added missing recipe-viewer labels for Astral Crystals and Astral Gems tags.
+
 ## 1.11.8 - 2026-09-19
 
 ### Added
