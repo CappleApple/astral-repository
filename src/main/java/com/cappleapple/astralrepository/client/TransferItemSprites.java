@@ -58,7 +58,7 @@ final class TransferItemSprites extends RenderType {
                     .setShaderState(RENDERTYPE_ENTITY_TRANSLUCENT_EMISSIVE_SHADER)
                     .setTextureState(new TextureStateShard(TextureAtlas.LOCATION_BLOCKS, false, false))
                     .setTransparencyState(TRANSLUCENT_TRANSPARENCY).setCullState(NO_CULL)
-                    .setOverlayState(OVERLAY).setWriteMaskState(COLOR_WRITE).createCompositeState(false));
+                    .setOverlayState(OVERLAY).setOutputState(PARTICLES_TARGET).setWriteMaskState(TransferRenderPass.SPRITE_WRITE).createCompositeState(false));
     private static int buildsRemaining, resolutionsRemaining, modelResolutions, renderedVertices, identitiesRemaining;
 
     static void beginFrame() { identitiesRemaining = 128; buildsRemaining = MAX_NEW_MESHES; resolutionsRemaining = MAX_MODEL_RESOLUTIONS; modelResolutions = 0; renderedVertices = 0; }

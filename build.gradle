@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
-version = '1.11.9'
+version = '1.11.11'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-fabric-1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -112,5 +112,24 @@ tasks.register('productionIntegrationGameplaySmoke', net.fabricmc.loom.task.prod
     doLast {
         def result = new File(runDir.get().asFile, 'gameplay-captures/result.txt')
         if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Optional integration gameplay failed: ${result.isFile() ? result.text : 'no result'}")
+    }
+}
+
+
+tasks.register('productionRuneTransitSmoke', net.fabricmc.loom.task.prod.ServerProductionRunTask) {
+    mods.setFrom(tasks.named('remapJar'), remappedGameplayJar, configurations.gameplayApi)
+    installerVersion = '1.1.2'
+    runDir = layout.buildDirectory.dir('production-rune-transit')
+    jvmArgs.addAll('-Dastral_repository.runeTransitSmoke=true', '-Xmx2G')
+    doFirst {
+        def directory = runDir.get().asFile
+        directory.mkdirs()
+        new File(directory, 'eula.txt').text = 'eula=true\n'
+        new File(directory, 'server.properties').text = 'online-mode=false\nserver-port=0\nlevel-type=minecraft:flat\ngenerator-settings={"layers":[{"height":1,"block":"minecraft:bedrock"}],"biome":"minecraft:plains"}\nspawn-protection=0\nview-distance=2\nsimulation-distance=2\n'
+        delete new File(directory, 'rune-transit-result.txt')
+    }
+    doLast {
+        def result = new File(runDir.get().asFile, 'rune-transit-result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Production rune transit regression failed: ${result.isFile() ? result.text : 'no result'}")
     }
 }

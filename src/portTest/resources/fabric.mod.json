@@ -6,7 +6,8 @@
   "entrypoints": {
     "main": [
       "com.cappleapple.astralrepository.porttest.FabricPortSmoke",
-      "com.cappleapple.astralrepository.porttest.FabricPersistenceSmoke"
+      "com.cappleapple.astralrepository.porttest.FabricPersistenceSmoke",
+      "com.cappleapple.astralrepository.porttest.FabricRuneTransitSmoke"
     ],
     "client": [
       "com.cappleapple.astralrepository.porttest.FabricClientSmoke",
