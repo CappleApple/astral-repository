@@ -261,9 +261,11 @@ public final class TransferDispatchGameTests {
         var homeRelative = new BlockPos(2, 2, 2); var remoteRelative = new BlockPos(30, 2, 2); var nearRelative = new BlockPos(2, 2, 6);
         var home = helper.absolutePos(homeRelative); var remote = helper.absolutePos(remoteRelative); var near = helper.absolutePos(nearRelative);
         double oldRange = AstralServerConfig.wandBindingRange.get(), density = AstralConfig.particleDensity.get();
+        boolean instant = AstralConfig.instantAutomaticLogistics.get();
         int oldMinimum = AstralServerConfig.minItemTransferTicks.get(); Receiver observer = null; RuneSurface surface = null;
         var relays = new ArrayList<BlockPos>();
         try {
+            AstralConfig.instantAutomaticLogistics.set(true);
             AstralServerConfig.wandBindingRange.set(4.0); AstralServerConfig.minItemTransferTicks.set(1); AstralConfig.particleDensity.set(1.0);
             for (var position : List.of(homeRelative, remoteRelative, nearRelative)) {
                 level.getChunkAt(helper.absolutePos(position)); helper.setBlock(position, net.minecraft.world.level.block.Blocks.BARREL);
@@ -312,6 +314,7 @@ public final class TransferDispatchGameTests {
             if (observer != null) level.players().remove(observer.player);
             flush(level); if (surface != null) RuneSurfaces.remove(level, home, surface.facing());
             for (var relay : relays) level.setBlockAndUpdate(relay, net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+            AstralConfig.instantAutomaticLogistics.set(instant);
             AstralServerConfig.wandBindingRange.set(oldRange); AstralServerConfig.minItemTransferTicks.set(oldMinimum); AstralConfig.particleDensity.set(density);
         }
     }

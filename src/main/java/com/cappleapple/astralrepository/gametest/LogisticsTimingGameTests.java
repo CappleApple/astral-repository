@@ -1,25 +1,19 @@
 package com.cappleapple.astralrepository.gametest;
 
 import com.cappleapple.astralrepository.AstralConfig;
-import com.cappleapple.astralrepository.content.*;
 import com.cappleapple.astralrepository.crafting.CraftingService;
 import com.cappleapple.astralrepository.network.*;
 import com.mojang.authlib.GameProfile;
 import java.util.List;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
@@ -83,31 +77,6 @@ public final class LogisticsTimingGameTests {
         h.succeed();
     }
 
-    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=100)
-    public static void directRuneTimingChangesBothRealItemAndFluidTransfers(GameTestHelper h) {
-        BlockPos hostPos=new BlockPos(3,2,3),targetPos=hostPos.east(3);
-        h.setBlock(hostPos,AstralContent.SEED_STORAGE_CRYSTAL.get());h.setBlock(targetPos,AstralContent.SEED_STORAGE_CRYSTAL.get());
-        var host=(CrystalNodeBlockEntity)h.getBlockEntity(hostPos);var target=(CrystalNodeBlockEntity)h.getBlockEntity(targetPos);
-        var surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(hostPos),Direction.SOUTH);
-        var layer=surface.addLayer(com.cappleapple.astralrepository.content.RuneGlyph.id(com.cappleapple.astralrepository.content.RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);
-        h.assertTrue(surface.toggleTarget(layer.id(),GlobalPos.of(h.getLevel().dimension(),h.absolutePos(targetPos)),Direction.SOUTH).success(),"Direct rune can target the other real buffer");
-        var transfers=new DirectRuneTransfers(h.getLevel().getServer());transfers.track(surface);
-        h.startSequence().thenWaitUntil(()->{
-            int phase=Math.floorMod(h.getLevel().getServer().getTickCount(),20);h.assertTrue(phase>=2&&phase<=17,"Await a tick outside normal automatic routing");
-        }).thenExecute(()->{
-            boolean automatic=AstralConfig.instantAutomaticLogistics.get();
-            try {
-                host.inventory().insertItem(0,new ItemStack(Items.IRON_INGOT,64),false);host.tank().fill(new FluidStack(Fluids.WATER,1000),IFluidHandler.FluidAction.EXECUTE);
-                AstralConfig.instantAutomaticLogistics.set(false);transfers.tick();
-                h.assertTrue(target.inventory().used()==0&&target.tank().getFluidAmount()==0,"Noninstant runes wait instead of transferring immediately");
-                AstralConfig.instantAutomaticLogistics.set(true);transfers.tick();
-                long items=target.inventory().getStackInSlot(0).getCount();int fluid=target.tank().getFluidAmount();
-                h.assertTrue(items>0&&items<=AstralConfig.transferRate.get()&&fluid>0&&fluid<=AstralConfig.fluidTransferRate.get(),"Instant runes move actual items and fluid within the unchanged shared pass budgets");
-                h.assertTrue(host.inventory().getStackInSlot(0).getCount()+items==64&&host.tank().getFluidAmount()+fluid==1000,"Both physical resource totals are conserved");
-                h.assertTrue(layer.transferredItems()==items&&layer.transferredFluid()==fluid,"Rune counters record only completed physical transfers");
-            } finally { AstralConfig.instantAutomaticLogistics.set(automatic); }
-        }).thenSucceed();
-    }
     private static long count(Container container,net.minecraft.world.item.Item item) {
         long total=0;for(int slot=0;slot<container.getContainerSize();slot++){ItemStack stack=container.getItem(slot);if(stack.is(item))total+=stack.getCount();}return total;
     }

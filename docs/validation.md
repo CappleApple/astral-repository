@@ -1,5 +1,25 @@
 # Validation record
 
+## 1.11.11 Automatic rune travel (NeoForge 1.21.1)
+
+`test build` passes all 146 unit tests. All 148 required dedicated-server GameTests pass both without Lithium and with Lithium `0.15.4+mc1.21.1`. Evidence: `build/validation-1.11.11-plain.log` and `build/validation-1.11.11-lithium-final.log`.
+
+New tests verify delayed and instant Push/Pull transfers for items, fluids, energy and Source; consecutive one-tick departures with separate arrival deadlines; config changes during flight; shared destination stock reservations; full/removed destination refunds; and non-replaying recovery after a provider throws following insertion. Saved-data round trips preserve every medium, physical endpoint, policy anchor and remaining travel time across a reset server clock. Network-bound tests use different physical storage distances, replace the network component during flight, and verify restored endpoints still enforce live filters. A rate-limited energy receiver accepts consecutive in-flight batches without serializing dispatches.
+
+These checks exercise authoritative server inventories and the same route durations used by visual packets. No new client visual capture or 10,000-rune timing run was performed for this change. The same fixes were subsequently ported to all seven other targets for 1.11.11; see the [port validation record](../ports/VALIDATION.md).
+
+## 1.11.10 Cloud depth (NeoForge 1.21.1)
+
+Fluid, energy, source and flat item transfers now render after clouds in Fast/Fancy. Fabulous uses the particle target and records sprite depth for the vanilla transparency compositor. Binding beams preserve the color-only glow/core pass, then replay depth for Fabulous after both layers finish.
+
+`runClientSmoke -PcloudDepthOnly` checks real effect shaders on the GPU against deterministic cloud-depth geometry and an opaque foreground obstruction. It checks water, lava, energy, source, rune-beam materials and fading trails in Fast, Fancy and Fabulous. Fabulous uses Minecraft's actual transparency targets and compositor. This is a controlled geometry test, not a screenshot comparison of naturally generated cloud shapes. All 24 cases pass; the earlier 15-case pass also succeeded with Sodium, Lithium and AsyncParticles installed. Screenshots and per-case measurements are under `build/client-smoke/cloud-depth-vanilla-final/` and `build/client-smoke/cloud-depth-performance/`.
+
+The hidden, muted, mouse-free transfer stress client also passes with those three performance mods: 20,000 offers retain the configured 4,096 flights, drawing 128 item models, 3,968 resources and up to 444 trails. On the tested RTX 5070 Ti, the selected render-event scope measured 1.37 ms CPU median / 1.93 ms p95 and 0.094 ms GPU median / 0.744 ms p95. These are event-scope timings, not whole-frame FPS guarantees. See `build/validation-cloud-transfer-stress.log`. The CPU/GPU measurement hooks follow the selected transfer stage, which is now `AFTER_WEATHER` outside Fabulous.
+
+The in-world binding feedback client passes with the same performance mods, including visible assigned/preview beams, hotbar gating and binding cancellation (`build/validation-cloud-binding-feedback.log`).
+
+`test build` passes. See `build/validation-cloud-final.log`. These original-renderer checks preceded the 1.11.11 port work. Each port uses its Minecraft version's rendering pipeline; its checks are recorded in [port validation](../ports/VALIDATION.md).
+
 ## 1.11.8 Transfer bookkeeping and live validation
 
 The build passes 146 unit tests and all 137 required dedicated-server GameTests, with and without Lithium `0.15.4+mc1.21.1`. New coverage checks nested item-handler calls, same-tick filter additions/removal, shared-provider invalidation, container replacement, capability invalidation, chunk demotion before unload, route snapshots, and observer coverage during distant traffic. Inventory/world operations remain on the server thread; the existing recipe and relay workers consume snapshots. Evidence: `build/validation-1.11.8-regressions-final.log` and `build/validation-1.11.8-plain-regressions.log`.

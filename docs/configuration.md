@@ -246,7 +246,7 @@ instantAutomaticLogistics = false
 
 
 
-`instantAutomaticLogistics = false` schedules crystal-network routing every 20 server ticks. Push/Pull runes use `runeTransferInterval` unless overridden per resource in Cadence. Astral-managed crafting-table work takes 36 processing ticks; stonecutter work takes 20. When true, network routing and default rune intervals use one tick; explicit rune cadence overrides remain in effect. Delivery waits are skipped and those managed operations can finish on their first scheduler poll after starting. Discovery, recipe planning, processor reservations, quantity budgets, and power costs remain in effect. Upkeep is still evaluated every 20 ticks.
+`instantAutomaticLogistics = false` schedules crystal-network routing every 20 server ticks. Push/Pull runes use `runeTransferInterval` unless overridden per resource in Cadence. With this setting false, a batch is extracted at departure and inserted only after its actual route travel time. Batches can overlap in flight, so a one-tick Cadence does not skip travel time. Astral-managed crafting-table work takes 36 processing ticks; stonecutter work takes 20. When true, network routing and default rune intervals use one tick, and automatic rune batches enter their destination immediately; explicit rune cadence overrides remain in effect. Delivery waits are skipped and those managed operations can finish on their first scheduler poll after starting. Discovery, recipe planning, processor reservations, quantity budgets, and power costs remain in effect. Upkeep is still evaluated every 20 ticks.
 
 
 

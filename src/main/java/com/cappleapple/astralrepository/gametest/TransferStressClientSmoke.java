@@ -35,12 +35,12 @@ public final class TransferStressClientSmoke {
     private static final int[] saved=new int[4];
     private static boolean oldGui;
     @SubscribeEvent(priority=EventPriority.HIGH) public static void before(RenderLevelStageEvent e){
-        if(!Boolean.getBoolean("astral_repository.transferStress")||!recording||e.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
+        if(!Boolean.getBoolean("astral_repository.transferStress")||!recording||!com.cappleapple.astralrepository.client.TransferRenderPass.matches(e))return;
         if(pendingQuery&&GL15.glGetQueryObjecti(query,GL15.GL_QUERY_RESULT_AVAILABLE)!=0){gpu.add(GL33.glGetQueryObjectui64(query,GL15.GL_QUERY_RESULT)/1e6);pendingQuery=false;}
         if(!pendingQuery){if(query==0)query=GL15.glGenQueries();GL15.glBeginQuery(GL33.GL_TIME_ELAPSED,query);}
     }
     @SubscribeEvent(priority=EventPriority.LOW) public static void after(RenderLevelStageEvent e){
-        if(!Boolean.getBoolean("astral_repository.transferStress")||!recording||e.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
+        if(!Boolean.getBoolean("astral_repository.transferStress")||!recording||!com.cappleapple.astralrepository.client.TransferRenderPass.matches(e))return;
         if(!pendingQuery){GL15.glEndQuery(GL33.GL_TIME_ELAPSED);pendingQuery=true;}
         var stats=WorldVisuals.performance();check(stats.iconModelResolutions()<=16,"Unbounded item model preparation");cpu.add(stats.renderNanos()/1e6);
         maxItems=Math.max(maxItems,stats.itemsDrawn());maxIcons=Math.max(maxIcons,stats.iconsDrawn());maxResources=Math.max(maxResources,stats.resourcesDrawn());maxTrails=Math.max(maxTrails,stats.trailsDrawn());
@@ -97,7 +97,7 @@ public final class TransferStressClientSmoke {
                     +"first_recorded_frame_cpu_ms="+cpu.getFirst()+"\nmax_recorded_frame_cpu_ms="+Collections.max(cpu)+"\n"
                     +"frames="+cpu.size()+"\nrender_cpu_ms_median="+percentile(cpu,.5)+"\nrender_cpu_ms_p95="+percentile(cpu,.95)+"\n"
                     +"gpu_samples="+gpu.size()+"\nrender_gpu_ms_median="+percentile(gpu,.5)+"\nrender_gpu_ms_p95="+percentile(gpu,.95)+"\n"
-                    +"Client-only offered-load benchmark; no claim of identical FPS on other hardware. GPU scope includes other AFTER_PARTICLES handlers between fixture hooks.\n";
+                    +"Client-only offered-load benchmark; no claim of identical FPS on other hardware. GPU scope includes other handlers at the selected transfer render stage between fixture hooks.\n";
                 Files.writeString(OUT.resolve("metrics.txt"),report);AstralRepository.LOGGER.info("Transfer stress measurements:\n{}",report);
                 check(!mc.mouseHandler.isMouseGrabbed()&&mc.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER)==0,"Client was not silent and mouse-free");
                 list("flights").clear();list("resourceTrails").clear();

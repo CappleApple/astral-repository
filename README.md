@@ -47,7 +47,7 @@ Requires Minecraft **1.21.1**, **NeoForge 21.1.244 or newer**, and **Java 21**. 
 
 **Patchouli 1.21.1-93 or newer for NeoForge is optional.** Install it on both sides to add the `astral_repository:field_guide` item and its crafting recipe.
 
-Put `astral_repository-1.11.9.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
+Put `astral_repository-1.11.11.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
 
 ## Start a workshop
 
@@ -72,7 +72,7 @@ With Java 21 available, run on Windows:
 .\gradlew.bat test build
 ```
 
-The mod JAR is written to `build/libs/astral_repository-1.11.9.jar`.
+The mod JAR is written to `build/libs/astral_repository-1.11.11.jar`.
 
 ```powershell
 .\gradlew.bat runGameTestServer

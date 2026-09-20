@@ -14,6 +14,7 @@ public final class FabricClient implements net.fabricmc.api.ClientModInitializer
   WorldRenderEvents.START.register(context->WorldVisuals.astralCoordinates(new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_SKY,context)));
   WorldRenderEvents.AFTER_ENTITIES.register(context->RuneRenderer.render(new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES,context)));
   WorldRenderEvents.AFTER_TRANSLUCENT.register(context->{var event=new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_PARTICLES,context);WorldVisuals.render(event);BindingPreviewRenderer.render(event);});
+  WorldRenderEvents.LAST.register(context->{var event=new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_WEATHER,context);WorldVisuals.render(event);BindingPreviewRenderer.render(event);});
   WorldRenderEvents.END.register(context->WorldVisuals.astralCoordinates(new RenderLevelStageEvent(RenderLevelStageEvent.Stage.AFTER_LEVEL,context)));
   HudRenderCallback.EVENT.register((graphics,delta)->RuneRenderer.hud(new RenderGuiEvent.Post(graphics)));
  }

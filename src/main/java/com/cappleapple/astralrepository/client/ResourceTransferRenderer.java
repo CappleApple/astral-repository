@@ -26,7 +26,7 @@ final class ResourceTransferRenderer extends RenderType {
         return create("astral_repository:resource_transfer/"+texture,DefaultVertexFormat.NEW_ENTITY,VertexFormat.Mode.QUADS,262144,false,true,
                 CompositeState.builder().setShaderState(new ShaderStateShard(()->shader))
                         .setTextureState(new TextureStateShard(texture,false,false)).setTransparencyState(TRANSLUCENT_TRANSPARENCY)
-                        .setCullState(NO_CULL).setWriteMaskState(COLOR_WRITE).createCompositeState(false));
+                        .setCullState(NO_CULL).setOutputState(PARTICLES_TARGET).setWriteMaskState(TransferRenderPass.SPRITE_WRITE).createCompositeState(false));
     }
     static void flush(MultiBufferSource.BufferSource buffers,boolean energy){buffers.endBatch(energy?POWER:ATLAS);}
     static void render(NetworkPackets.Visual packet,Vec3 position,PoseStack pose,MultiBufferSource buffers,org.joml.Quaternionf camera){render(packet,position,pose,buffers,camera,.16F,1);}

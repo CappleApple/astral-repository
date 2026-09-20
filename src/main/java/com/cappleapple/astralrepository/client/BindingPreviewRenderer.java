@@ -7,6 +7,7 @@ import com.mojang.blaze3d.vertex.*;
 import java.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
@@ -46,9 +47,14 @@ public final class BindingPreviewRenderer {
                 point.x,point.y,point.z,normal.x*.006,normal.y*.006+.008,normal.z*.006);emittedParticles++;
     }
     @SubscribeEvent public static void render(RenderLevelStageEvent event){
-        if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
+        if(!TransferRenderPass.matches(event))return;
         renderedSegments=0;var state=active();if(state.rune()==null)return;
-        var mc=Minecraft.getInstance();var buffers=mc.renderBuffers().bufferSource();var type=BindingBeamRenderType.BEAM;var vertex=buffers.getBuffer(type);var camera=event.getCamera().getPosition();
+        var mc=Minecraft.getInstance();var buffers=mc.renderBuffers().bufferSource();
+        renderedSegments=draw(event,state,buffers,BindingBeamRenderType.BEAM);
+        if(Minecraft.useShaderTransparency())draw(event,state,buffers,BindingBeamRenderType.DEPTH);
+    }
+    private static int draw(RenderLevelStageEvent event,BindingPreviewPackets.Preview state,MultiBufferSource.BufferSource buffers,RenderType type){
+        var camera=event.getCamera().getPosition();var vertex=buffers.getBuffer(type);int segments=0;
         for(int path=0;path<curves.size();path++){
             var points=curves.get(path);int color=state.paths().get(path).color();
             List<Vec3> sides=new ArrayList<>(points.size());Vec3 previousSide=Vec3.ZERO;
@@ -62,10 +68,11 @@ public final class BindingPreviewRenderer {
             for(int i=1;i<points.size();i++){
                 Vec3 a=points.get(i-1).subtract(camera),b=points.get(i).subtract(camera);if(a.lengthSqr()>65536&&b.lengthSqr()>65536)continue;
                 ribbon(vertex,event.getPoseStack(),a,b,sides.get(i-1).scale(.035),sides.get(i).scale(.035),color,45);
-                ribbon(vertex,event.getPoseStack(),a,b,sides.get(i-1).scale(.008),sides.get(i).scale(.008),color,210);renderedSegments++;
+                ribbon(vertex,event.getPoseStack(),a,b,sides.get(i-1).scale(.008),sides.get(i).scale(.008),color,210);segments++;
             }
         }
         buffers.endBatch(type);
+        return segments;
     }
     private static void ribbon(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,Vec3 startSide,Vec3 endSide,int color,int alpha){
         for(Vec3 point:List.of(a.add(startSide),b.add(endSide),b.subtract(endSide),a.subtract(startSide)))vertex.addVertex(pose.last().pose(),(float)point.x,(float)point.y,(float)point.z).setColor(color>>16&255,color>>8&255,color&255,alpha);

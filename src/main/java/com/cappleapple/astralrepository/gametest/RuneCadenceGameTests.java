@@ -15,7 +15,7 @@ import net.neoforged.neoforge.gametest.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class RuneCadenceGameTests {
-    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=600)
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=600,batch="rune_cadence")
     public static void independentResourceCadencesPersistAndConserveAllFourTypes(GameTestHelper h)throws Exception{
         var from=new BlockPos(3,2,3);var to=new BlockPos(6,2,3);h.setBlock(from,AstralContent.SEED_STORAGE_CRYSTAL.get());h.setBlock(to,AstralContent.SEED_STORAGE_CRYSTAL.get());
         var a=(CrystalNodeBlockEntity)h.getBlockEntity(from);var b=(CrystalNodeBlockEntity)h.getBlockEntity(to);
@@ -35,15 +35,25 @@ public final class RuneCadenceGameTests {
         var restored=RuneSurface.load(h.getLevel().getServer(),face.save(h.getLevel().registryAccess()),h.getLevel().registryAccess());h.assertTrue(restored.layers().getFirst().cadence().equals(cadence),"Placed cadence survives world save");
         var preset=new RunePreset(UUID.randomUUID(),"Four resources",rune.mode(),rune.design(),rune.filter().save(h.getLevel().registryAccess()),0,true,cadence);
         h.assertTrue(RunePresetFiles.decode(RunePresetFiles.encode(preset),h.getLevel().registryAccess()).cadence().equals(cadence),"Instance and pack JSON preserve every resource rate");
-        long[] last={0,0,0,0},time={-1,-1,-1,-1};int[] batches={0,0,0,0};
-        h.onEachTick(()->{
-            long now=h.getLevel().getServer().getTickCount();long[] values={b.inventory().used(),b.tank().getFluidAmount(),b.energy().getEnergyStored(),source[1]};
-            h.assertTrue(a.inventory().used()+values[0]==64&&a.tank().getFluidAmount()+values[1]==4000&&a.energy().getEnergyStored()+values[2]==10000&&source[0]+source[1]==4000,"All real resources are conserved");
-            for(int i=0;i<4;i++)if(values[i]!=last[i]){h.assertTrue(values[i]-last[i]==amounts[i],"Batch uses its configured amount for resource "+i);if(time[i]>=0)h.assertTrue(now-time[i]>=intervals[i],"Resource cannot move before its own cadence");last[i]=values[i];time[i]=now;batches[i]++;}
-        });
-        h.succeedWhen(()->{for(int n:batches)h.assertTrue(n>=3,"Await three independent batches of each resource");rune.setEnabled(false);});
+        // This test isolates dispatch cadence. RuneTransitGameTests checks resources held in flight.
+        boolean instant=com.cappleapple.astralrepository.AstralConfig.instantAutomaticLogistics.get();
+        try{
+            com.cappleapple.astralrepository.AstralConfig.instantAutomaticLogistics.set(true);
+            var worker=new DirectRuneTransfers(h.getLevel().getServer());worker.track(face);
+            long[] last={0,0,0,0},time={-1,-1,-1,-1};int[] batches={0,0,0,0};
+            for(int now=0;now<40;now++){
+                worker.tick();
+                long[] values={b.inventory().used(),b.tank().getFluidAmount(),b.energy().getEnergyStored(),source[1]};
+                h.assertTrue(a.inventory().used()+values[0]==64&&a.tank().getFluidAmount()+values[1]==4000&&a.energy().getEnergyStored()+values[2]==10000&&source[0]+source[1]==4000,"Instant cadence test conserves all real resources");
+                for(int i=0;i<4;i++)if(values[i]!=last[i]){h.assertTrue(values[i]-last[i]==amounts[i],"Batch uses its configured amount for resource "+i);if(time[i]>=0)h.assertTrue(now-time[i]>=intervals[i],"Resource cannot move before its own cadence");last[i]=values[i];time[i]=now;batches[i]++;}
+            }
+            for(int n:batches)h.assertTrue(n>=3,"Each resource dispatches at least three independent batches");
+        }finally{
+            rune.setEnabled(false);com.cappleapple.astralrepository.AstralConfig.instantAutomaticLogistics.set(instant);
+        }
+        h.succeed();
     }
-    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=100)
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=100,batch="rune_cadence")
     public static void serverLimitsClampSavedRatesAndKeepCooldownsOnReload(GameTestHelper h){
         var maxima=List.of(com.cappleapple.astralrepository.AstralServerConfig.maxItemTransfer,com.cappleapple.astralrepository.AstralServerConfig.maxFluidTransfer,com.cappleapple.astralrepository.AstralServerConfig.maxEnergyTransfer,com.cappleapple.astralrepository.AstralServerConfig.maxSourceTransfer);
         var minima=List.of(com.cappleapple.astralrepository.AstralServerConfig.minItemTransferTicks,com.cappleapple.astralrepository.AstralServerConfig.minFluidTransferTicks,com.cappleapple.astralrepository.AstralServerConfig.minEnergyTransferTicks,com.cappleapple.astralrepository.AstralServerConfig.minSourceTransferTicks);

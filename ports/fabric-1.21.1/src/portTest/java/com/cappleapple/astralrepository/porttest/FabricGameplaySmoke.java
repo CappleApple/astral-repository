@@ -54,6 +54,7 @@ public final class FabricGameplaySmoke implements net.fabricmc.api.ClientModInit
                     LogUtils.getLogger().info("FABRIC_GAMEPLAY_NAME {} = {}",entry.getKey().location(),stack.getHoverName().getString());
                     var lines=stack.getTooltipLines(Item.TooltipContext.of(mc.level),mc.player,TooltipFlag.Default.NORMAL);check(!lines.isEmpty(),"Missing tooltip "+entry.getKey().location());
                 }
+                CloudDepthClientSmoke.verify();
                 check(mc.level.getBlockEntity(NEXUS) instanceof CrystalNodeBlockEntity,"Nexus placement not synchronized");capture("placed-blocks.png");
                 server(p->{FabricGameplayAssertions.verifyTransfer(p);p.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);var hit=new BlockHitResult(Vec3.atCenterOf(NEXUS),Direction.SOUTH,NEXUS,false);check(p.gameMode.useItemOn(p,p.serverLevel(),ItemStack.EMPTY,InteractionHand.MAIN_HAND,hit).consumesAction(),"Nexus use");});next(3);
             }else if(phase==3&&mc.screen instanceof NexusScreen screen&&ticks>30){

@@ -1,5 +1,41 @@
 # Port validation
 
+## 1.11.11 — 2026-09-20
+
+All eight release builds passed 1,180 JUnit tests with no failures or skipped tests. The standalone branch projects were built independently. Release metadata, Java bytecode, license contents, and exclusion of test fixtures were checked before collecting the JARs.
+
+| Target | JUnit | Server checks | Client checks |
+| --- | ---: | --- | --- |
+| NeoForge 1.21.1 | 146 | 148 GameTests, both plain and with Lithium | 24 controlled cloud-depth cases in Fast, Fancy, and Fabulous modes |
+| Forge 1.20.1 | 146 | 22 GameTests; installed release JAR and second-process restart | Installed release JAR, gameplay, and 24 cloud-depth cases |
+| Fabric 1.20.1 | 146 | 12 transit regressions; production-server restart with four media in flight | Packaged gameplay and 24 cloud-depth cases |
+| Fabric 1.21.1 | 146 | 12 transit regressions; production-server restart with four media in flight | Packaged gameplay and 24 cloud-depth cases |
+| Fabric 26.2 | 147 | 12 transit regressions; server restart | Packaged gameplay with JEI/Jade; classic and improved transparency |
+| Fabric 26.3 | 147 | 12 transit regressions; server restart | Packaged gameplay with JEI/Jade; classic and improved transparency |
+| NeoForge 26.2 | 151 | 12 transit regressions; packaged server restart | Packaged gameplay; classic and improved transparency |
+| NeoForge 26.3 | 151 | 12 transit regressions; packaged server restart | Packaged gameplay; classic and improved transparency |
+
+Transit coverage includes delayed arrival, immediate mode, one-tick pipelining, pending stock limits, endpoint routing, save/load, failed-delivery recovery, and conservation. Item, fluid, and energy checks use each loader's native storage interfaces. Source checks use a registered test adapter; Ars Nouveau was not installed.
+
+Legacy cloud checks compare controlled GPU output for nearby and occluded resource sprites and binding beams. Modern checks exercise actual resource, fallback item-icon, and beam draws in both transparency modes; they do not perform the legacy pixel-depth comparison. The 26.3 checks also cover custom transparency pipelines and enchanted-item rendering. Clients ran hidden, muted, and without mouse capture. Vulkan was not tested.
+
+The standalone legacy and NeoForge artifacts are byte-identical to the runtime-tested JARs. Modern Fabric artifacts have identical ZIP-entry contents; archive timestamps differ. Modern NeoForge packaged checks use ModDev with production source directories removed and the release JAR installed, rather than a retail installer.
+
+No new 10,000-rune TPS benchmark or ten-layer crafting stress run was performed for this patch. Optional-mod coverage from 1.11.9 below is historical unless explicitly included above.
+
+Local evidence, relative to the repository root:
+
+- `build/validation-1.11.11-plain.log` and `build/validation-1.11.11-lithium-final.log`
+- `build/publication/v1.11.11/forge-validation.json`
+- `build/publication/v1.11.11/legacy-fabric-validation.json`
+- `build/publication/v1.11.11/modern-fabric-report.json`
+- `build/publication/v1.11.11/modern-neoforge-report.json`
+- `build/publication/v1.11.11/artifact-audit.json`
+
+These are ignored build outputs. Reproduction commands and loader-specific fixture details are retained below.
+
+## 1.11.9 validation record
+
 Validation date: 2026-09-20. Release version: 1.11.9. Loader, Fabric API, and Java versions are listed in [Installation](README.md#installation).
 
 All eight builds passed: 1,180 JUnit tests in total, with no failures. The original edition also passed all 137 required GameTests. The port suites use focused loader-specific fixtures; they do not reproduce all 137 original GameTests.

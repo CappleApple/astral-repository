@@ -32,37 +32,41 @@ public final class DirectRuneGameTests {
 
     @GameTest(templateNamespace="astral_repository",template="empty_workshop",batch="astral_candidate")
     public static void candidateHintsKeepFallbackStockLimitsAndLiveTransactions(GameTestHelper h){
-        for(int scenario=0;scenario<5;scenario++){
-            final int mode=scenario;BlockPos home=new BlockPos(2+scenario*3,2,2),away=new BlockPos(2+scenario*3,2,6);
-            h.setBlock(home,Blocks.ENCHANTING_TABLE);h.setBlock(away,Blocks.ENCHANTING_TABLE);
-            BlockPos homeAbs=h.absolutePos(home),awayAbs=h.absolutePos(away);int[] reads={0,0};
-            ItemStackHandler source=new ItemStackHandler(2);source.setStackInSlot(0,new ItemStack(Items.IRON_INGOT,10));source.setStackInSlot(1,new ItemStack(Items.GOLD_INGOT,10));
-            ItemStackHandler target=new ItemStackHandler(2){@Override public boolean isItemValid(int slot,ItemStack stack){return mode!=2||stack.is(Items.GOLD_INGOT);}};
-            String id="candidate_"+UUID.randomUUID();
-            StorageProvider delegate=new ItemHandlerStorageProvider(id,source,source,()->h.getLevel().getBlockState(homeAbs).is(Blocks.ENCHANTING_TABLE));
-            StorageProvider probing=new StorageProvider(){
-                public String id(){return id;}public Object identity(){return source;}public boolean valid(){return delegate.valid();}public long capacity(){return delegate.capacity();}
-                public Map<ItemKey,Long> snapshot(){reads[0]++;return delegate.snapshot();}
-                public Optional<Map<ItemKey,Long>> poll(int budget){reads[0]++;return delegate.poll(budget);}
-                public ItemKey candidate(java.util.function.Predicate<ItemStack> matches){reads[1]++;return mode==1?null:delegate.candidate(matches);}
-                public ItemStack insert(ItemStack stack,boolean simulate){return delegate.insert(stack,simulate);}
-                public ItemStack extract(ItemKey key,int amount,boolean simulate){return delegate.extract(key,amount,simulate);}
-            };
-            StorageProvider receiving=new ItemHandlerStorageProvider(id+"_target",target,target,()->h.getLevel().getBlockState(awayAbs).is(Blocks.ENCHANTING_TABLE));
-            CompatibilityRegistry.registerStorage(id,(level,pos,side)->level!=h.getLevel()?List.of():pos.equals(homeAbs)?List.of(probing):pos.equals(awayAbs)?List.of(receiving):List.of());
-            RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),homeAbs,Direction.UP);RuneLayer push=layer(surface,RuneLayer.Mode.PUSH);
-            push.setCadence(RuneCadence.DEFAULT.with(RuneCadence.Kind.ITEMS,new RuneCadence.Rate(4,1)));
-            if(mode==3)push.filter().setMinimum(8);if(mode==4)push.filter().setTarget(3);
-            h.assertTrue(surface.toggleTarget(push.id(),at(h,away),Direction.SOUTH).assigned(),"Candidate fixture assigned");
-            reads[0]=0;reads[1]=0;var transfers=new DirectRuneTransfers(h.getLevel().getServer());transfers.track(surface);transfers.tick();
-            int expected=mode==3?2:mode==4?3:4,total=0;
-            for(int slot=0;slot<2;slot++)total+=source.getStackInSlot(slot).getCount()+target.getStackInSlot(slot).getCount();
-            h.assertTrue(total==20&&push.transferredItems()==expected,"Hint/fallback commits conserve quantities in scenario "+mode);
-            h.assertTrue(mode==0?reads[0]==0:reads[0]>0,"Only a usable unlimited hint avoids a full inventory poll in scenario "+mode);
-            h.assertTrue(mode<3?reads[1]>0:reads[1]==0,"Reserve and stock targets use counted snapshots in scenario "+mode);
-            if(mode==2)h.assertTrue(target.getStackInSlot(0).is(Items.GOLD_INGOT),"Rejected hint falls back to another accepted identity");
-            RuneSurfaces.remove(h.getLevel(),homeAbs,Direction.UP);
-        }
+        boolean instant=com.cappleapple.astralrepository.AstralConfig.instantAutomaticLogistics.get();
+        try{
+            com.cappleapple.astralrepository.AstralConfig.instantAutomaticLogistics.set(true);
+            for(int scenario=0;scenario<5;scenario++){
+                final int mode=scenario;BlockPos home=new BlockPos(2+scenario*3,2,2),away=new BlockPos(2+scenario*3,2,6);
+                h.setBlock(home,Blocks.ENCHANTING_TABLE);h.setBlock(away,Blocks.ENCHANTING_TABLE);
+                BlockPos homeAbs=h.absolutePos(home),awayAbs=h.absolutePos(away);int[] reads={0,0};
+                ItemStackHandler source=new ItemStackHandler(2);source.setStackInSlot(0,new ItemStack(Items.IRON_INGOT,10));source.setStackInSlot(1,new ItemStack(Items.GOLD_INGOT,10));
+                ItemStackHandler target=new ItemStackHandler(2){@Override public boolean isItemValid(int slot,ItemStack stack){return mode!=2||stack.is(Items.GOLD_INGOT);}};
+                String id="candidate_"+UUID.randomUUID();
+                StorageProvider delegate=new ItemHandlerStorageProvider(id,source,source,()->h.getLevel().getBlockState(homeAbs).is(Blocks.ENCHANTING_TABLE));
+                StorageProvider probing=new StorageProvider(){
+                    public String id(){return id;}public Object identity(){return source;}public boolean valid(){return delegate.valid();}public long capacity(){return delegate.capacity();}
+                    public Map<ItemKey,Long> snapshot(){reads[0]++;return delegate.snapshot();}
+                    public Optional<Map<ItemKey,Long>> poll(int budget){reads[0]++;return delegate.poll(budget);}
+                    public ItemKey candidate(java.util.function.Predicate<ItemStack> matches){reads[1]++;return mode==1?null:delegate.candidate(matches);}
+                    public ItemStack insert(ItemStack stack,boolean simulate){return delegate.insert(stack,simulate);}
+                    public ItemStack extract(ItemKey key,int amount,boolean simulate){return delegate.extract(key,amount,simulate);}
+                };
+                StorageProvider receiving=new ItemHandlerStorageProvider(id+"_target",target,target,()->h.getLevel().getBlockState(awayAbs).is(Blocks.ENCHANTING_TABLE));
+                CompatibilityRegistry.registerStorage(id,(level,pos,side)->level!=h.getLevel()?List.of():pos.equals(homeAbs)?List.of(probing):pos.equals(awayAbs)?List.of(receiving):List.of());
+                RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),homeAbs,Direction.UP);RuneLayer push=layer(surface,RuneLayer.Mode.PUSH);
+                push.setCadence(RuneCadence.DEFAULT.with(RuneCadence.Kind.ITEMS,new RuneCadence.Rate(4,1)));
+                if(mode==3)push.filter().setMinimum(8);if(mode==4)push.filter().setTarget(3);
+                h.assertTrue(surface.toggleTarget(push.id(),at(h,away),Direction.SOUTH).assigned(),"Candidate fixture assigned");
+                reads[0]=0;reads[1]=0;var transfers=new DirectRuneTransfers(h.getLevel().getServer());transfers.track(surface);transfers.tick();
+                int expected=mode==3?2:mode==4?3:4,total=0;
+                for(int slot=0;slot<2;slot++)total+=source.getStackInSlot(slot).getCount()+target.getStackInSlot(slot).getCount();
+                h.assertTrue(total==20&&push.transferredItems()==expected,"Hint/fallback commits conserve quantities in scenario "+mode);
+                h.assertTrue(mode==0?reads[0]==0:reads[0]>0,"Only a usable unlimited hint avoids a full inventory poll in scenario "+mode);
+                h.assertTrue(mode<3?reads[1]>0:reads[1]==0,"Reserve and stock targets use counted snapshots in scenario "+mode);
+                if(mode==2)h.assertTrue(target.getStackInSlot(0).is(Items.GOLD_INGOT),"Rejected hint falls back to another accepted identity");
+                RuneSurfaces.remove(h.getLevel(),homeAbs,Direction.UP);
+            }
+        }finally{com.cappleapple.astralrepository.AstralConfig.instantAutomaticLogistics.set(instant);}
         h.succeed();
     }
 
@@ -91,7 +95,9 @@ public final class DirectRuneGameTests {
         h.assertTrue(rune.toggleTarget(push.id(),at(h,outPos),Direction.NORTH).assigned(),"Independent bare destination assigned");
         h.onEachTick(()->{
             long totalIron=0,totalGold=0,totalSpecial=0;for(var container:List.of(host,a,b,out,untouched)){totalIron+=count(container,iron);totalGold+=count(container,gold);totalSpecial+=count(container,special);}
-            h.assertTrue(totalIron==27&&totalGold==14&&totalSpecial==11,"Every tick conserves both identities and components");
+            var transit=RuneTransitData.get(h.getLevel().getServer());
+            for(var layer:List.of(pullA,pullB,push)){totalIron+=transit.pendingAmount(layer.id(),iron);totalGold+=transit.pendingAmount(layer.id(),gold);totalSpecial+=transit.pendingAmount(layer.id(),special);}
+            h.assertTrue(totalIron==27&&totalGold==14&&totalSpecial==11,"Physical storage plus flights conserves both identities and components every tick");
         });
         h.succeedWhen(()->{
             h.assertTrue(count(host,special)==11&&count(out,gold)==5,"Pull gets named items into host while Push exports only gold: "+count(host,special)+" / "+count(out,gold)+" states="+pullA.status()+"; "+pullB.status()+"; "+push.status());
@@ -122,7 +128,7 @@ public final class DirectRuneGameTests {
         h.assertTrue(!rune.toggleTarget(push.id(),at(h,targetPos),Direction.EAST).success(),"Wrong target face is rejected");
         h.assertTrue(rune.toggleTarget(push.id(),at(h,targetPos),Direction.WEST).assigned(),"Actual sided target capability is assigned");
         ItemKey iron=new ItemKey(new ItemStack(Items.IRON_INGOT));
-        h.onEachTick(()->h.assertTrue(count(host,iron)+target.getStackInSlot(0).getCount()==64,"Partial commits conserve all items through immediate source refund"));
+        h.onEachTick(()->h.assertTrue(count(host,iron)+target.getStackInSlot(0).getCount()+RuneTransitData.get(h.getLevel().getServer()).pendingAmount(push.id(),iron)==64,"Storage plus flights conserves items through partial acceptance and source refunds"));
         h.succeedWhen(()->{int accepted=target.getStackInSlot(0).getCount();h.assertTrue(accepted>0&&accepted<16,"Destination intentionally accepted only part of the simulated offer");push.setEnabled(false);h.assertTrue(push.transferredItems()==accepted,"Counter records committed acceptance, not attempted quantity");});
     }
     @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=400,batch="astral_direct_failure")
@@ -132,6 +138,8 @@ public final class DirectRuneGameTests {
         StorageProvider broken=new StorageProvider(){public String id(){return id;}public Object identity(){return this;}public boolean valid(){return h.getLevel().getBlockState(absolute).is(Blocks.ENCHANTING_TABLE);}public long capacity(){return 64;}public Map<ItemKey,Long> snapshot(){return Map.of(iron,(long)accepted[0]);}public ItemStack extract(ItemKey key,int amount,boolean simulate){return ItemStack.EMPTY;}public ItemStack insert(ItemStack stack,boolean simulate){if(simulate)return ItemStack.EMPTY;accepted[0]+=stack.getCount();throw new IllegalStateException("Expected direct fixture failure after commit");}};
         CompatibilityRegistry.registerStorage(id,(level,pos,side)->level==h.getLevel()&&pos.equals(absolute)?List.of(broken):List.of());
         var rune=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(hostPos),Direction.NORTH);var push=layer(rune,RuneLayer.Mode.PUSH);var other=layer(rune,RuneLayer.Mode.PULL);
+        // One flight isolates the indeterminate-commit policy from multiple concurrent departures.
+        push.setCadence(RuneCadence.DEFAULT.with(RuneCadence.Kind.ITEMS,new RuneCadence.Rate(16,100)));
         h.assertTrue(rune.toggleTarget(push.id(),at(h,targetPos),Direction.WEST).assigned(),"Failure fixture assigned");
         h.runAfterDelay(80,()->{
             h.assertTrue(accepted[0]==16&&count(host,iron)==48,"Indeterminate commit is not refunded or repeated");h.assertTrue(!push.enabled()&&other.enabled(),"Only the failed layer is paused");
@@ -150,7 +158,7 @@ public final class DirectRuneGameTests {
         h.assertTrue(rune.toggleTarget(pull.id(),at(h,sourcePos),Direction.NORTH).assigned(),"Bare sided fluid source assigned");
         long started=h.getLevel().getServer().getTickCount();
         h.onEachTick(()->{
-            h.assertTrue(source.getFluidAmount()+host.getFluidAmount()==1000,"Actual tanks conserve fluid every tick");
+            h.assertTrue(source.getFluidAmount()+host.getFluidAmount()+RuneTransitData.get(h.getLevel().getServer()).pendingAmount(pull.id(),new FluidKey(new FluidStack(Fluids.WATER,1)))==1000,"Actual tanks plus flights conserve fluid every tick");
             h.assertTrue(host.getFluidAmount()<=300&&pull.transferredFluid()<=300,"No scheduled pass may exceed the per-layer stock target");
         });
         // The shared scheduler now runs every 20 ticks by default and visits a bounded batch.

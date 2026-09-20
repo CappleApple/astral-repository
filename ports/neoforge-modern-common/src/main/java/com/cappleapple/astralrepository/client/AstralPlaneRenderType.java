@@ -89,7 +89,7 @@ public final class AstralPlaneRenderType {
     }
     public static RenderType armorTrim(boolean decal){return decal?ARMOR_TRIM_DECAL:ARMOR_TRIM;}
     static RenderType interfaceMaterial(Identifier texture){return INTERFACES.computeIfAbsent(texture,id->RenderType.create("astral_repository:interface/"+id,RenderSetup.builder(INTERFACE_PIPELINE).withTexture("Sampler0",id).createRenderSetup()));}
-    @SubscribeEvent public static void register(RegisterRenderPipelinesEvent event){MODES.keySet().forEach(event::registerPipeline);event.registerPipeline(ResourceTransferRenderer.PIPELINE);event.registerPipeline(ResourceTransferRenderer.ITEM_PIPELINE);event.registerPipeline(BindingBeamRenderType.PIPELINE);registered=true;}
+    @SubscribeEvent public static void register(RegisterRenderPipelinesEvent event){MODES.keySet().forEach(event::registerPipeline);event.registerPipeline(ResourceTransferRenderer.PIPELINE);event.registerPipeline(ResourceTransferRenderer.ITEM_PIPELINE);event.registerPipeline(BindingBeamRenderType.PIPELINE);event.registerPipeline(BindingBeamRenderType.DEPTH_PIPELINE);registered=true;}
     public static boolean ready(){return registered;}
     public static Snapshot snapshot(RenderType type){var mode=MODES.get(type.pipeline());return mode==null?null:snapshot(mode);}
     private static Snapshot snapshot(Mode mode){

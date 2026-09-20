@@ -58,6 +58,7 @@ public final class ClientNexusSmoke {
             } else if(phase==1&&mc.level!=null&&mc.player!=null&&mc.getSingleplayerServer()!=null&&!pending&&mc.getOverlay()==null){
                 server(2,ClientNexusSmoke::workshop);
             } else if(phase==2&&ticks>180&&!pending){
+                if(Boolean.getBoolean("astral_repository.cloudDepthOnly")){CloudDepthClientSmoke.verify();done=true;mc.stop();return;}
                 if(Boolean.getBoolean("astral_repository.transferStress")){if(TransferStressClientSmoke.tick()){done=true;mc.stop();}return;}
                 if(Boolean.getBoolean("astral_repository.resourceArrivalOnly")){if(ResourceArrivalClientSmoke.tick()){done=true;mc.stop();}return;}
                 if(Boolean.getBoolean("astral_repository.powerVisibilityOnly")){if(PowerVisibilityClientSmoke.tick()){done=true;mc.stop();}return;}

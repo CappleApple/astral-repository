@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.11.11 - 2026-09-20
+
+### Fixed
+
+- Automatic runes now wait for resources to reach their destination when instant logistics is disabled.
+- Resources in transit survive world restarts and respect stock limits. Failed deliveries return safely or stay in recovery storage.
+- Fixed clouds appearing in front of nearby resource animations and rune binding beams.
+- Fixed custom effects failing to render with improved transparency on Minecraft 26.3.
+
+## 1.11.10 - 2026-09-20
+
+### Fixed
+
+- On NeoForge 1.21.1, distant clouds no longer cover nearby fluid, energy, source, item-sprite transfers or rune binding beams. Fabulous graphics now receives their depth when combining translucent layers.
+
 ## 1.11.9 - 2026-09-20
 
 ### Changed

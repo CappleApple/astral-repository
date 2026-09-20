@@ -162,6 +162,19 @@ def migrate_263_shaders(directory: Path):
                 index = 0 if path.suffix == '.fsh' and direction == 'out' else mapping[name]
                 return f'layout(location = {index}) {direction} {kind} {name};'
             text = re.sub(r'^(in|out)\s+(\w+)\s+(\w+);', location, text, flags=re.MULTILINE)
+            if path.suffix == '.fsh' and path.stem in {'astral_plane', 'resource_transfer'}:
+                text = text.replace('#include <minecraft:fog.glsl>', '#include <minecraft:fog.glsl>\n#include <minecraft:oit.glsl>')
+                text = text.replace('layout(location = 0) out vec4 fragColor;', '#ifndef OIT_ALPHA_ONLY\nlayout(location = 0) out vec4 fragColor;\n#endif')
+                # Preserve each shader's computed alpha, circle mask and color through vanilla OIT.
+                pattern = r'(    )(fragColor\s*=\s*apply_fog\()(color|shaded)(,[^;]*),\s*FogColor(\);)'
+                def oit_output(match):
+                    value = match[3]
+                    output = match[1] + match[2] + value + match[4] + ',fogColor' + match[5]
+                    return (f'    #ifdef OIT_ALPHA_ONLY\n    executeAlphaOnlyPhase(gl_FragCoord.z,{value}.a);\n    #else\n'
+                            f'    #ifdef OIT_ACCUMULATE\n    {value}=sampleColorForAccumulation({value});\n'
+                            f'    vec4 fogColor=vec4(FogColor.rgb*{value}.a,FogColor.a);\n    #else\n'
+                            f'    vec4 fogColor=FogColor;\n    #endif\n{output}\n    #endif')
+                text = re.sub(pattern, oit_output, text)
             path.write_text(text)
 
 

@@ -41,6 +41,7 @@ neoForge {
             if (project.hasProperty('wandOnly')) systemProperty 'astral_repository.wandOnly', 'true'
             if (project.hasProperty('transferStressUnique')) systemProperty 'astral_repository.transferStressUnique', 'true'
             if (project.hasProperty('transferStressItems')) systemProperty 'astral_repository.transferStressItems', 'true'
+            if (project.hasProperty('cloudDepthOnly')) systemProperty 'astral_repository.cloudDepthOnly', 'true'
             if (project.hasProperty('transferStress')) systemProperty 'astral_repository.transferStress', 'true'
             if (project.hasProperty('nodeModels')) systemProperty 'astral_repository.nodeModels', 'true'
             systemProperty 'astral_repository.testClient', 'true'

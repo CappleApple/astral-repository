@@ -6,6 +6,7 @@
 #include <astral_repository:astral_parameters.glsl>
 #ifndef ASTRAL_INTERFACE
 #include <minecraft:fog.glsl>
+#include <minecraft:oit.glsl>
 #endif
 
 uniform sampler2D Sampler0;
@@ -19,7 +20,9 @@ layout(location = 5) in vec4 overlayColor;
 layout(location = 6) in vec4 lightColor;
 layout(location = 7) in float vertexDistance;
 layout(location = 8) in float vertexCylindricalDistance;
+#ifndef OIT_ALPHA_ONLY
 layout(location = 0) out vec4 fragColor;
+#endif
 
 // Repository-owned procedural field. No End sky or End portal texture is sampled.
 float astralHash(vec2 p) {
@@ -243,7 +246,17 @@ void main() {
     #ifdef ASTRAL_INTERFACE
     fragColor = shaded;
     #else
-    fragColor = apply_fog(shaded, vertexDistance, vertexCylindricalDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
+    #ifdef OIT_ALPHA_ONLY
+    executeAlphaOnlyPhase(gl_FragCoord.z,shaded.a);
+    #else
+    #ifdef OIT_ACCUMULATE
+    shaded=sampleColorForAccumulation(shaded);
+    vec4 fogColor=vec4(FogColor.rgb*shaded.a,FogColor.a);
+    #else
+    vec4 fogColor=FogColor;
+    #endif
+    fragColor = apply_fog(shaded, vertexDistance, vertexCylindricalDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, fogColor);
+    #endif
     #endif
 }
 

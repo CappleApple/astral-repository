@@ -1,6 +1,6 @@
 # Astral Repository ports
 
-Astral Repository 1.11.9 is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root.
+Astral Repository 1.11.11 is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root.
 
 ## Installation
 

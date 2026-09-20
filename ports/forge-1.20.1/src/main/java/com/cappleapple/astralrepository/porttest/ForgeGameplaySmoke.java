@@ -45,6 +45,7 @@ public final class ForgeGameplaySmoke {
                 next(1);mc.createWorldOpenFlows().createFreshLevel("astral-gameplay-"+System.currentTimeMillis(),new LevelSettings("Astral gameplay",GameType.CREATIVE,false,Difficulty.PEACEFUL,true,new GameRules(),WorldDataConfiguration.DEFAULT),new WorldOptions(42,false,false),r->r.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions());
             }else if(phase==1&&mc.player!=null&&mc.level!=null&&mc.getSingleplayerServer()!=null&&mc.getOverlay()==null){mc.setScreen(null);server(ForgeGameplaySmoke::workshop);next(2);
             }else if(phase==2&&ticks>100){
+                CloudDepthClientSmoke.verify();
                 for(var entry:AstralContent.ITEMS.getEntries()){
                     var stack=new ItemStack(entry.get());String key=stack.getDescriptionId();
                     check(net.minecraft.client.resources.language.I18n.exists(key)&&!stack.getHoverName().getString().equals(key),"Untranslated item "+entry.getId()+": "+key);
