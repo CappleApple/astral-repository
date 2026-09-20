@@ -16,8 +16,8 @@ public final class AstralMineralItemRenderer extends BlockEntityWithoutLevelRend
         var client = Minecraft.getInstance();
         if (stack.getItem() instanceof BlockItem blockItem
                 && blockItem.getBlock() instanceof com.cappleapple.astralrepository.content.CrystalNodeBlock) {
-            var block=(com.cappleapple.astralrepository.content.CrystalNodeBlock)blockItem.getBlock();var data=stack.get(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA);String upgrade=null;
-            if(data!=null){var tag=data.copyTag();upgrade=CrystalModelRenderer.upgradedModel(block.kind(),tag.getInt("StorageTier"),tag.getBoolean("LongRange"),tag.getBoolean("Dimensional"));}
+            var block=(com.cappleapple.astralrepository.content.CrystalNodeBlock)blockItem.getBlock();var data=stack.getTagElement("BlockEntityTag");String upgrade=null;
+            if(data!=null){var tag=data.copy();upgrade=CrystalModelRenderer.upgradedModel(block.kind(),tag.getInt("StorageTier"),tag.getBoolean("LongRange"),tag.getBoolean("Dimensional"));}
             var model=client.getModelManager().getModel(upgrade==null?CrystalModelRenderer.modelLocation(block):CrystalModelRenderer.modelLocation(upgrade));
             CrystalModelRenderer.render(poses, buffers, null, model, CrystalModelRenderer.channel(stack), light, overlay);
             return;
@@ -26,7 +26,7 @@ public final class AstralMineralItemRenderer extends BlockEntityWithoutLevelRend
         boolean wand = stack.is(com.cappleapple.astralrepository.content.AstralContent.ATTUNEMENT_WAND.get());
         boolean remote = stack.is(com.cappleapple.astralrepository.content.AstralContent.ASTRAL_NEXUS.get());
         var location = goggles ? AstralMineralClient.gogglesModel(context) : wand ? AstralMineralClient.WAND_MODEL : remote ? AstralMineralClient.REMOTE_MODEL : stack.getItem() instanceof BlockItem
-                ? net.minecraft.client.resources.model.ModelResourceLocation.standalone(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("astral_repository",
+                ? com.cappleapple.astralrepository.platform.ClientBackport.standalone(new net.minecraft.resources.ResourceLocation("astral_repository",
                         "item/" + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath() + "_geometry"))
                 : AstralMineralClient.GEM_MODEL;
         var model = client.getModelManager().getModel(location);
@@ -50,7 +50,7 @@ public final class AstralMineralItemRenderer extends BlockEntityWithoutLevelRend
                     if (crystal != (pass == 1)) continue;
                     var consumer = net.minecraft.client.renderer.entity.ItemRenderer.getFoilBufferDirect(buffers,
                             crystal ? material : RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS), true, stack.hasFoil());
-                    consumer.putBulkData(poses.last(), quad, 1, 1, 1, goggles && crystal ? 0.55F : 1F, light, overlay);
+                    consumer.putBulkData(poses.last(), quad, 1, 1, 1, goggles && crystal ? 0.55F : 1F, light, overlay, true);
                 }
             }
         }

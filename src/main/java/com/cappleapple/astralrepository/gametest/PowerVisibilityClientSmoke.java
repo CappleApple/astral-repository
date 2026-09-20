@@ -10,7 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
+import net.minecraftforge.fml.ModList;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -152,7 +152,7 @@ public final class PowerVisibilityClientSmoke {
     private static boolean installed(String id){return ModList.get().isLoaded(id);}
     private static boolean hasPower(Iterable<ItemStack> items){for(var stack:items)if(isPower(stack))return true;return false;}
     private static boolean isPower(ItemStack stack){return stack.is(AstralContent.POWER_NODE.get().asItem());}
-    private static ResourceLocation id(String path){return ResourceLocation.fromNamespaceAndPath("astral_repository",path);}
+    private static ResourceLocation id(String path){return new ResourceLocation("astral_repository",path);}
     private static void shot(String name)throws Exception{try(var image=Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())){image.writeToFile(OUT.resolve(name));}}
     private static void check(boolean condition,String message){if(!condition)throw new AssertionError(message);}
     private PowerVisibilityClientSmoke(){}

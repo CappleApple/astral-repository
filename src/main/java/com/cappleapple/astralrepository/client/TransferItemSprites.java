@@ -27,7 +27,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.ClientHooks;
+import net.minecraftforge.client.ForgeHooksClient;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -76,10 +76,10 @@ final class TransferItemSprites extends RenderType {
         float scale = size * 2;
         for (int i = 0; i < mesh.vertices(); i++) {
             int offset = i * 5;
-            vertices.addVertex(poses.last().pose(), mesh.coordinates[offset] * scale, mesh.coordinates[offset + 1] * scale,
+            vertices.vertex(poses.last().pose(), mesh.coordinates[offset] * scale, mesh.coordinates[offset + 1] * scale,
                             mesh.coordinates[offset + 2] * scale)
-                    .setColor(mesh.colors[i]).setUv(mesh.coordinates[offset + 3], mesh.coordinates[offset + 4])
-                    .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT).setNormal(poses.last(), 0, 0, 1);
+                    .color(mesh.colors[i]).uv(mesh.coordinates[offset + 3], mesh.coordinates[offset + 4])
+                    .overlayCoords(OverlayTexture.NO_OVERLAY).uv2(LightTexture.FULL_BRIGHT).normal(poses.last().normal(), 0, 0, 1).endVertex();
         }
         poses.popPose(); renderedVertices += mesh.vertices(); return true;
     }
@@ -100,7 +100,7 @@ final class TransferItemSprites extends RenderType {
                 resolutionsRemaining--; modelResolutions++;
                 var mc = Minecraft.getInstance(); var model = mc.getItemRenderer().getModel(stack, mc.level, mc.player, 0);
                 if (stack.is(Items.TRIDENT) || stack.is(Items.SPYGLASS))
-                    model = mc.getModelManager().getModel(ModelResourceLocation.inventory(BuiltInRegistries.ITEM.getKey(stack.getItem())));
+                    model = mc.getModelManager().getModel(new ModelResourceLocation(BuiltInRegistries.ITEM.getKey(stack.getItem()),"inventory"));
                 base = new Base(model, fallback(stack, model)); BASES.put(lookup.key, base);
             }
             lookup.model = base.model; lookup.fallback = base.fallback;
@@ -118,7 +118,7 @@ final class TransferItemSprites extends RenderType {
 
     private static Mesh flatten(ItemStack stack, BakedModel original) {
         if (original.isCustomRenderer()) return null;
-        var pose = new PoseStack(); var model = ClientHooks.handleCameraTransforms(pose, original, ItemDisplayContext.GUI, false);
+        var pose = new PoseStack(); var model = ForgeHooksClient.handleCameraTransforms(pose, original, ItemDisplayContext.GUI, false);
         if (model.isCustomRenderer()) return null;
         pose.translate(-.5, -.5, -.5);
         var quads = new ArrayList<float[]>(); var colors = new ArrayList<int[]>(); var random = RandomSource.create(42);

@@ -1,12 +1,6 @@
 .gradle/
 build/
 run*/
+*.log
 .idea/
 *.iml
-*.log
-.vscode/
-
-test-libs/
-__pycache__/
-*.pyc
-logs/

@@ -6,8 +6,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fluids.FluidStack;
 
 /** A per-editor catalogue of the registries and tags actually loaded by this client. */
 public final class RuneFilterSearch {
@@ -34,7 +34,7 @@ public final class RuneFilterSearch {
         BuiltInRegistries.FLUID.forEach(fluid -> {
             if (fluid == Fluids.EMPTY) return;
             var id = BuiltInRegistries.FLUID.getKey(fluid); var icon = fluidIcon(fluid);
-            String name = new FluidStack(fluid, 1000).getHoverName().getString();
+            String name = new FluidStack(fluid, 1000).getDisplayName().getString();
             values.add(new Option("fluid:" + id, name, "Fluid " + id, icon, Category.FLUIDS));
             namespaces.putIfAbsent(id.getNamespace(), icon);
         });

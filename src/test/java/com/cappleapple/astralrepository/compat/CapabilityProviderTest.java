@@ -2,14 +2,14 @@ package com.cappleapple.astralrepository.compat;
 
 import com.cappleapple.astralrepository.api.*;
 import net.minecraft.SharedConstants;
-import net.minecraft.core.component.DataComponents;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.energy.EnergyStorage;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.minecraftforge.energy.EnergyStorage;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemStackHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,17 +18,17 @@ class CapabilityProviderTest {
     @BeforeAll static void initializeMinecraft() { SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); }
     @Test void immutableItemKeysKeepComponentsButIgnoreCount() {
         ItemStack stack=new ItemStack(Items.IRON_INGOT,32);
-        stack.set(DataComponents.CUSTOM_NAME,Component.literal("Attuned iron"));
+        stack.setHoverName(Component.literal("Attuned iron"));
         ItemKey key=new ItemKey(stack);
         ItemStack same=stack.copyWithCount(1);
         assertEquals(key,new ItemKey(same));
         assertTrue(key.matches(same));
         assertFalse(key.matches(ItemStack.EMPTY));
         assertEquals(key.hashCode(),new ItemKey(same).hashCode());
-        stack.set(DataComponents.CUSTOM_NAME,Component.literal("Changed"));
+        stack.setHoverName(Component.literal("Changed"));
         assertNotEquals(key,new ItemKey(stack));
         assertFalse(key.matches(stack));
-        ItemStack sample=key.sample(); sample.set(DataComponents.CUSTOM_NAME,Component.literal("Altered sample"));
+        ItemStack sample=key.sample(); sample.setHoverName(Component.literal("Altered sample"));
         assertEquals(key,new ItemKey(same));
     }
     @Test void reusedSlotKeysStillNoticeLiveComponentEditsAndCountChanges() {
@@ -37,7 +37,7 @@ class CapabilityProviderTest {
         var provider=new ItemHandlerStorageProvider("live-components",handler,handler,()->true);
         var plain=new ItemKey(stack);assertEquals(32,provider.snapshot().get(plain));
         stack.setCount(16);assertEquals(16,provider.snapshot().get(plain));
-        stack.set(DataComponents.CUSTOM_NAME,Component.literal("Changed in place"));
+        stack.setHoverName(Component.literal("Changed in place"));
         var renamed=new ItemKey(stack);var contents=provider.snapshot();
         assertFalse(contents.containsKey(plain));assertEquals(16,contents.get(renamed));
         assertTrue(provider.extract(plain,8,false).isEmpty());
@@ -61,19 +61,19 @@ class CapabilityProviderTest {
     }
     @Test void insertionGuardFailureReturnsOwnedRemaindersAndKeepsUncertainCommitsVisible() {
         ItemStack offered=new ItemStack(Items.IRON_INGOT,12);
-        offered.set(DataComponents.CUSTOM_NAME,Component.literal("Caller-owned stack"));
+        offered.setHoverName(Component.literal("Caller-owned stack"));
         var reads=new java.util.concurrent.atomic.AtomicInteger();
         var simulationBackend=new ItemStackHandler(1){
             @Override public ItemStack insertItem(int slot,ItemStack stack,boolean simulate){reads.incrementAndGet();throw new IllegalArgumentException("Simulated insertion failed");}
         };
         var guarded=ProviderGuard.storage(new ItemHandlerStorageProvider("guarded-insertion",simulationBackend,simulationBackend,()->true));
         ItemStack first=guarded.insert(offered,true);
-        assertNotSame(offered,first);assertTrue(ItemStack.isSameItemSameComponents(offered,first));assertEquals(12,first.getCount());
-        first.shrink(5);first.remove(DataComponents.CUSTOM_NAME);
+        assertNotSame(offered,first);assertTrue(ItemStack.isSameItemSameTags(offered,first));assertEquals(12,first.getCount());
+        first.shrink(5);first.resetHoverName();
         ItemStack quarantined=guarded.insert(offered,false);
         assertEquals(1,reads.get());assertNotSame(offered,quarantined);assertNotSame(first,quarantined);
         assertEquals(12,offered.getCount());assertEquals(12,quarantined.getCount());
-        assertTrue(quarantined.has(DataComponents.CUSTOM_NAME));assertFalse(guarded.valid());
+        assertTrue(quarantined.hasCustomHoverName());assertFalse(guarded.valid());
         var commits=new java.util.concurrent.atomic.AtomicInteger();
         var uncertainBackend=new ItemStackHandler(1){
             @Override public ItemStack insertItem(int slot,ItemStack stack,boolean simulate){
@@ -286,10 +286,10 @@ class CapabilityProviderTest {
         var provider=new ItemHandlerStorageProvider("candidate-identities",handler,handler,()->true);
         var iron=provider.candidate(stack->true);var gold=provider.candidate(stack->true);var diamond=provider.candidate(stack->true);
         assertTrue(iron.matches(handler.getStackInSlot(0))&&gold.matches(handler.getStackInSlot(1))&&diamond.matches(handler.getStackInSlot(2)));
-        handler.getStackInSlot(0).set(DataComponents.CUSTOM_NAME,Component.literal("Live component change"));
+        handler.getStackInSlot(0).setHoverName(Component.literal("Live component change"));
         var renamed=provider.candidate(stack->true);
         assertNotEquals(iron,renamed);assertTrue(renamed.matches(handler.getStackInSlot(0)));
-        assertFalse(iron.sample().has(DataComponents.CUSTOM_NAME),"Earlier candidate remains an immutable identity");
+        assertFalse(iron.sample().hasCustomHoverName(),"Earlier candidate remains an immutable identity");
         assertEquals(5,handler.getStackInSlot(0).getCount());assertEquals(6,handler.getStackInSlot(1).getCount());assertEquals(7,handler.getStackInSlot(2).getCount());
     }
     @Test void occupiedHintsStayCheapAndDiscoverNewContentsDuringContinuousTransfers() {
@@ -320,9 +320,9 @@ class CapabilityProviderTest {
         var original=provider.candidate(stack->true);handler.setStackInSlot(0,ItemStack.EMPTY);
         handler.setStackInSlot(20,new ItemStack(Items.DIAMOND,4));
         var discovered=provider.candidate(stack->true);assertTrue(discovered.sample().is(Items.DIAMOND));
-        handler.getStackInSlot(20).set(DataComponents.CUSTOM_NAME,Component.literal("Updated live stack"));
+        handler.getStackInSlot(20).setHoverName(Component.literal("Updated live stack"));
         var renamed=provider.candidate(stack->true);assertNotEquals(discovered,renamed);
-        assertFalse(discovered.sample().has(DataComponents.CUSTOM_NAME));assertTrue(original.sample().is(Items.IRON_INGOT));
+        assertFalse(discovered.sample().hasCustomHoverName());assertTrue(original.sample().is(Items.IRON_INGOT));
         handler.setStackInSlot(20,ItemStack.EMPTY);handler.setStackInSlot(63,new ItemStack(Items.GOLD_INGOT,3));
         provider.snapshot();assertTrue(provider.candidate(stack->true).sample().is(Items.GOLD_INGOT),"Completed poll replaces the occupied index");
         handler.setStackInSlot(63,ItemStack.EMPTY);assertNull(provider.candidate(stack->true),"A stale occupied hint cannot return removed contents");
@@ -331,10 +331,10 @@ class CapabilityProviderTest {
         var handler=new ItemStackHandler(3);var provider=new ItemHandlerStorageProvider("insertion-identity",handler,handler,()->true);
         var stack=new ItemStack(Items.IRON_INGOT,4);
         assertTrue(provider.insert(stack,true).isEmpty());assertTrue(provider.insert(stack,false).isEmpty());
-        stack.set(DataComponents.CUSTOM_NAME,Component.literal("Distinct inserted iron"));
+        stack.setHoverName(Component.literal("Distinct inserted iron"));
         assertTrue(provider.insert(stack,true).isEmpty());assertTrue(provider.insert(stack,false).isEmpty());
-        assertEquals(4,handler.getStackInSlot(0).getCount());assertFalse(handler.getStackInSlot(0).has(DataComponents.CUSTOM_NAME));
-        assertEquals(4,handler.getStackInSlot(1).getCount());assertTrue(ItemStack.isSameItemSameComponents(stack,handler.getStackInSlot(1)));
+        assertEquals(4,handler.getStackInSlot(0).getCount());assertFalse(handler.getStackInSlot(0).hasCustomHoverName());
+        assertEquals(4,handler.getStackInSlot(1).getCount());assertTrue(ItemStack.isSameItemSameTags(stack,handler.getStackInSlot(1)));
     }
     @Test void failedLiveCandidateIsQuarantinedBeforeFurtherProviderCalls() {
         var calls=new java.util.concurrent.atomic.AtomicInteger();
@@ -353,7 +353,7 @@ class CapabilityProviderTest {
         public ItemStack insertItem(int slot,ItemStack stack,boolean simulate) {
             if(!isItemValid(slot,stack)) return stack;
             ItemStack present=stacks.getOrDefault(slot,ItemStack.EMPTY);
-            if(!present.isEmpty()&&!ItemStack.isSameItemSameComponents(present,stack)) return stack;
+            if(!present.isEmpty()&&!ItemStack.isSameItemSameTags(present,stack)) return stack;
             int accepted=Math.min(stack.getCount(),64-present.getCount());
             if(!simulate&&accepted>0) stacks.put(slot,stack.copyWithCount(present.getCount()+accepted));
             return stack.copyWithCount(stack.getCount()-accepted);

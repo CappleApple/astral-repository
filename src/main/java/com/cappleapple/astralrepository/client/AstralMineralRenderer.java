@@ -22,9 +22,9 @@ public final class AstralMineralRenderer implements BlockEntityRenderer<AstralMi
         for (Direction side : Direction.values()) {
             if (entity.getLevel() != null && !Block.shouldRenderFace(state, entity.getLevel(), entity.getBlockPos(), side, entity.getBlockPos().relative(side))) continue;
             random.setSeed(42);
-            for (var quad : model.getQuads(state, side, random)) consumer.putBulkData(poses.last(), quad, 1, 1, 1, 1, light, overlay);
+            for (var quad : model.getQuads(state, side, random)) consumer.putBulkData(poses.last(), quad, 1, 1, 1, 1, light, overlay, true);
         }
         random.setSeed(42);
-        for (var quad : model.getQuads(state, null, random)) consumer.putBulkData(poses.last(), quad, 1, 1, 1, 1, light, overlay);
+        for (var quad : model.getQuads(state, null, random)) consumer.putBulkData(poses.last(), quad, 1, 1, 1, 1, light, overlay, true);
     }
 }

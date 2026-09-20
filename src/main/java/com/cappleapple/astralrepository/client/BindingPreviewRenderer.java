@@ -9,10 +9,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.*;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.*;
 import org.joml.Vector3f;
 
 /** Cosmetic preview of server-resolved routes. Only the actively held binding wand displays them. */
@@ -37,7 +37,7 @@ public final class BindingPreviewRenderer {
         var wand=mc.player.getMainHandItem();var selection=RuneProgramming.selection(wand);
         return wand.is(AstralContent.ATTUNEMENT_WAND.get())&&selection!=null&&selection.layer()!=null&&selection.layer().equals(preview.rune())&&selection.address().position().dimension().equals(mc.level.dimension())?preview:BindingPreviewPackets.Preview.EMPTY;
     }
-    @SubscribeEvent public static void tick(ClientTickEvent.Post event){
+    @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent event){if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         var state=active();if(state.rune()==null||state.particleOrigin()==null)return;var mc=Minecraft.getInstance();if(mc.level.getGameTime()%3!=0)return;
         var normal=Vec3.atLowerCornerOf(state.particleFace().getNormal());
         var right=Math.abs(normal.y)>.5?new Vec3(1,0,0):normal.cross(new Vec3(0,1,0)).normalize();var up=normal.cross(right);
@@ -68,7 +68,7 @@ public final class BindingPreviewRenderer {
         buffers.endBatch(type);
     }
     private static void ribbon(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,Vec3 startSide,Vec3 endSide,int color,int alpha){
-        for(Vec3 point:List.of(a.add(startSide),b.add(endSide),b.subtract(endSide),a.subtract(startSide)))vertex.addVertex(pose.last().pose(),(float)point.x,(float)point.y,(float)point.z).setColor(color>>16&255,color>>8&255,color&255,alpha);
+        for(Vec3 point:List.of(a.add(startSide),b.add(endSide),b.subtract(endSide),a.subtract(startSide)))vertex.vertex(pose.last().pose(),(float)point.x,(float)point.y,(float)point.z).color(color>>16&255,color>>8&255,color&255,alpha).endVertex();
     }
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event){preview=BindingPreviewPackets.Preview.EMPTY;curves=List.of();level=null;}
     private BindingPreviewRenderer(){}

@@ -50,7 +50,7 @@ public final class RuneSurface implements NetworkAnchor {
     public RuneLayer get(UUID id){for(RuneLayer layer:layers)if(layer.id().equals(id))return layer;return null;}
     public RuneLayer addLayer(ResourceLocation item,RuneLayer.Mode mode){if(layers.size()>=placementLimit()||layers.size()+archivedLayers.size()>=MAX_LAYERS)return null;RuneLayer layer=new RuneLayer(this,UUID.randomUUID(),Objects.requireNonNull(item),Objects.requireNonNull(mode));layers.add(layer);topologyChanged();return layer;}
     public boolean removeLayer(UUID id){boolean removed=layers.removeIf(layer->layer.id().equals(id));if(removed){restoreArchivedLayer();topologyChanged();}return removed;}
-    private void restoreArchivedLayer(){if(layers.size()<placementLimit()&&!archivedLayers.isEmpty()){RuneLayer restored=archivedLayers.removeFirst();layers.add(restored);restored.setEnabled(false);restored.report("Preserved legacy rune restored; paused");}}
+    private void restoreArchivedLayer(){if(layers.size()<placementLimit()&&!archivedLayers.isEmpty()){RuneLayer restored=archivedLayers.remove(0);layers.add(restored);restored.setEnabled(false);restored.report("Preserved legacy rune restored; paused");}}
     public record TargetResult(boolean success,boolean assigned,String message){}
     public TargetResult toggleTarget(UUID id,GlobalPos position,Direction face){
         RuneLayer layer=get(id);if(layer!=null&&layer.mode()==RuneLayer.Mode.FILTER)return new TargetResult(false,false,"Filter runes do not need targets.");if(layer==null)return new TargetResult(false,false,"That rune layer no longer exists.");
@@ -72,7 +72,7 @@ public final class RuneSurface implements NetworkAnchor {
     public DistributionMode distributionMode(){return distribution;} public FilterRules insertionFilter(){return insertion;} public FilterRules extractionFilter(){return extraction;}
     public FilterRules networkInsertionFilter(){return networkAccess;} public FilterRules networkExtractionFilter(){return networkAccess;}
     public FilterRules selectedFilter(){return editingExtraction?extraction:insertion;} public boolean editingExtraction(){return editingExtraction;} public boolean excludeNext(){return excludeNext;}
-    public void setChannel(int value){channel=Math.clamp(value,-1,15);topologyChanged();} public void setPriority(int value){priority=Math.clamp(value,-999,999);topologyChanged();}
+    public void setChannel(int value){channel=com.cappleapple.astralrepository.platform.Backport.clamp(value,-1,15);topologyChanged();} public void setPriority(int value){priority=com.cappleapple.astralrepository.platform.Backport.clamp(value,-999,999);topologyChanged();}
     public void setDimensional(boolean value){dimensional=value;topologyChanged();} public void cycleDistribution(){distribution=distribution.next();topologyChanged();}
     public void toggleDirection(){editingExtraction=!editingExtraction;changed();} public void toggleExclusion(){excludeNext=!excludeNext;changed();}
     public void toggleEnabled(){enabled=!enabled;topologyChanged();}
@@ -89,7 +89,7 @@ public final class RuneSurface implements NetworkAnchor {
         ListTag archive=new ListTag();for(RuneLayer layer:archivedLayers)archive.add(layer.save(registries));tag.put("ArchivedLayers",archive);tag.putInt("LayerVersion",2);return tag;
     }
     public static RuneSurface load(MinecraftServer server,CompoundTag tag,HolderLookup.Provider registries){
-        RuneSurface rune=new RuneSurface(server,AnchorAddress.load(tag));rune.channel=tag.contains("Channel")?Math.clamp(tag.getInt("Channel"),-1,15):-1;rune.priority=Math.clamp(tag.getInt("Priority"),-999,999);
+        RuneSurface rune=new RuneSurface(server,AnchorAddress.load(tag));rune.channel=tag.contains("Channel")?com.cappleapple.astralrepository.platform.Backport.clamp(tag.getInt("Channel"),-1,15):-1;rune.priority=com.cappleapple.astralrepository.platform.Backport.clamp(tag.getInt("Priority"),-999,999);
         rune.dimensional=tag.getBoolean("Dimensional");rune.enabled=!tag.contains("Enabled")||tag.getBoolean("Enabled");rune.editingExtraction=tag.getBoolean("EditingExtraction");rune.excludeNext=tag.getBoolean("ExcludeNext");
         try{rune.distribution=DistributionMode.valueOf(tag.getString("Distribution"));}catch(IllegalArgumentException ignored){}
         rune.insertion.load(tag.getCompound("Insertion"),registries);rune.extraction.load(tag.getCompound("Extraction"),registries);rune.persistent.merge(tag.getCompound("Persistent"));
@@ -102,7 +102,7 @@ public final class RuneSurface implements NetworkAnchor {
             ListTag values=tag.getList("Glyphs",Tag.TAG_COMPOUND);
             for(int i=0;i<Math.min(64,values.size());i++){
                 CompoundTag old=values.getCompound(i);boolean push="DISTRIBUTION".equals(old.getString("Role"))||old.getString("Item").endsWith(":distribution_rune");
-                RuneLayer layer=new RuneLayer(rune,UUID.randomUUID(),ResourceLocation.fromNamespaceAndPath("astral_repository",push?"push_rune":"pull_rune"),push?RuneLayer.Mode.PUSH:RuneLayer.Mode.PULL);
+                RuneLayer layer=new RuneLayer(rune,UUID.randomUUID(),new ResourceLocation("astral_repository",push?"push_rune":"pull_rune"),push?RuneLayer.Mode.PUSH:RuneLayer.Mode.PULL);
                 layer.filter().load(tag.getCompound(push?"Extraction":"Insertion"),registries);rune.acceptLoaded(layer);
             }
         }

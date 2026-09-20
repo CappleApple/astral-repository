@@ -12,15 +12,15 @@ public final class ItemKey implements ResourceKey {
     public ItemKey(ItemStack stack) {
         if (Objects.requireNonNull(stack).isEmpty()) throw new IllegalArgumentException("Empty item identity");
         sample = stack.copyWithCount(1);
-        hash = ItemStack.hashItemAndComponents(sample);
+        hash = com.cappleapple.astralrepository.platform.Backport.itemHash(sample);
     }
     public ItemStack sample() { return sample.copy(); }
     /** Compare live contents without allocating another immutable identity. */
-    public boolean matches(ItemStack stack) { return !stack.isEmpty() && ItemStack.isSameItemSameComponents(sample, stack); }
+    public boolean matches(ItemStack stack) { return !stack.isEmpty() && ItemStack.isSameItemSameTags(sample, stack); }
     public ResourceLocation id() { return BuiltInRegistries.ITEM.getKey(sample.getItem()); }
     public ResourceLocation type() { return ResourceKinds.ITEM; }
     @Override public boolean equals(Object other) {
-        return other instanceof ItemKey key && ItemStack.isSameItemSameComponents(sample, key.sample);
+        return other instanceof ItemKey key && ItemStack.isSameItemSameTags(sample, key.sample);
     }
     @Override public int hashCode() { return hash; }
     @Override public String toString() { return id().toString(); }

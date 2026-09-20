@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform.client.event;
-public final class RegisterMenuScreensEvent {public <M extends net.minecraft.world.inventory.AbstractContainerMenu,U extends net.minecraft.client.gui.screens.Screen & net.minecraft.client.gui.screens.inventory.MenuAccess<M>> void register(net.minecraft.world.inventory.MenuType<M> type,net.minecraft.client.gui.screens.MenuScreens.ScreenConstructor<M,U> factory){net.minecraft.client.gui.screens.MenuScreens.register(type,factory);}}

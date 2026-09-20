@@ -93,7 +93,7 @@ class PreparedTransferPathTest {
         var packet = packet(path(130, 0), -2, null, null);
         var prepared = PreparedTransferPath.create(packet, 591, .2, ResourceArrival.create(packet, 591, .18));
         for (int i = 0; i < 100_000; i++) sampled = prepared.position((i % 10_000) / 10_000.0);
-        long thread = Thread.currentThread().threadId();
+        long thread = Thread.currentThread().getId();
         long before = allocations.getThreadAllocatedBytes(thread);
         for (int i = 0; i < 100_000; i++) sampled = prepared.position((i % 10_000) / 10_000.0);
         long bytes = allocations.getThreadAllocatedBytes(thread) - before;
@@ -120,7 +120,7 @@ class PreparedTransferPathTest {
     }
 
     private static NetworkPackets.Visual packet(List<BlockPos> path, int slot, TransferVisuals.Endpoint departure, TransferVisuals.Endpoint arrival) {
-        return new NetworkPackets.Visual(path.getFirst(), path.getLast(), ItemStack.EMPTY, 0xffffff,
+        return new NetworkPackets.Visual(path.get(0), path.get(path.size()-1), ItemStack.EMPTY, 0xffffff,
                 TransferVisuals.duration(path), slot, path, departure, arrival);
     }
 }

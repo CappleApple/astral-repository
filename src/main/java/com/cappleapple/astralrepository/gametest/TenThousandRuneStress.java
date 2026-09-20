@@ -18,13 +18,13 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.*;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.*;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.tick.ServerTickEvent;
 
 /** Opt-in actual inventory workload. No worker calls, resource resets, or artificial logistics budgets. */
 @EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.DEDICATED_SERVER)
@@ -79,7 +79,7 @@ public final class TenThousandRuneStress {
                 NODES.add(new Node(group,origin.offset(27,6,9),true));NODES.add(new Node(group,origin.offset(39,6,9),false));
             }
             for(Node node:NODES)needed.add(new ChunkPos(node.pos));chunks=List.copyOf(needed);
-            initialized=true;started=System.nanoTime();NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST,TenThousandRuneStress::finishTick);
+            initialized=true;started=System.nanoTime();MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST,TenThousandRuneStress::finishTick);
             progress("Creating "+COUNT+" distinct container endpoints and "+NODES.size()+" crystals over "+NETWORKS+" physically separate networks; "+chunks.size()+" fixture chunks");
         }catch(Throwable failure){fail(server,failure);}
     }

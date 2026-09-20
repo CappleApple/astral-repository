@@ -43,7 +43,7 @@ class CraftingCoreTest {
         viable.add(recipe("z_from_raw", "a", 1, "table", "raw"));
         var plan = new CraftPlanner<>(viable).plan("a", 1, Map.of("raw", 1L), Set.of("table"));
         assertEquals(1, plan.nodes().size());
-        assertEquals("z_from_raw", plan.nodes().getFirst().recipe().id());
+        assertEquals("z_from_raw", plan.nodes().get(0).recipe().id());
     }
     @Test void failedBranchesNeverLeakReservations() {
         var expensive = new CraftRecipe<>("preferred_but_missing", "final", 1L, "table", List.of(CraftRecipe.Ingredient.of("iron"), CraftRecipe.Ingredient.of("absent")), 10, 1);
@@ -66,7 +66,7 @@ class CraftingCoreTest {
         var alternatives = new CraftRecipe<>("a", "a", 1L, "table", List.of(new CraftRecipe.Ingredient<>(List.of("iron", "wood"), 1)), 0, 1);
         var plan = new CraftPlanner<>(List.of(alternatives, recipe("final", "final", 1, "table", "a", "iron")))
                 .plan("final", 1, Map.of("iron", 1L, "wood", 1L), Set.of("table"));
-        assertEquals("wood", plan.nodes().getFirst().selected().getFirst().key());
+        assertEquals("wood", plan.nodes().get(0).selected().get(0).key());
     }
     @Test void sharedIntermediateSurplusFeedsBothBranches() {
         var recipes = List.of(recipe("planks", "plank", 4, "table", "log"), recipe("a", "a", 1, "table", "plank", "plank"),

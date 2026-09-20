@@ -12,10 +12,10 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.phys.BlockHitResult;
 import java.nio.file.*;
 
-@net.neoforged.fml.common.EventBusSubscriber(modid="astral_repository",value=net.neoforged.api.distmarker.Dist.CLIENT)
+@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid="astral_repository",value=net.minecraftforge.api.distmarker.Dist.CLIENT)
 public final class InventoryEditorSmoke {
     private static ItemStack tooltip=ItemStack.EMPTY;
-    @net.neoforged.bus.api.SubscribeEvent public static void tooltip(net.neoforged.neoforge.client.event.ScreenEvent.Render.Post event){if(Boolean.getBoolean("astral_repository.editorOnly")&&phase==14)event.getGuiGraphics().renderTooltip(Minecraft.getInstance().font,tooltip,180,100);}
+    @net.minecraftforge.eventbus.api.SubscribeEvent public static void tooltip(net.minecraftforge.client.event.ScreenEvent.Render.Post event){if(Boolean.getBoolean("astral_repository.editorOnly")&&phase==14)event.getGuiGraphics().renderTooltip(Minecraft.getInstance().font,tooltip,180,100);}
     private static int phase,ticks;
     private static volatile boolean ready;
     private static volatile String failure;
@@ -24,10 +24,10 @@ public final class InventoryEditorSmoke {
         var mc=Minecraft.getInstance();if(failure!=null)throw new AssertionError(failure);
         if(++ticks>1200)throw new AssertionError("Inventory editor timeout "+phase);
         if(phase==0){phase=1;mc.getSingleplayerServer().execute(()->{try{
-            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);
             p.getInventory().setItem(9,new ItemStack(Items.IRON_INGOT,32));p.getInventory().setItem(10,new ItemStack(Items.WATER_BUCKET));
-            var surface=RuneSurfaces.get(p.serverLevel(),HOST,Direction.SOUTH);var rune=surface.layers().getFirst();rune.clearFilter();rune.filter().setTarget(Long.MAX_VALUE);
-            var aim=RuneLayout.placed(surface).getFirst().center();p.teleportTo(aim.x,aim.y-p.getEyeHeight(),aim.z+2);
+            var surface=RuneSurfaces.get(p.serverLevel(),HOST,Direction.SOUTH);var rune=surface.layers().get(0);rune.clearFilter();rune.filter().setTarget(Long.MAX_VALUE);
+            var aim=RuneLayout.placed(surface).get(0).center();p.teleportTo(aim.x,aim.y-p.getEyeHeight(),aim.z+2);
             p.getInventory().selected=0;var wand=p.getMainHandItem();check(!wand.hasFoil(),"Idle wand glinted");p.setShiftKeyDown(true);
             var hit=new BlockHitResult(aim,Direction.SOUTH,HOST,false);RuneProgramming.use(wand,p.level(),HOST,p,InteractionHand.MAIN_HAND,hit);check(wand.hasFoil(),"Binding wand lacked glint");
             p.setShiftKeyDown(false);RuneProgramming.use(wand,p.level(),HOST,p,InteractionHand.MAIN_HAND,hit);check(!wand.hasFoil(),"Finished binding retained glint");
@@ -69,7 +69,7 @@ public final class InventoryEditorSmoke {
             RecipeViewerDropSmoke.verifyRune(s);s.apply();next(6);
         }
         else if(phase==6&&mc.screen==null&&ticks>15){
-            phase=7;mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+            phase=7;mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);
                 check(p.getInventory().items.stream().filter(x->x.is(Items.IRON_INGOT)).mapToInt(ItemStack::getCount).sum()>=32,"Filter copied inventory destructively");
                 p.getInventory().selected=7;p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(AstralContent.RECIPE_TOME.get()));
                 p.getMainHandItem().getItem().use(p.level(),p,InteractionHand.MAIN_HAND);
@@ -79,7 +79,7 @@ public final class InventoryEditorSmoke {
             shiftItem(s,Items.IRON_INGOT);next(8);
         }
         else if(phase==8&&mc.screen instanceof RecipeTomeScreen s&&ticks>15){
-            check(!s.visibleRecipes().isEmpty()&&s.visibleRecipes().getFirst().output().is(Items.IRON_INGOT),"Tome inventory sample did not resolve server recipes");
+            check(!s.visibleRecipes().isEmpty()&&s.visibleRecipes().get(0).output().is(Items.IRON_INGOT),"Tome inventory sample did not resolve server recipes");
             shot("tome_pagination.png");RecipeViewerDropSmoke.tome(s);next(9);
         }
         else if(phase==9&&mc.screen instanceof RecipeTomeScreen s&&ticks>15){

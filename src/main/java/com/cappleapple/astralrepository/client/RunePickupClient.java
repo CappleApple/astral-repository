@@ -4,10 +4,10 @@ import com.cappleapple.astralrepository.network.RunePickupPackets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.event.TickEvent.ClientTickEvent;
+import net.minecraftforge.client.event.InputEvent;
+import net.minecraftforge.common.MinecraftForge;
+import com.cappleapple.astralrepository.platform.PacketDistributor;
 
 /** A consumed attack stays consumed until release, including after the last glyph disappears. */
 public final class RunePickupClient {
@@ -17,8 +17,8 @@ public final class RunePickupClient {
     public static long pickupRequests;
     private RunePickupClient() {}
     public static void setup() {
-        NeoForge.EVENT_BUS.addListener(RunePickupClient::attack);
-        NeoForge.EVENT_BUS.addListener(RunePickupClient::tick);
+        MinecraftForge.EVENT_BUS.addListener(RunePickupClient::attack);
+        MinecraftForge.EVENT_BUS.addListener(RunePickupClient::tick);
     }
     public static void attack(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isAttack()) return;
@@ -48,7 +48,7 @@ public final class RunePickupClient {
             event.setSwingHand(false);
         }
     }
-    public static void tick(ClientTickEvent.Post event) {
+    public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         Minecraft minecraft = Minecraft.getInstance();
         if (level != minecraft.level || minecraft.player == null || !minecraft.options.keyAttack.isDown()) {
             attackSeen = false;

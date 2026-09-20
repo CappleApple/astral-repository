@@ -14,8 +14,8 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class RuneAggregateGameTests {

@@ -2,14 +2,12 @@ package com.cappleapple.astralrepository.content;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 
@@ -37,14 +35,14 @@ public final class PhysicalProgramming {
         describe(player,node);return true;
     }
     public static void bind(ItemStack stack,String key,GlobalPos pos) {
-        CompoundTag data=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
-        GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE,pos).result().ifPresent(value->data.put(key,value));stack.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
+        CompoundTag data=com.cappleapple.astralrepository.platform.Backport.customData(stack);
+        GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE,pos).result().ifPresent(value->data.put(key,value));stack.setTag(data);
     }
     public static GlobalPos readBinding(ItemStack stack,String key) {
-        CompoundTag data=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+        CompoundTag data=com.cappleapple.astralrepository.platform.Backport.customData(stack);
         return data.contains(key)?GlobalPos.CODEC.parse(NbtOps.INSTANCE,data.get(key)).result().orElse(null):null;
     }
-    public static boolean hasRemoteAttunement(ItemStack stack){return stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag().getBoolean("DimensionalRemote");}
+    public static boolean hasRemoteAttunement(ItemStack stack){return com.cappleapple.astralrepository.platform.Backport.customData(stack).getBoolean("DimensionalRemote");}
     public static void describe(Player player,CrystalNodeBlockEntity node){String color=node.channel()<0?"neutral":DyeColor.byId(node.channel()).getName();message(player,node.kind()+" | "+color+" | Use the wand to link endpoints. Apply routing runes to container faces.");}
     private static void message(Player player,String text){}
 }

@@ -6,16 +6,16 @@ import java.util.function.Consumer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
+import com.cappleapple.astralrepository.platform.StreamCodec;
+import com.cappleapple.astralrepository.platform.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.event.TickEvent.ServerTickEvent;
+import com.cappleapple.astralrepository.platform.PacketDistributor;
+import com.cappleapple.astralrepository.platform.RegisterPayloadHandlersEvent;
 
 /** Bounded nearby visual state. A looked-at face remains editable without special equipment. */
 public final class RunePackets {
@@ -25,8 +25,8 @@ public final class RunePackets {
         public List<ResourceLocation> glyphs(){return layers.stream().map(Layer::item).toList();}
     }
     public record Faces(List<Face> faces) implements CustomPacketPayload {
-        public static final Type<Faces> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository","rune_faces"));
-        public static final StreamCodec<RegistryFriendlyByteBuf,Faces> CODEC=StreamCodec.of((b,p)->{
+        public static final Type<Faces> TYPE=new Type<>(new ResourceLocation("astral_repository","rune_faces"));
+        public static final StreamCodec<FriendlyByteBuf,Faces> CODEC=StreamCodec.of((b,p)->{
             b.writeVarInt(p.faces.size());
             for(Face f:p.faces){b.writeBlockPos(f.pos);b.writeEnum(f.face);b.writeInt(f.channel);b.writeVarInt(f.layers.size());for(Layer l:f.layers){
                 b.writeUUID(l.id);b.writeResourceLocation(l.item);b.writeEnum(l.mode);b.writeBoolean(l.target!=null);
@@ -43,11 +43,11 @@ public final class RunePackets {
             }faces.add(new Face(pos,side,channel,List.copyOf(layers)));}return new Faces(List.copyOf(faces));});
         @Override public Type<Faces> type(){return TYPE;}
     }
-    private static List<ResourceLocation> readTargetIcons(RegistryFriendlyByteBuf b){int n=bounded(b.readVarInt(),6);List<ResourceLocation> icons=new ArrayList<>();for(int i=0;i<n;i++)icons.add(b.readResourceLocation());return List.copyOf(icons);}
+    private static List<ResourceLocation> readTargetIcons(FriendlyByteBuf b){int n=bounded(b.readVarInt(),6);List<ResourceLocation> icons=new ArrayList<>();for(int i=0;i<n;i++)icons.add(b.readResourceLocation());return List.copyOf(icons);}
     private static int bounded(int value,int max){if(value<0||value>max)throw new IllegalArgumentException("Invalid rune packet count");return value;}
     public record Art(net.minecraft.nbt.CompoundTag design) implements CustomPacketPayload {
-        public static final Type<Art> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository","rune_art"));
-        public static final StreamCodec<RegistryFriendlyByteBuf,Art> CODEC=StreamCodec.of((b,p)->b.writeNbt(p.design),b->new Art(b.readNbt()));
+        public static final Type<Art> TYPE=new Type<>(new ResourceLocation("astral_repository","rune_art"));
+        public static final StreamCodec<FriendlyByteBuf,Art> CODEC=StreamCodec.of((b,p)->b.writeNbt(p.design),b->new Art(b.readNbt()));
         public Type<Art> type(){return TYPE;}
     }
     public static Consumer<Art> artReceiver=p->{};
@@ -56,7 +56,7 @@ public final class RunePackets {
     public static Consumer<Faces> receiver=packet->{};
     public static void setup(IEventBus bus){bus.addListener(RunePackets::register);}
     private static void register(RegisterPayloadHandlersEvent event){var registrar=event.registrar("11");BindingPreviewPackets.register(registrar);registrar.playToClient(Faces.TYPE,Faces.CODEC,(packet,context)->receiver.accept(packet));registrar.playToClient(Art.TYPE,Art.CODEC,(p,c)->artReceiver.accept(p));}
-    public static void tick(ServerTickEvent.Post event){
+    public static void tick(ServerTickEvent event){if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         if(event.getServer().getTickCount()%5!=0)return;
         for(var player:event.getServer().getPlayerList().getPlayers()){
             BindingPreviewPackets.tick(player);
@@ -75,23 +75,23 @@ public final class RunePackets {
     public static Layer snapshot(RuneSurface surface,RuneLayer layer){
         String name="Unlinked";var target=layer.target();
         if(target!=null){var world=surface.getLevel().getServer().getLevel(target.position().dimension());name=world!=null&&world.hasChunkAt(target.position().pos())?world.getBlockState(target.position().pos()).getBlock().getName().getString():"Unloaded container";}
-        ResourceLocation targetItem=ResourceLocation.withDefaultNamespace("barrel");
+        ResourceLocation targetItem=new ResourceLocation("barrel");
         if(target!=null){var world=surface.getLevel().getServer().getLevel(target.position().dimension());if(world!=null&&world.hasChunkAt(target.position().pos())){var item=world.getBlockState(target.position().pos()).getBlock().asItem();if(item!=net.minecraft.world.item.Items.AIR)targetItem=BuiltInRegistries.ITEM.getKey(item);}}
         List<FilterIcon> icons=layer.filter().entries().stream().limit(6).map(e->{
             var item=switch(e.kind()){
-                case ITEM,COMPONENTS->BuiltInRegistries.ITEM.get(ResourceLocation.parse(e.id()));
+                case ITEM,COMPONENTS->BuiltInRegistries.ITEM.get(new ResourceLocation(e.id()));
                 case ITEM_TAG,FLUID_TAG->net.minecraft.world.item.Items.NAME_TAG;
                 case NAMESPACE->net.minecraft.world.item.Items.BOOK;
-                case FLUID->{var bucket=BuiltInRegistries.FLUID.get(ResourceLocation.parse(e.id())).getBucket();yield bucket==net.minecraft.world.item.Items.AIR?net.minecraft.world.item.Items.BUCKET:bucket;}
+                case FLUID->{var bucket=BuiltInRegistries.FLUID.get(new ResourceLocation(e.id())).getBucket();yield bucket==net.minecraft.world.item.Items.AIR?net.minecraft.world.item.Items.BUCKET:bucket;}
             };
             return new FilterIcon(BuiltInRegistries.ITEM.getKey(item),e.exclude()||layer.filter().blacklist(),e.kind()==FilterRules.Kind.COMPONENTS);
         }).toList();
-        return new Layer(layer.id(),layer.item(),layer.mode(),target,limit(name,128),limit(layer.status(),256),filterText(layer.filter()),icons,layer.priority(),layer.enabled(),layer.filter().minimum(),layer.filter().target(),layer.transferredItems(),targetItem,layer.filter().entries().size(),layer.filter().all(),layer.design().key(),layer.u(),layer.v(),layer.targets().stream().limit(6).map(t->{var world=surface.getLevel().getServer().getLevel(t.position().dimension());return world!=null&&world.hasChunkAt(t.position().pos())?BuiltInRegistries.ITEM.getKey(world.getBlockState(t.position().pos()).getBlock().asItem()):ResourceLocation.withDefaultNamespace("barrier");}).toList(),layer.targets().size());
+        return new Layer(layer.id(),layer.item(),layer.mode(),target,limit(name,128),limit(layer.status(),256),filterText(layer.filter()),icons,layer.priority(),layer.enabled(),layer.filter().minimum(),layer.filter().target(),layer.transferredItems(),targetItem,layer.filter().entries().size(),layer.filter().all(),layer.design().key(),layer.u(),layer.v(),layer.targets().stream().limit(6).map(t->{var world=surface.getLevel().getServer().getLevel(t.position().dimension());return world!=null&&world.hasChunkAt(t.position().pos())?BuiltInRegistries.ITEM.getKey(world.getBlockState(t.position().pos()).getBlock().asItem()):new ResourceLocation("barrier");}).toList(),layer.targets().size());
     }
     public static String filterText(FilterRules filter){
         if(filter.entries().isEmpty())return "All items and fluids";
         List<String> names=new ArrayList<>();for(var e:filter.entries().stream().limit(6).toList()){
-            String name=switch(e.kind()){case ITEM,COMPONENTS->BuiltInRegistries.ITEM.get(ResourceLocation.parse(e.id())).getDescription().getString()+(e.kind()==FilterRules.Kind.COMPONENTS?" (exact data)":"");case ITEM_TAG->"#"+e.id();case FLUID_TAG->"Fluid #"+e.id();case NAMESPACE->"@"+e.id();case FLUID->BuiltInRegistries.FLUID.get(ResourceLocation.parse(e.id())).getFluidType().getDescription().getString();};
+            String name=switch(e.kind()){case ITEM,COMPONENTS->BuiltInRegistries.ITEM.get(new ResourceLocation(e.id())).getDescription().getString()+(e.kind()==FilterRules.Kind.COMPONENTS?" (exact data)":"");case ITEM_TAG->"#"+e.id();case FLUID_TAG->"Fluid #"+e.id();case NAMESPACE->"@"+e.id();case FLUID->BuiltInRegistries.FLUID.get(new ResourceLocation(e.id())).getFluidType().getDescription().getString();};
             names.add((e.exclude()?"Except ":"")+name);
         }
         return limit((filter.blacklist()?"Blacklist: ":"Whitelist: ")+String.join(", ",names)+(filter.entries().size()>6?" …":""),512);

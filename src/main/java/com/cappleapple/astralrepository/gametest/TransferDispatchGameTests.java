@@ -23,7 +23,7 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.PacketSendListener;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -32,10 +32,10 @@ import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.tick.ServerTickEvent;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -50,7 +50,7 @@ public final class TransferDispatchGameTests {
                 CommonListenerCookie.createInitial(player.getGameProfile(), false)) {
             @Override public void send(Packet<?> packet) {
                 if (!(packet instanceof ClientboundCustomPayloadPacket custom) || !(custom.payload() instanceof TransferVisualBatch batch)) return;
-                var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
+                var buffer = new FriendlyByteBuf(Unpooled.buffer(), level.registryAccess());
                 try {
                     TransferVisualBatch.CODEC.encode(buffer, batch); sizes.add(buffer.readableBytes());
                     batches.add(TransferVisualBatch.CODEC.decode(buffer));
@@ -86,9 +86,9 @@ public final class TransferDispatchGameTests {
             for (int i = 0; i < 2; i++) {
                 var observer = observers.get(i);
                 helper.assertTrue(observer.batches.size() == 1, "One animation payload replaces ten thousand individual sends per observer");
-                var batch = observer.batches.getFirst();
+                var batch = observer.batches.get(0);
                 helper.assertTrue(batch.visuals().size() == 128 && !batch.resetStations(), "Only the bounded fair sample is serialized");
-                helper.assertTrue(observer.bytes.getFirst() <= 65536, "Encoded animation work respects the configured byte budget");
+                helper.assertTrue(observer.bytes.get(0) <= 65536, "Encoded animation work respects the configured byte budget");
                 for (int style = -4; style <= -1; style++) {
                     int medium = style;
                     helper.assertTrue(batch.visuals().stream().anyMatch(v -> v.slot() == medium), "Every transferred resource medium remains represented");
@@ -97,9 +97,9 @@ public final class TransferDispatchGameTests {
             helper.assertTrue(observers.get(2).batches.isEmpty(), "Distant players receive no animation payload");
             helper.assertTrue(source.getCount() == 64, "Cosmetic sampling never mutates the real item stack");
             flush(level);
-            helper.assertTrue(observers.getFirst().batches.size() == 1, "There is no deferred animation backlog on the next tick");
+            helper.assertTrue(observers.get(0).batches.size() == 1, "There is no deferred animation backlog on the next tick");
             AstralRepository.LOGGER.info("Visual dispatch stress: 10000 offers, 2 nearby observers including a mid-leg observer, 1 distant observer; 128 flights and {} bytes each; offer={} ms, flush+codec={} ms",
-                    observers.getFirst().bytes.getFirst(), offerMillis, flushMillis);
+                    observers.get(0).bytes.get(0), offerMillis, flushMillis);
             helper.succeed();
         } finally {
             for (var observer : observers) level.players().remove(observer.player);
@@ -121,8 +121,8 @@ public final class TransferDispatchGameTests {
             }
             TransferVisuals.send(level.getServer(), route(level, start, start), ItemStack.EMPTY, 0xffffff, 0);
             flush(level);
-            helper.assertTrue(receiver.batches.size() == 1 && receiver.batches.getFirst().resetStations(), "Dropped station updates explicitly clear obsolete client displays");
-            helper.assertTrue(receiver.bytes.getFirst() <= 4096, "Station traffic shares the hard per-player wire budget");
+            helper.assertTrue(receiver.batches.size() == 1 && receiver.batches.get(0).resetStations(), "Dropped station updates explicitly clear obsolete client displays");
+            helper.assertTrue(receiver.bytes.get(0) <= 4096, "Station traffic shares the hard per-player wire budget");
             receiver.batches.clear(); receiver.bytes.clear();
             var tag = new CompoundTag(); tag.putString("oversized_icon", "x".repeat(300000));
             var oversized = new ItemStack(Items.DIAMOND); oversized.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
@@ -130,7 +130,7 @@ public final class TransferDispatchGameTests {
             TransferVisuals.send(level.getServer(), path, oversized, 0xffffff, -1);
             TransferVisuals.send(level.getServer(), path, new ItemStack(Items.IRON_INGOT), 0xffffff, -1);
             flush(level);
-            helper.assertTrue(receiver.batches.size() == 1 && receiver.batches.getFirst().visuals().size() == 1, "An oversized icon is omitted while ordinary animation still arrives");
+            helper.assertTrue(receiver.batches.size() == 1 && receiver.batches.get(0).visuals().size() == 1, "An oversized icon is omitted while ordinary animation still arrives");
             helper.assertTrue(oversized.get(DataComponents.CUSTOM_DATA).copyTag().getString("oversized_icon").length() == 300000, "The transferred item data is untouched");
             helper.succeed();
         } finally {
@@ -169,10 +169,10 @@ public final class TransferDispatchGameTests {
                 workBytes += costField.getInt(entry);
             }
             helper.assertTrue(attempts <= 2 && workBytes <= 8192, "Encoding stops at two wire budgets, including failed oversized icons");
-            helper.assertTrue(receiver.batches.size() == 1 && receiver.batches.getFirst().resetStations()
-                    && receiver.batches.getFirst().visuals().isEmpty() && receiver.bytes.getFirst() <= 4096, "The bounded reset removes stale displays when every icon is too large");
+            helper.assertTrue(receiver.batches.size() == 1 && receiver.batches.get(0).resetStations()
+                    && receiver.batches.get(0).visuals().isEmpty() && receiver.bytes.get(0) <= 4096, "The bounded reset removes stale displays when every icon is too large");
             helper.assertTrue(source.getCount() == 64 && source.get(DataComponents.CUSTOM_DATA).copyTag().getString("large_icon").length() == 8192, "Cosmetic overload leaves source quantities and data unchanged");
-            AstralRepository.LOGGER.info("Visual dispatch heavy-component stress: 1000 station offers, 512 retained, {} encode attempts, {} encoded-work bytes, {} wire bytes", attempts, workBytes, receiver.bytes.getFirst());
+            AstralRepository.LOGGER.info("Visual dispatch heavy-component stress: 1000 station offers, 512 retained, {} encode attempts, {} encoded-work bytes, {} wire bytes", attempts, workBytes, receiver.bytes.get(0));
             helper.succeed();
         } catch (ReflectiveOperationException failure) { throw new AssertionError(failure); }
         finally {
@@ -234,7 +234,7 @@ public final class TransferDispatchGameTests {
             helper.assertTrue(resolutions[0] == 1 && samples[0] == 1, "One admitted visual resolves its item sample and shared endpoint once across both observers");
             rune.position(.12, -.08); source.setCount(17); flush(level);
             for (int i = 1; i < observers.size(); i++) {
-                var visual = observers.get(i).batches.getFirst().visuals().getFirst();
+                var visual = observers.get(i).batches.get(0).visuals().get(0);
                 helper.assertTrue(visual.stack().is(Items.IRON_INGOT) && visual.stack().getCount() == 1 && source.getCount() == 17,
                         "Each observer receives the copied one-item snapshot despite later source changes");
                 helper.assertTrue(visual.departure().face() == expected.face() && visual.arrival().face() == expected.face()
@@ -247,8 +247,8 @@ public final class TransferDispatchGameTests {
             for (int i = 0; i < 10000; i++) TransferVisuals.sendWithEndpoints(level.getServer(), path, sample, 0xffffff, -1, endpoint, null, null);
             helper.assertTrue(resolutions[0] - before < 10000 && samples[0] == resolutions[0], "Reservoir-rejected transfers skip both item sampling and custom-layout work");
             flush(level);
-            helper.assertTrue(observers.getFirst().batches.isEmpty(), "The distant observer receives no rune transfers");
-            for (int i = 1; i < observers.size(); i++) helper.assertTrue(observers.get(i).batches.getFirst().visuals().size() == 128, "Each nearby observer retains the configured bounded sample");
+            helper.assertTrue(observers.get(0).batches.isEmpty(), "The distant observer receives no rune transfers");
+            for (int i = 1; i < observers.size(); i++) helper.assertTrue(observers.get(i).batches.get(0).visuals().size() == 128, "Each nearby observer retains the configured bounded sample");
             helper.succeed();
         } finally {
             for (var observer : observers) level.players().remove(observer.player);
@@ -290,14 +290,14 @@ public final class TransferDispatchGameTests {
             flush(level); observer = receiver(level, home);
             worker.tick(); flush(level);
             helper.assertTrue(host.getItem(0).getCount() == 4 && far.getItem(0).getCount() == 4 && rune.transferredItems() == 4, "Push commits exactly four real items before emitting its cosmetic route");
-            var visual = observer.batches.getFirst().visuals().getFirst(); var endpoint = TransferVisuals.rune(rune);
+            var visual = observer.batches.get(0).visuals().get(0); var endpoint = TransferVisuals.rune(rune);
             helper.assertTrue(visual.path().equals(forward.stream().map(GlobalPos::pos).toList()) && visual.from().equals(home) && visual.to().equals(remote), "Push uses the transaction route in source-to-destination order");
             helper.assertTrue(visual.departure() != null && visual.arrival() == null && visual.departure().face() == surface.facing()
                     && visual.departure().offset().distanceTo(endpoint.offset()) < .000001, "Push leaves the selected custom rune position on its own face");
             observer.batches.clear(); rune.setMode(RuneLayer.Mode.PULL); rune.position(-.18, -.12);
             worker.tick(); flush(level);
             helper.assertTrue(host.getItem(0).getCount() == 8 && far.getItem(0).isEmpty() && rune.transferredItems() == 8, "Pull returns the same four real items without duplication");
-            visual = observer.batches.getFirst().visuals().getFirst(); endpoint = TransferVisuals.rune(rune);
+            visual = observer.batches.get(0).visuals().get(0); endpoint = TransferVisuals.rune(rune);
             helper.assertTrue(visual.path().equals(forward.reversed().stream().map(GlobalPos::pos).toList()) && visual.from().equals(remote) && visual.to().equals(home), "Pull reverses the transaction's relay path");
             helper.assertTrue(visual.departure() == null && visual.arrival() != null && visual.arrival().face() == surface.facing()
                     && visual.arrival().offset().distanceTo(endpoint.offset()) < .000001, "Pull arrives at the edited rune position rather than a cached departure");
@@ -305,7 +305,7 @@ public final class TransferDispatchGameTests {
             helper.assertTrue(surface.toggleTarget(rune.id(), GlobalPos.of(level.dimension(), near), net.minecraft.core.Direction.UP).assigned(), "The same rune rebinds to the nearby barrel");
             worker.tick(); flush(level);
             helper.assertTrue(host.getItem(0).getCount() == 4 && close.getItem(0).getCount() == 4 && far.getItem(0).isEmpty() && rune.transferredItems() == 12, "Rebound transfer conserves all eight items");
-            visual = observer.batches.getFirst().visuals().getFirst();
+            visual = observer.batches.get(0).visuals().get(0);
             helper.assertTrue(visual.path().equals(List.of(home, near)), "A new direct transaction never reuses the previous relayed route");
             helper.succeed();
         } finally {
@@ -337,7 +337,7 @@ public final class TransferDispatchGameTests {
             helper.assertTrue(samples[0]==1&&cached.size()==1&&cached.containsKey(List.of(start,start.east(8))),
                     "Ten thousand distant routes create no cosmetic samples or cache entries and retain the nearby route");
             TransferVisuals.sendWithEndpoints(level.getServer(),nearby,sample,0xffffff,-2,null,null,null);flush(level);
-            helper.assertTrue(samples[0]==2&&observer.batches.size()==1&&observer.batches.getFirst().visuals().size()==2,
+            helper.assertTrue(samples[0]==2&&observer.batches.size()==1&&observer.batches.get(0).visuals().size()==2,
                     "The nearby observer still receives both flights around the distant flood");helper.succeed();
         }finally{if(observer!=null)level.players().remove(observer.player);flush(level);AstralConfig.particleDensity.set(density);}
     }

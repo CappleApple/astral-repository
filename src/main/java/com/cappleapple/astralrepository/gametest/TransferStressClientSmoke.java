@@ -10,11 +10,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL33;
 import java.nio.file.*;
@@ -51,7 +51,7 @@ public final class TransferStressClientSmoke {
             Files.createDirectories(OUT);oldGui=mc.options.hideGui;mc.options.hideGui=true;
             saved[0]=AstralClientConfig.maxActiveTransfers.get();saved[1]=AstralClientConfig.maxItemTransferModels.get();saved[2]=AstralClientConfig.maxResourceTrails.get();saved[3]=AstralClientConfig.transferRenderDistance.get();
             AstralClientConfig.maxActiveTransfers.set(4096);AstralClientConfig.maxItemTransferModels.set(128);AstralClientConfig.maxResourceTrails.set(512);AstralClientConfig.transferRenderDistance.set(96);
-            mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();p.getAbilities().flying=true;p.onUpdateAbilities();p.connection.teleport(0,-55,30,180,0);});stage=1;ticks=0;
+            mc.getSingleplayerServer().execute(()->{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);p.getAbilities().flying=true;p.onUpdateAbilities();p.connection.teleport(0,-55,30,180,0);});stage=1;ticks=0;
         }else if(stage==1&&ticks>40){
             list("flights").clear();list("resourceTrails").clear();stage=2;ticks=0;
         }else if(stage==2&&ticks>2){
@@ -63,12 +63,12 @@ public final class TransferStressClientSmoke {
                 int slot=ITEMS||i<128?-1:-2-i%3;
                 var item=slot==-1?new ItemStack(List.of(Items.DIAMOND,Items.CHEST,Items.IRON_BLOCK,Items.DIAMOND_PICKAXE,Items.OAK_STAIRS,Items.APPLE,Items.ENDER_PEARL,Items.IRON_INGOT).get(i%8)):ItemStack.EMPTY;
                 if(UNIQUE&&!item.isEmpty())item.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,net.minecraft.network.chat.Component.literal("Transfer variant "+i));
-                WorldVisuals.add(new NetworkPackets.Visual(from,to,item,0x8270ee,600,slot,List.of(from,from.offset(4,2,0),to),null,null,slot==-2?ResourceLocation.withDefaultNamespace(i%2==0?"water":"lava"):null));
+                WorldVisuals.add(new NetworkPackets.Visual(from,to,item,0x8270ee,600,slot,List.of(from,from.offset(4,2,0),to),null,null,slot==-2?new ResourceLocation(i%2==0?"water":"lava"):null));
             }
             admissionNanos=System.nanoTime()-begin;
             check(WorldVisuals.performance().active()==4096,"Admission did not retain its configured bounded population");
             check(WorldVisuals.performance().sampled()>=5904,"Excess presentation was not sampled out");
-            first=list("flights").getFirst();recording=UNIQUE;stage=3;ticks=0;
+            first=list("flights").get(0);recording=UNIQUE;stage=3;ticks=0;
         }else if(stage==3){
             if(ticks==25){recording=true;}
             if(ticks==45){Screenshot.takeScreenshot(mc.getMainRenderTarget()).writeToFile(OUT.resolve("ten_thousand_offered.png"));}
@@ -94,7 +94,7 @@ public final class TransferStressClientSmoke {
                     +"gpu="+org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER)+"\n"
                     +"admission_ms="+admissionNanos/1e6+"\nactive="+WorldVisuals.performance().active()+"\nsampled="+WorldVisuals.performance().sampled()+"\n"
                     +"max_drawn_items="+maxItems+"\nmax_drawn_icons="+maxIcons+"\nmax_drawn_resources="+maxResources+"\nmax_drawn_trails="+maxTrails+"\n"
-                    +"first_recorded_frame_cpu_ms="+cpu.getFirst()+"\nmax_recorded_frame_cpu_ms="+Collections.max(cpu)+"\n"
+                    +"first_recorded_frame_cpu_ms="+cpu.get(0)+"\nmax_recorded_frame_cpu_ms="+Collections.max(cpu)+"\n"
                     +"frames="+cpu.size()+"\nrender_cpu_ms_median="+percentile(cpu,.5)+"\nrender_cpu_ms_p95="+percentile(cpu,.95)+"\n"
                     +"gpu_samples="+gpu.size()+"\nrender_gpu_ms_median="+percentile(gpu,.5)+"\nrender_gpu_ms_p95="+percentile(gpu,.95)+"\n"
                     +"Client-only offered-load benchmark; no claim of identical FPS on other hardware. GPU scope includes other AFTER_PARTICLES handlers between fixture hooks.\n";

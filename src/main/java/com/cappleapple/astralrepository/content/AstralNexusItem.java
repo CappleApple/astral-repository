@@ -22,7 +22,7 @@ public final class AstralNexusItem extends AstralToolItem {
         else if(player instanceof ServerPlayer server)ContentHooks.remoteUse.accept(server, stack);
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
     }
-    @Override public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> lines, TooltipFlag flag) {
+    @Override public void appendHoverText(ItemStack stack, net.minecraft.world.level.Level context, List<Component> lines, TooltipFlag flag) {
         var bound = bound(stack);
         if (bound != null) lines.add(Component.literal(bound.dimension().location() + " " + bound.pos().toShortString()));
         if (attuned(stack)) lines.add(Component.translatable("hint.astral_repository.dimensional"));

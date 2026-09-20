@@ -21,7 +21,7 @@ class AsyncCraftPlannerTest {
         var first=planner.submit("chest",64,Map.of("oak",512L),Set.of("table")).get(5,TimeUnit.SECONDS);
         assertNotNull(first.plan());assertSame(first,planner.submit("chest",64,Map.of("oak",512L),Set.of("table")).get(5,TimeUnit.SECONDS));
         var missing=planner.submit("chest",64,Map.of("oak",5L,"birch",3L),Set.of("table")).get(5,TimeUnit.SECONDS);
-        assertNull(missing.plan());assertEquals(1,missing.missing().size());assertEquals(504,missing.missing().getFirst().count());assertEquals("minecraft:planks",missing.missing().getFirst().tag());
+        assertNull(missing.plan());assertEquals(1,missing.missing().size());assertEquals(504,missing.missing().get(0).count());assertEquals("minecraft:planks",missing.missing().get(0).tag());
         var noProcessor=planner.submit("chest",64,Map.of("oak",512L),Set.of()).get(5,TimeUnit.SECONDS);assertNull(noProcessor.plan());assertEquals(3,planner.cachedPlans());
     }
     @Test void multiStackTwelveLayerPlansStayOrderedAndReuseTheWorkerCache()throws Exception{

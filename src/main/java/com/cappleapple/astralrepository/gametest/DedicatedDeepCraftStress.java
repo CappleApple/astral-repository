@@ -27,13 +27,13 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.*;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.*;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.tick.ServerTickEvent;
 
 /** Real user requests, native machines and routed delivery; excluded from the production JAR. */
 @EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.DEDICATED_SERVER)
@@ -66,9 +66,9 @@ public final class DedicatedDeepCraftStress {
             check(!AstralConfig.instantAutomaticLogistics.get(),"This fixture must exercise actual transit and processor waiting");
             check(AstralConfig.instantPlayerInteractions.get(),"This fixture tests the default immediate Nexus request path");
             Files.createDirectories(OUT);level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false,server);
-            for(String name:NAMES)ITEMS.add(BuiltInRegistries.ITEM.get(ResourceLocation.parse("minecraft:"+name+"_pottery_sherd")));
-            for(int i=1;i<=12;i++)check(level.getRecipeManager().byKey(ResourceLocation.parse(String.format(Locale.ROOT,"astral_stress:stage_%02d",i))).isPresent(),"Missing isolated stage recipe "+i);
-            fixture();observer();ready=true;NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedDeepCraftStress::finishTick);
+            for(String name:NAMES)ITEMS.add(BuiltInRegistries.ITEM.get(new ResourceLocation("minecraft:"+name+"_pottery_sherd")));
+            for(int i=1;i<=12;i++)check(level.getRecipeManager().byKey(new ResourceLocation(String.format(Locale.ROOT,"astral_stress:stage_%02d",i))).isPresent(),"Missing isolated stage recipe "+i);
+            fixture();observer();ready=true;MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedDeepCraftStress::finishTick);
             AstralRepository.LOGGER.info("Deep crafting stress: {} concurrent orders x {} items x 12 dependent stages; 40 machines across five types",ORDERS,COUNT);
         }catch(Throwable error){fail(error);}
     }
@@ -85,7 +85,7 @@ public final class DedicatedDeepCraftStress {
             for(int i=0;i<8;i++){BlockPos pos=center.offset((i%4)*2-3,-3,i<4?-2:2);place(pos,MACHINES[type]);STATIONS.put(pos,type);}
         }
         var inputs=node(new BlockPos(12,67,16),AstralContent.SEED_STORAGE_CRYSTAL.get());STORES.add(inputs);
-        check(inputs.inventory().insertItem(0,new ItemStack(ITEMS.getFirst(),ORDERS*COUNT),false).isEmpty(),"Raw fixture stock rejected");
+        check(inputs.inventory().insertItem(0,new ItemStack(ITEMS.get(0),ORDERS*COUNT),false).isEmpty(),"Raw fixture stock rejected");
         var fuel=node(new BlockPos(16,67,12),AstralContent.SEED_STORAGE_CRYSTAL.get());STORES.add(fuel);
         check(fuel.inventory().insertItem(0,new ItemStack(Items.COAL,4096),false).isEmpty(),"Fuel fixture stock rejected");
         BlockPos shelf=new BlockPos(16,66,19);place(shelf,Blocks.CHISELED_BOOKSHELF);
@@ -97,7 +97,7 @@ public final class DedicatedDeepCraftStress {
         observer.connection=new ServerGamePacketListenerImpl(server,observer.connection.getConnection(),observer,CommonListenerCookie.createInitial(observer.getGameProfile(),false)){
             @Override public void send(Packet<?> packet){
                 if(!(packet instanceof ClientboundCustomPayloadPacket custom)||!(custom.payload() instanceof TransferVisualBatch batch))return;
-                var buffer=new RegistryFriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
+                var buffer=new FriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
                 try{TransferVisualBatch.CODEC.encode(buffer,batch);packetBytes+=buffer.readableBytes();var decoded=TransferVisualBatch.CODEC.decode(buffer);packets++;try{for(var visual:decoded.visuals())observe(visual);}catch(Throwable error){observerFailure=error;}}
                 finally{buffer.release();}
             }
@@ -142,14 +142,14 @@ public final class DedicatedDeepCraftStress {
         }catch(Throwable error){fail(error);}
     }
     private static void prepareRequests(){
-        var manager=NetworkManager.get(server);var candidate=manager.networkAt(NODES.getFirst().address());if(candidate==null)return;
-        if(NODES.stream().anyMatch(node->manager.networkAt(node.address())!=candidate)||!candidate.workstations().containsAll(STATIONS.keySet().stream().map(DedicatedDeepCraftStress::at).toList())||candidate.exposedProducts().isEmpty()||candidate.snapshot().getOrDefault(new ItemKey(new ItemStack(ITEMS.getFirst())),0L)!=(long)ORDERS*COUNT)return;
+        var manager=NetworkManager.get(server);var candidate=manager.networkAt(NODES.get(0).address());if(candidate==null)return;
+        if(NODES.stream().anyMatch(node->manager.networkAt(node.address())!=candidate)||!candidate.workstations().containsAll(STATIONS.keySet().stream().map(DedicatedDeepCraftStress::at).toList())||candidate.exposedProducts().isEmpty()||candidate.snapshot().getOrDefault(new ItemKey(new ItemStack(ITEMS.get(0))),0L)!=(long)ORDERS*COUNT)return;
         network=candidate;check(network.travelTicks(at(STATIONS.keySet().iterator().next()),at(new BlockPos(61,64,14)))>20,"Fixture must exercise actual relay hops");
         requestedTick=server.getTickCount();startedNanos=System.nanoTime();
-        var menu=new com.cappleapple.astralrepository.menu.NexusMenu(1,observer.getInventory(),NODES.getFirst().address().position(),false);observer.containerMenu=menu;
+        var menu=new com.cappleapple.astralrepository.menu.NexusMenu(1,observer.getInventory(),NODES.get(0).address().position(),false);observer.containerMenu=menu;
         check(menu.stillValid(observer),"Player cannot reach the Nexus request menu");
         for(int i=0;i<ORDERS;i++){
-            var buffer=new RegistryFriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
+            var buffer=new FriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
             try{NetworkPackets.Action.CODEC.encode(buffer,new NetworkPackets.Action(menu.containerId,NetworkPackets.CRAFT,new ItemStack(ITEMS.getLast()),COUNT,0,""));menu.action(NetworkPackets.Action.CODEC.decode(buffer));}
             finally{buffer.release();}
             check(network.crafting().activeJobs()==i+1,"Nexus CRAFT action was rejected: "+menu.error);
@@ -197,7 +197,7 @@ public final class DedicatedDeepCraftStress {
     private static void writeMetrics(double elapsed)throws Exception{
         Files.createDirectories(OUT);Files.writeString(OUT.resolve("ticks.csv"),CSV);
         String report=String.format(Locale.ROOT,"Isolated dedicated server; %d concurrent orders of %d outputs; 12 recipe stages; crafting table, furnace, blast furnace, smoker and stonecutter; 8 machines of each type. Custom recipes cook for 4 ticks; normal table/stonecutter delays and real route flight waits retained. No default budgets or parallelism overridden.\nSamples=%d elapsed=%.3fs achieved_tps=%.3f depth=%d max_active_processors=%d\nserver_work_ms %s\npost_tick_work_ms %s\nplanning_latency_ticks=%s started_per_stage=%s\nflights=%d relayed_flights=%d direct_machine_flights=%d fuel_flights=%d codec_batches=%d codec_bytes=%d\nTiming starts at Pre and ends after all normal Post listeners including network and visual dispatch. Verification is outside work samples but included in elapsed TPS. Observer consumes real codec bytes without client or socket traffic.\n",ORDERS,COUNT,TIMES.size(),elapsed,TIMES.size()/Math.max(.001,elapsed),dependencyDepth,maxProcessors,stats(TIMES),stats(POST_TIMES),PLANNED,Arrays.toString(STARTED),flights,relayedFlights,directMachineFlights,fuelFlights,packets,packetBytes);
-        String mods=net.neoforged.fml.ModList.get().getMods().stream().map(mod->mod.getModId()+"@"+mod.getVersion()).sorted().toList().toString();
+        String mods=net.minecraftforge.fml.ModList.get().getMods().stream().map(mod->mod.getModId()+"@"+mod.getVersion()).sorted().toList().toString();
         report="Loaded mods: "+mods+"\nJava: "+System.getProperty("java.version")+"; processors="+Runtime.getRuntime().availableProcessors()+"; max_heap_bytes="+Runtime.getRuntime().maxMemory()+"\nRequest entry: real NexusMenu.action after NetworkPackets.Action codec round trip; CRAFT128 by default.\n"+report;
         Files.writeString(OUT.resolve("metrics.txt"),report);AstralRepository.LOGGER.info(report);
     }

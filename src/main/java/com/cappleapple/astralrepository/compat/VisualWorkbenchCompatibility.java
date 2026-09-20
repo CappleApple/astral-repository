@@ -8,7 +8,7 @@ import net.minecraft.world.level.block.Blocks;
 
 /** Recognizes the persistent table by registry identity without loading optional mod classes. */
 public final class VisualWorkbenchCompatibility {
-    private static final ResourceLocation TABLE_ENTITY=ResourceLocation.fromNamespaceAndPath("visualworkbench","crafting_table");
+    private static final ResourceLocation TABLE_ENTITY=new ResourceLocation("visualworkbench","crafting_table");
     private VisualWorkbenchCompatibility() {}
 
     public static boolean isPersistentTable(ServerLevel level,BlockPos pos) {

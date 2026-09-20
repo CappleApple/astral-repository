@@ -13,7 +13,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 import static com.cappleapple.astralrepository.api.PowerPolicy.Component.*;
 
 /** Known fuel becomes node credit before payment. A failed multi-resource preflight never spends that credit. */

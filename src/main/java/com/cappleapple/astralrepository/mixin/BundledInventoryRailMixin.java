@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "com.cappleapple.bundlednotsiloed.client.InventorySideRail$Rail", remap = false)
 public abstract class BundledInventoryRailMixin {
-    @Unique private static final ResourceLocation astral$tabTexture = ResourceLocation.fromNamespaceAndPath(
+    @Unique private static final ResourceLocation astral$tabTexture = new ResourceLocation(
             AstralRepository.MOD_ID, "textures/gui/bundled_tab.png");
 
     @Shadow(remap = false) public abstract int left();

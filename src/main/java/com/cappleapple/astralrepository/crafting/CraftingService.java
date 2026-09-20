@@ -78,7 +78,7 @@ public final class CraftingService {
     private void refreshCatalog(Map<ItemKey,Long> stock){
         var holders=List.copyOf(access.level().getRecipeManager().getRecipes());
         var rules=List.copyOf(ProcessingRules.rules());
-        var variants=stock.keySet().stream().filter(k->{var sample=k.sample();return !ItemStack.isSameItemSameComponents(sample,new ItemStack(sample.getItem()));}).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        var variants=stock.keySet().stream().filter(k->{var sample=k.sample();return !ItemStack.isSameItemSameTags(sample,new ItemStack(sample.getItem()));}).collect(java.util.stream.Collectors.toUnmodifiableSet());
         if(catalog!=null&&holders.equals(recipeHolders)&&rules.equals(processingRules)&&variants.equals(catalogVariants))return;
         var recipes=new ArrayList<CraftRecipe<ItemKey>>();var owners=new LinkedHashMap<String,ProcessingAdapter>();
         for(var adapter:adapters)try{for(var recipe:adapter.recipes(access))if(owners.putIfAbsent(recipe.id(),adapter)==null)recipes.add(recipe);}

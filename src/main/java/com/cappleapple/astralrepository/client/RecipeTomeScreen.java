@@ -15,7 +15,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.PacketDistributor;
 
 /** Inventory and recipe-viewer samples select an output; the server resolves every recipe. */
 public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMenu> implements GhostIngredientScreen {
@@ -41,7 +41,7 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
     public void update(RecipeTomePackets.Page packet){
         if(packet.menu()!=menu.containerId)return;
         if(chosen.isEmpty()&&!packet.taught().isEmpty())acceptItem(packet.taught());
-        entries=packet.entries();selection=entries.isEmpty()?null:entries.getFirst();page=packet.page();total=packet.total();status=packet.status();controls();
+        entries=packet.entries();selection=entries.isEmpty()?null:entries.get(0);page=packet.page();total=packet.total();status=packet.status();controls();
     }
     private void controls(){if(previous==null)return;previous.visible=page>0;next.visible=page+1<total;inscribe.active=selection!=null;}
     private void request(int requested){PacketDistributor.sendToServer(new RecipeTomePackets.Action(menu.containerId,0,"="+outputId,requested,""));}
@@ -56,7 +56,7 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
         boolean handled=super.mouseClicked(x,y,button);if(handled&&getFocused() instanceof Button)setFocused(null);return handled;
     }
     @Override protected void renderLabels(GuiGraphics g,int x,int y){}
-    @Override protected void renderSlotHighlight(GuiGraphics g,Slot slot,int x,int y,float partial){}
+    @Override public int getSlotColor(int slot){return 0;}
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         g.setColor(.94f,1,.99f,1);g.blit(BookViewScreen.BOOK_LOCATION,leftPos,topPos,0,0,192,192);g.setColor(1,1,1,1);
         g.drawString(font,"Recipe Tome",leftPos+36,topPos+16,INK,false);
@@ -68,7 +68,7 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
         }else if(!chosen.isEmpty())g.drawWordWrap(font,Component.literal("No recipe"),leftPos+36,topPos+68,114,INK);
         if(total>1){String number=(page+1)+" / "+total;g.drawString(font,number,leftPos+92-font.width(number)/2,topPos+155,INK,false);}
         if(status.equals("Inscribed."))g.drawCenteredString(font,"Inscribed",leftPos+92,topPos+82,INK);
-        AstralInterfaceRenderer.blit(g,ResourceLocation.fromNamespaceAndPath("astral_repository","textures/gui/rune_settings.png"),leftPos+7,topPos+210,178,96);
+        AstralInterfaceRenderer.blit(g,new ResourceLocation("astral_repository","textures/gui/rune_settings.png"),leftPos+7,topPos+210,178,96);
         for(var slot:menu.slots)RuneUi.slot(g,leftPos+slot.x-1,topPos+slot.y-1,18,isHovering(slot.x,slot.y,16,16,mx,my));
     }
     @Override public void render(GuiGraphics g,int mx,int my,float partial){super.render(g,mx,my,partial);renderTooltip(g,mx,my);if(!chosen.isEmpty()&&ingredientArea().contains(mx,my))g.renderTooltip(font,chosen,mx,my);}

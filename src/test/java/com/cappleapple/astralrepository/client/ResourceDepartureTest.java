@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class ResourceDepartureTest {
     private static NetworkPackets.Visual packet(int slot,int duration,TransferVisuals.Endpoint departure){
         var path=List.of(BlockPos.ZERO,new BlockPos(8,0,0));
-        return new NetworkPackets.Visual(path.getFirst(),path.getLast(),ItemStack.EMPTY,0xffffff,duration,slot,path,departure,null);
+        return new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),ItemStack.EMPTY,0xffffff,duration,slot,path,departure,null);
     }
     @Test void everyResourceAndRuneFaceFadesAndGrowsInThreeTicksRegardlessOfRouteDuration(){
         for(int slot=-4;slot<=-2;slot++)for(var face:Direction.values())for(int duration:List.of(20,100,1000)){

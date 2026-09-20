@@ -12,15 +12,15 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 
 @JeiPlugin
 public final class AstralJeiPlugin implements IModPlugin {
-    @Override public ResourceLocation getPluginUid(){return ResourceLocation.fromNamespaceAndPath("astral_repository","ghost_ingredients");}
+    @Override public ResourceLocation getPluginUid(){return new ResourceLocation("astral_repository","ghost_ingredients");}
     public static boolean registered;
     private static mezz.jei.api.runtime.IJeiRuntime runtime;
     private static Boolean powerVisible;
-    private static List<net.minecraft.world.item.crafting.RecipeHolder<net.minecraft.world.item.crafting.CraftingRecipe>> hiddenPowerRecipes=List.of();
+    private static List<net.minecraft.world.item.crafting.CraftingRecipe> hiddenPowerRecipes=List.of();
     @Override public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime available){runtime=available;powerVisible=null;refreshPowerVisibility();}
     @Override public void onRuntimeUnavailable(){runtime=null;powerVisible=null;hiddenPowerRecipes=List.of();}
     public static void refreshPowerVisibility(){
@@ -38,7 +38,7 @@ public final class AstralJeiPlugin implements IModPlugin {
         }else{
             var level=net.minecraft.client.Minecraft.getInstance().level;
             if(level!=null)hiddenPowerRecipes=recipes.createRecipeLookup(mezz.jei.api.constants.RecipeTypes.CRAFTING).get()
-                    .filter(recipe->recipe.value().getResultItem(level.registryAccess()).is(node.getItem())).toList();
+                    .filter(recipe->recipe.getResultItem(level.registryAccess()).is(node.getItem())).toList();
             recipes.hideRecipes(mezz.jei.api.constants.RecipeTypes.CRAFTING,hiddenPowerRecipes);
             ingredients.removeIngredientsAtRuntime(mezz.jei.api.constants.VanillaTypes.ITEM_STACK,List.of(node));
         }

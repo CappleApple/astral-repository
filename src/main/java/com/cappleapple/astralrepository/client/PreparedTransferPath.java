@@ -64,7 +64,7 @@ final class PreparedTransferPath {
     }
 
     Vec3 position(double progress) {
-        double elapsed = Math.clamp(progress, 0, 1) * duration;
+        double elapsed = com.cappleapple.astralrepository.platform.Backport.clamp(progress, 0, 1) * duration;
         int low = 0, high = legEnds.length - 1;
         while (low < high) {
             int middle = (low + high) >>> 1;
@@ -74,7 +74,7 @@ final class PreparedTransferPath {
         int leg = low;
         int start = leg == 0 ? 0 : legEnds[leg - 1];
         int ticks = legEnds[leg] - start;
-        double t = Math.clamp((elapsed - start) / ticks, 0, 1);
+        double t = com.cappleapple.astralrepository.platform.Backport.clamp((elapsed - start) / ticks, 0, 1);
         double t2 = t * t, t3 = t2 * t;
         double h00 = 2 * t3 - 3 * t2 + 1;
         double h10 = t3 - 2 * t2 + t;
@@ -93,7 +93,7 @@ final class PreparedTransferPath {
             z += variationKnots[knot + 2] + blend * (variationKnots[knot + 5] - variationKnots[knot + 2]);
         }
         if (arrivalStart < 1) {
-            double finalProgress = Math.clamp((progress - arrivalStart) / (1 - arrivalStart), 0, 1);
+            double finalProgress = com.cappleapple.astralrepository.platform.Backport.clamp((progress - arrivalStart) / (1 - arrivalStart), 0, 1);
             double blend = finalProgress * finalProgress * (3 - 2 * finalProgress);
             x += arrivalX * blend;
             y += arrivalY * blend;

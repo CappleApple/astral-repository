@@ -8,8 +8,8 @@ map_Kd astral_repository:block/node_trim
 
 newmtl node_crystal
 map_Kd astral_repository:block/node_crystal
-neoforge_TintIndex 0
+forge_TintIndex 0
 
 newmtl node_channel
 map_Kd astral_repository:block/node_channel
-neoforge_TintIndex 1
+forge_TintIndex 1

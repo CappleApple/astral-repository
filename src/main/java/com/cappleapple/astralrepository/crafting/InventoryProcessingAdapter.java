@@ -8,8 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.Capabilities;
+import net.minecraftforge.items.IItemHandler;
 import java.util.*;
 
 /** Executes deterministic single-input recipes through real sided machine capabilities. */
@@ -26,19 +26,19 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
             if (rule.block().getNamespace().equals("create") && !CompatConfig.create.get()) continue;
             if (!BuiltInRegistries.BLOCK.containsKey(rule.block())) continue;
             for (var holder : access.level().getRecipeManager().getRecipes()) {
-                Recipe<?> recipe = holder.value();
+                Recipe<?> recipe = holder;
                 if (!rule.recipeType().equals(BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType())) || recipe.getIngredients().size() != 1) continue;
                 ItemStack output = recipe.getResultItem(access.level().registryAccess());
                 if (output.isEmpty()) continue;
                 Map<ItemKey, Long> outputs = possibleOutputs(recipe, output);
                 if (outputs.isEmpty()) continue;
-                Ingredient ingredient = recipe.getIngredients().getFirst();
+                Ingredient ingredient = recipe.getIngredients().get(0);
                 Set<ItemKey> alternatives = new LinkedHashSet<>();
                 for (ItemStack display : ingredient.getItems()) stockByItem.getOrDefault(display.getItem(), List.of()).stream().filter(key -> ingredient.test(key.sample())).forEach(alternatives::add);
                 for (ItemStack stack : ingredient.getItems()) if (!stack.isEmpty()) alternatives.add(new ItemKey(stack));
                 alternatives.remove(new ItemKey(output));
                 if (alternatives.isEmpty()) continue;
-                String id = rule.id() + "/" + holder.id();
+                String id = rule.id() + "/" + holder.getId();
                 String process = "inventory/" + rule.id();
                 result.add(new CraftRecipe<>(id, new ItemKey(output), output.getCount(), process,
                         List.of(new CraftRecipe.Ingredient<>(List.copyOf(alternatives), 1, VanillaProcessingAdapter.ingredientTag(ingredient))), rule.priority(), 100));
@@ -55,7 +55,7 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
             if (!((Collection<?>)recipe.getClass().getMethod("getFluidIngredients").invoke(recipe)).isEmpty()) return Map.of();
             List<?> results = (List<?>)recipe.getClass().getMethod("getRollableResults").invoke(recipe);
             if (results.isEmpty()) return Map.of();
-            if (((Number)results.getFirst().getClass().getMethod("getChance").invoke(results.getFirst())).doubleValue() < 1) return Map.of();
+            if (((Number)results.get(0).getClass().getMethod("getChance").invoke(results.get(0))).doubleValue() < 1) return Map.of();
             outputs.clear();
             for (Object result : results) VanillaProcessingAdapter.add(outputs, (ItemStack)result.getClass().getMethod("getStack").invoke(result));
             return Map.copyOf(outputs);
@@ -79,12 +79,12 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
         var rule = bindings.get(node.recipe().id()).rule();
         ServerLevel level = VanillaProcessingAdapter.world(access, position);
         var original = level.getBlockEntity(position.pos());
-        IItemHandler input = level.getCapability(Capabilities.ItemHandler.BLOCK, position.pos(), rule.inputSide());
-        IItemHandler output = level.getCapability(Capabilities.ItemHandler.BLOCK, position.pos(), rule.outputSide());
+        IItemHandler input = com.cappleapple.astralrepository.platform.Capabilities.get(level,Capabilities.ItemHandler.BLOCK, position.pos(), rule.inputSide());
+        IItemHandler output = com.cappleapple.astralrepository.platform.Capabilities.get(level,Capabilities.ItemHandler.BLOCK, position.pos(), rule.outputSide());
         if (input == null || output == null) return null;
         List<Integer> inputSlots = slots(rule.inputSlots(), input), outputSlots = slots(rule.outputSlots(), output);
         if (outputSlots.stream().anyMatch(slot -> !output.getStackInSlot(slot).isEmpty())) return null;
-        ItemStack ingredient = node.selected().getFirst().key().sample();
+        ItemStack ingredient = node.selected().get(0).key().sample();
         int insertionSlot = -1;
         for (int slot : inputSlots) {
             if (!input.getStackInSlot(slot).isEmpty()) return null;
@@ -145,7 +145,7 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
                 if (available() && sameMachine()) {
                     try {
                         ItemStack remaining = input.getStackInSlot(assignedSlot);
-                        if (ItemStack.isSameItemSameComponents(remaining, ingredient)) VanillaProcessingAdapter.add(held, input.extractItem(assignedSlot, 1, false));
+                        if (ItemStack.isSameItemSameTags(remaining, ingredient)) VanillaProcessingAdapter.add(held, input.extractItem(assignedSlot, 1, false));
                         collectOutputs();
                     } catch (RuntimeException failure) { unavailable.add(position); CraftingService.LOGGER.error("Machine cleanup incomplete; remaining physical items retained at {}", position, failure); }
                 }

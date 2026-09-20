@@ -50,6 +50,6 @@ void main() {
     } else {
         overlayColor = texelFetch(Sampler1, UV1, 0);
         lightColor = texelFetch(Sampler2, UV2 / 16, 0);
-        vertexDistance = fog_distance(Position, FogShape);
+        vertexDistance = fog_distance(ModelViewMat, Position, FogShape);
     }
 }

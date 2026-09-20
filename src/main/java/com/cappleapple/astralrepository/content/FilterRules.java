@@ -11,7 +11,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 
 /** Positive predicates combine by ANY; exclusions always veto. Empty filters accept all. */
 public final class FilterRules {
@@ -48,7 +48,7 @@ public final class FilterRules {
         for (int i = 0; i < entries.size(); i++) {
             Entry entry = entries.get(i);
             if (entry.kind == kind && entry.id.equals(id) && entry.exclude == exclude
-                    && (kind != Kind.COMPONENTS || ItemStack.isSameItemSameComponents(entry.sample, copy))) {
+                    && (kind != Kind.COMPONENTS || ItemStack.isSameItemSameTags(entry.sample, copy))) {
                 if (kind == Kind.ITEM && !copy.isEmpty()) entries.set(i, new Entry(kind, id, exclude, copy));
                 return;
             }
@@ -61,9 +61,9 @@ public final class FilterRules {
         String namespace = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
         return evaluate(e -> switch (e.kind) {
             case ITEM -> BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(e.id);
-            case ITEM_TAG -> stack.is(TagKey.create(Registries.ITEM, ResourceLocation.parse(e.id)));
+            case ITEM_TAG -> stack.is(TagKey.create(Registries.ITEM, new ResourceLocation(e.id)));
             case NAMESPACE -> namespace.equals(e.id);
-            case COMPONENTS -> ItemStack.isSameItemSameComponents(stack, e.sample);
+            case COMPONENTS -> ItemStack.isSameItemSameTags(stack, e.sample);
             default -> false;
         }, false);
     }
@@ -74,7 +74,7 @@ public final class FilterRules {
         ResourceLocation id = BuiltInRegistries.FLUID.getKey(stack.getFluid());
         return evaluate(e -> switch (e.kind) {
             case FLUID -> id.toString().equals(e.id);
-            case FLUID_TAG -> stack.is(TagKey.create(Registries.FLUID, ResourceLocation.parse(e.id)));
+            case FLUID_TAG -> stack.getFluid().is(TagKey.create(Registries.FLUID, new ResourceLocation(e.id)));
             case NAMESPACE -> id.getNamespace().equals(e.id);
             default -> false;
         }, true);
@@ -105,7 +105,7 @@ public final class FilterRules {
             CompoundTag value = new CompoundTag();
             value.putString("Kind", entry.kind.name()); value.putString("Id", entry.id);
             value.putBoolean("Exclude", entry.exclude);
-            if (!entry.sample.isEmpty()) value.put("Sample", entry.sample.save(registries));
+            if (!entry.sample.isEmpty()) value.put("Sample", entry.sample.save(new net.minecraft.nbt.CompoundTag()));
             values.add(value);
         }
         tag.put("Entries", values); return tag;
@@ -121,8 +121,8 @@ public final class FilterRules {
             try {
                 Kind kind = Kind.valueOf(value.getString("Kind"));
                 String id = value.getString("Id");
-                if (kind != Kind.NAMESPACE) ResourceLocation.parse(id);
-                add(kind, id, value.getBoolean("Exclude"), ItemStack.parseOptional(registries, value.getCompound("Sample")));
+                if (kind != Kind.NAMESPACE) new ResourceLocation(id);
+                add(kind, id, value.getBoolean("Exclude"), ItemStack.of(value.getCompound("Sample")));
             } catch (IllegalArgumentException ignored) { /* Ignore invalid edited filter entries. */ }
         }
     }

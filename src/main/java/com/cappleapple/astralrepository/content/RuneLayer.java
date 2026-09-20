@@ -25,7 +25,7 @@ public final class RuneLayer {
     private double u=Double.NaN,v=Double.NaN;
     public RuneDesign design(){return design==null?RuneDesign.initial(mode):design;}
     public double u(){return u;} public double v(){return v;}
-    public void position(double x,double y){if(!Double.isFinite(x)||!Double.isFinite(y))throw new IllegalArgumentException("Invalid placement");u=Math.clamp(x,-1,1);v=Math.clamp(y,-1,1);changed();}
+    public void position(double x,double y){if(!Double.isFinite(x)||!Double.isFinite(y))throw new IllegalArgumentException("Invalid placement");u=com.cappleapple.astralrepository.platform.Backport.clamp(x,-1,1);v=com.cappleapple.astralrepository.platform.Backport.clamp(y,-1,1);changed();}
     public void preset(RunePreset p,HolderLookup.Provider registries){mode=p.mode();design=p.design();filter.load(p.filter(),registries);priority=p.priority();enabled=p.enabled();cadence=p.cadence();changed();}
 
     public static final int MAX_TARGETS=32;
@@ -43,7 +43,7 @@ public final class RuneLayer {
     public UUID id(){return id;}
     public ResourceLocation item(){return item;}
     public Mode mode(){return mode;}
-    public Target target(){return targets.isEmpty()?null:targets.getFirst();}
+    public Target target(){return targets.isEmpty()?null:targets.get(0);}
     public List<Target> targets(){return List.copyOf(targets);}
     public Target nextTarget(){return targets.isEmpty()?null:targets.get(Math.floorMod(targetCursor++,targets.size()));}
     void toggleTarget(Target value){if(!targets.remove(value)&&targets.size()<MAX_TARGETS)targets.add(value);status=targets.isEmpty()?"Unlinked":"Waiting";changed();}
@@ -55,7 +55,7 @@ public final class RuneLayer {
     public long transferredFluid(){return transferredFluid;}
     public RuneSurface surface(){return surface;}
     public void setMode(Mode value){mode=Objects.requireNonNull(value);item=RuneGlyph.id(value);changed();}
-    public void setPriority(int value){priority=Math.clamp(value,-999,999);changed();}
+    public void setPriority(int value){priority=com.cappleapple.astralrepository.platform.Backport.clamp(value,-999,999);changed();}
     public void setEnabled(boolean value){enabled=value;status=value?"Waiting":"Paused";changed();}
     public void clearFilter(){filter.clearPredicates();changed();}
     /** Call after editing the mutable filter so persistence and observers see the change. */
@@ -72,9 +72,9 @@ public final class RuneLayer {
         net.minecraft.nbt.ListTag saved=new net.minecraft.nbt.ListTag();for(var target:targets)saved.add(new AnchorAddress(target.position(),target.face()).save());tag.put("Targets",saved);return tag;
     }
     static RuneLayer load(RuneSurface surface,CompoundTag tag,HolderLookup.Provider registries){
-        Mode mode=Mode.valueOf(tag.getString("Mode"));RuneLayer result=new RuneLayer(surface,tag.hasUUID("Id")?tag.getUUID("Id"):UUID.randomUUID(),ResourceLocation.parse(tag.getString("Item")),mode);
+        Mode mode=Mode.valueOf(tag.getString("Mode"));RuneLayer result=new RuneLayer(surface,tag.hasUUID("Id")?tag.getUUID("Id"):UUID.randomUUID(),new ResourceLocation(tag.getString("Item")),mode);
         if(tag.contains("Design"))result.design=RuneDesign.load(tag.getCompound("Design"));if(tag.contains("U")&&tag.contains("V")){result.u=tag.getDouble("U");result.v=tag.getDouble("V");}
-        result.cadence=RuneCadence.load(tag.getCompound("Cadence"));result.enabled=!tag.contains("Enabled")||tag.getBoolean("Enabled");result.priority=Math.clamp(tag.getInt("Priority"),-999,999);result.filter.load(tag.getCompound("Filter"),registries);
+        result.cadence=RuneCadence.load(tag.getCompound("Cadence"));result.enabled=!tag.contains("Enabled")||tag.getBoolean("Enabled");result.priority=com.cappleapple.astralrepository.platform.Backport.clamp(tag.getInt("Priority"),-999,999);result.filter.load(tag.getCompound("Filter"),registries);
         result.transferredItems=Math.max(0,tag.getLong("TransferredItems"));result.transferredFluid=Math.max(0,tag.getLong("TransferredFluid"));
         if(tag.contains("Targets")){var saved=tag.getList("Targets",10);for(int i=0;i<Math.min(MAX_TARGETS,saved.size());i++){var a=AnchorAddress.load(saved.getCompound(i));var t=new Target(a.position(),a.face());if(!result.targets.contains(t))result.targets.add(t);}}
         else if(tag.contains("Target")){AnchorAddress address=AnchorAddress.load(tag.getCompound("Target"));result.targets.add(new Target(address.position(),address.face()));}

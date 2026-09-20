@@ -39,7 +39,7 @@ class AstralViewBobbingTest {
         var view = new Matrix4f().rotateY(.72F).rotateX(-.21F);
         try {
             for (int phase = 0; phase < 24; phase++) {
-                float t = phase / 24F * (float)Math.TAU;
+                float t = phase / 24F * (float)(Math.PI*2);
                 var bob = new Matrix4f().translate((float)Math.sin(t)*.05F, -(float)Math.abs(Math.cos(t))*.1F, 0)
                         .rotateZ((float)Math.sin(t)*.02F).rotateX((float)Math.abs(Math.cos(t-.2F))*.04F);
                 AstralViewBobbing.beginWorld();

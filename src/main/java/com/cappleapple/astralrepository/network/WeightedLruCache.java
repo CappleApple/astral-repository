@@ -17,7 +17,7 @@ final class WeightedLruCache<K,V> {
     void put(K key,V value){
         remove(key);int added=weight(value);if(added>maxWeight)return;
         entries.put(key,value);weight+=added;
-        while(entries.size()>maxEntries||weight>maxWeight)weight-=weight(entries.pollFirstEntry().getValue());
+        while(entries.size()>maxEntries||weight>maxWeight)weight-=weight(com.cappleapple.astralrepository.platform.Backport.pollFirst(entries).getValue());
     }
     void remove(K key){var old=entries.remove(key);if(old!=null)weight-=weight(old);}
     void clear(){entries.clear();weight=0;}

@@ -18,5 +18,6 @@ void main() {
     maskCoord=vec2(UV1)/32767.0*2.0-1.0;
     circle=UV1.x<0?0.0:1.0;
     vertexColor=Color;
-    vertexDistance=fog_distance(Position,FogShape);
+    vertexDistance=fog_distance(ModelViewMat,Position,FogShape);
 }
+

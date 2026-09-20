@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform.client;
-public final class ClientHooks {public static net.minecraft.client.resources.model.BakedModel handleCameraTransforms(com.mojang.blaze3d.vertex.PoseStack poses,net.minecraft.client.resources.model.BakedModel model,net.minecraft.world.item.ItemDisplayContext context,boolean left){model.getTransforms().getTransform(context).apply(left,poses);return model;}}

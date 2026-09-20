@@ -16,7 +16,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.client.model.BakedModelWrapper;
+import net.minecraftforge.client.model.BakedModelWrapper;
 
 /** Keeps armor's normal render passes and shades only its trim-mask quads. */
 public final class AstralTrimItemModel extends BakedModelWrapper<BakedModel> {
@@ -64,7 +64,7 @@ public final class AstralTrimItemModel extends BakedModelWrapper<BakedModel> {
         private static BakedQuad retexture(BakedQuad quad) {
             var old = quad.getSprite();
             String path = old.contents().name().getPath();
-            var id = ResourceLocation.withDefaultNamespace(path.substring(0, path.indexOf("_trim_") + 6) + "astral_repository_astral_gem");
+            var id = new ResourceLocation(path.substring(0, path.indexOf("_trim_") + 6) + "astral_repository_astral_gem");
             var sprite = Minecraft.getInstance().getModelManager().getAtlas(TextureAtlas.LOCATION_BLOCKS).getSprite(id);
             int[] vertices = quad.getVertices().clone();
             int stride = vertices.length / 4;

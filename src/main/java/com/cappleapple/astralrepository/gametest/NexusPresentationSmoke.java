@@ -29,8 +29,8 @@ import org.lwjgl.opengl.*;
 /** Excluded client regression fixture for Nexus paint order, conditional panels, and scrollbar input. */
 public final class NexusPresentationSmoke {
     private static final int SIZE = 384, X = 24, Y = 24;
-    private static final ResourceLocation PANEL = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus.png");
-    private static final ResourceLocation WIDGETS = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus_widgets.png");
+    private static final ResourceLocation PANEL = new ResourceLocation(AstralRepository.MOD_ID, "textures/gui/nexus.png");
+    private static final ResourceLocation WIDGETS = new ResourceLocation(AstralRepository.MOD_ID, "textures/gui/nexus_widgets.png");
     private NexusPresentationSmoke() {}
 
     public static void verify(NexusScreen screen) throws Exception {
@@ -75,9 +75,9 @@ public final class NexusPresentationSmoke {
             menu.jobs = terminal;
             NativeImage terminalOnly = capture.draw("terminal_only", -10000, -10000, -1);
             var running = job(NetworkPackets.JobState.RUNNING); var waiting = job(NetworkPackets.JobState.WAITING); var external = job(NetworkPackets.JobState.EXTERNAL);
-            menu.jobs = List.of(terminal.getFirst(), running, terminal.get(1));
+            menu.jobs = List.of(terminal.get(0), running, terminal.get(1));
             NativeImage one = capture.draw("one_current_job", -10000, -10000, -1);
-            menu.jobs = List.of(terminal.getFirst(), running, terminal.get(2), waiting);
+            menu.jobs = List.of(terminal.get(0), running, terminal.get(2), waiting);
             NativeImage two = capture.draw("two_current_jobs", -10000, -10000, -1);
             menu.jobs = List.of(running, waiting, external, job(NetworkPackets.JobState.RUNNING));
             NativeImage four = capture.draw("four_current_jobs", -10000, -10000, -1);

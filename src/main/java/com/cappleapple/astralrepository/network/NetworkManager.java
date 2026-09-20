@@ -11,11 +11,11 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.ChunkPos;
-import net.neoforged.neoforge.event.level.*;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.event.level.*;
+import net.minecraftforge.event.TickEvent.ServerTickEvent;
+import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import com.cappleapple.astralrepository.platform.PacketDistributor;
 import java.util.*;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenCustomHashMap;
@@ -179,7 +179,7 @@ public final class NetworkManager {
             manager.topologyDirty|=removed;for(AstralNetwork network:manager.networks)network.unloadChunk(level,chunk);
         });
     }
-    public static void tick(ServerTickEvent.Post event){get(event.getServer()).tick();}
+    public static void tick(ServerTickEvent event){if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;get(event.getServer()).tick();}
     private void tick(){
         if(stopping)return;
         if(lastSight!=AstralConfig.requireLineOfSight.get()){lastSight=AstralConfig.requireLineOfSight.get();invalidateSight();}
@@ -409,8 +409,8 @@ public final class NetworkManager {
         var selected=tree.path(exits.keySet(),address->exits.getOrDefault(address,Double.POSITIVE_INFINITY));
         if(selected.isEmpty()||selected.size()>128)return List.of();
         List<GlobalPos> path=new ArrayList<>();path.add(from);
-        for(var address:selected)if(!path.getLast().equals(address.position()))path.add(address.position());
-        if(!path.getLast().equals(to))path.add(to);return List.copyOf(path);
+        for(var address:selected)if(!path.get(path.size()-1).equals(address.position()))path.add(address.position());
+        if(!path.get(path.size()-1).equals(to))path.add(to);return List.copyOf(path);
     }
     private List<GlobalPos> findRoute(GlobalPos from,GlobalPos to,int channel,double squared){
         var key=new RouteOrigin(from,channel,Math.sqrt(squared),AstralConfig.requireLineOfSight.get());
@@ -502,7 +502,7 @@ public final class NetworkManager {
             PacketDistributor.sendToPlayer(player,new NetworkPackets.Diagnostics(visible,edges));
         }
     }
-    public static void datapacks(net.neoforged.neoforge.event.OnDatapackSyncEvent event){if(event.getPlayer()!=null)return;NetworkManager manager=SERVERS.get(event.getPlayerList().getServer());if(manager!=null){manager.coverage.clear();manager.topologyDirty=true;manager.forceRebuild=true;}}
+    public static void datapacks(net.minecraftforge.event.OnDatapackSyncEvent event){if(event.getPlayer()!=null)return;NetworkManager manager=SERVERS.get(event.getPlayerList().getServer());if(manager!=null){manager.coverage.clear();manager.topologyDirty=true;manager.forceRebuild=true;}}
     void watchProvider(Object identity,AstralNetwork network){providerNetworks.computeIfAbsent(identity,k->new HashSet<>()).add(network);}
     void unwatchProvider(Object identity,AstralNetwork network){var watchers=providerNetworks.get(identity);if(watchers!=null&&watchers.remove(network)&&watchers.isEmpty())providerNetworks.remove(identity);}
     public void providerIdentitiesChanged(Set<Object> identities){

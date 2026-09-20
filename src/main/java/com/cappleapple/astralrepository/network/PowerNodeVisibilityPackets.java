@@ -3,19 +3,19 @@ package com.cappleapple.astralrepository.network;
 import com.cappleapple.astralrepository.AstralConfig;
 import com.cappleapple.astralrepository.AstralRepository;
 import com.cappleapple.astralrepository.content.PowerNodeVisibility;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
+import com.cappleapple.astralrepository.platform.StreamCodec;
+import com.cappleapple.astralrepository.platform.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.event.TickEvent.ServerTickEvent;
+import com.cappleapple.astralrepository.platform.PacketDistributor;
+import com.cappleapple.astralrepository.platform.RegisterPayloadHandlersEvent;
 
 @EventBusSubscriber(modid=AstralRepository.MOD_ID)
 public final class PowerNodeVisibilityPackets {
@@ -23,8 +23,8 @@ public final class PowerNodeVisibilityPackets {
     private static boolean lastEnabled;
 
     public record Settings(boolean powerEnabled) implements CustomPacketPayload {
-        public static final Type<Settings> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "power_visibility"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, Settings> CODEC = StreamCodec.of(
+        public static final Type<Settings> TYPE = new Type<>(new ResourceLocation(AstralRepository.MOD_ID, "power_visibility"));
+        public static final StreamCodec<FriendlyByteBuf, Settings> CODEC = StreamCodec.of(
                 (buffer, value) -> buffer.writeBoolean(value.powerEnabled), buffer -> new Settings(buffer.readBoolean()));
         @Override public Type<Settings> type() { return TYPE; }
     }
@@ -42,7 +42,7 @@ public final class PowerNodeVisibilityPackets {
             PacketDistributor.sendToPlayer(player, new Settings(AstralConfig.powerEnabled.get()));
     }
 
-    @SubscribeEvent public static void tick(ServerTickEvent.Post event) {
+    @SubscribeEvent public static void tick(ServerTickEvent event) {if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
         boolean enabled = AstralConfig.powerEnabled.get();
         if (lastServer == event.getServer() && lastEnabled == enabled) return;
         lastServer = event.getServer();

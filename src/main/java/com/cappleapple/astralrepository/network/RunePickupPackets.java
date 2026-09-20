@@ -4,20 +4,20 @@ import com.cappleapple.astralrepository.content.RuneProgramming;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
+import com.cappleapple.astralrepository.platform.StreamCodec;
+import com.cappleapple.astralrepository.platform.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import com.cappleapple.astralrepository.platform.RegisterPayloadHandlersEvent;
 
 /** An exact layer request cannot turn into a pickup of a neighboring or newly reflowed rune. */
 public final class RunePickupPackets {
     private RunePickupPackets() {}
     public record Pickup(BlockPos pos, Direction face, UUID layer) implements CustomPacketPayload {
-        public static final Type<Pickup> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository", "rune_pickup"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, Pickup> CODEC = StreamCodec.of(
+        public static final Type<Pickup> TYPE = new Type<>(new ResourceLocation("astral_repository", "rune_pickup"));
+        public static final StreamCodec<FriendlyByteBuf, Pickup> CODEC = StreamCodec.of(
                 (buffer, packet) -> { buffer.writeBlockPos(packet.pos); buffer.writeEnum(packet.face); buffer.writeUUID(packet.layer); },
                 buffer -> new Pickup(buffer.readBlockPos(), buffer.readEnum(Direction.class), buffer.readUUID()));
         @Override public Type<Pickup> type() { return TYPE; }

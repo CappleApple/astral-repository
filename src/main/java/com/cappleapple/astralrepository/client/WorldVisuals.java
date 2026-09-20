@@ -15,11 +15,11 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.event.TickEvent.ClientTickEvent;
 import org.joml.Vector3f;
 import java.util.*;
 
@@ -72,8 +72,8 @@ public final class WorldVisuals {
     /** Internal diagnostic snapshot; all limits affect presentation only. */
     public record Performance(int active,int trails,long admitted,long sampled,int itemsDrawn,int iconsDrawn,int resourcesDrawn,int trailsDrawn,int iconModelResolutions,long renderNanos) {}
     public static Performance performance(){return new Performance(flights.size(),resourceTrails.size(),admitted,sampled,lastRenderedItems,lastRenderedIcons,lastRenderedResources,lastRenderedTrails,TransferItemSprites.modelResolutions(),lastRenderNanos);}
-    @SubscribeEvent public static void tick(ClientTickEvent.Post event){
-        var mc=Minecraft.getInstance();level(mc.level);if(mc.level==null||mc.isPaused()||!mc.level.tickRateManager().runsNormally())return;
+    @SubscribeEvent public static void tick(net.minecraftforge.event.TickEvent.ClientTickEvent event){if(event.phase!=net.minecraftforge.event.TickEvent.Phase.END)return;
+        var mc=Minecraft.getInstance();level(mc.level);if(mc.level==null||mc.isPaused())return;
         // Server time-sync packets may correct gameTime. Existing flights use a local monotonic tick age.
         visualTicks++;
         flights.removeIf(f->visualTicks-f.started>f.packet.duration());
@@ -91,7 +91,7 @@ public final class WorldVisuals {
             double released=resource?flight.trailSchedule.poll(visualTicks):visualTicks;
             if(Double.isNaN(released))continue;
             if(resource&&resourceTrails.size()>=com.cappleapple.astralrepository.AstralClientConfig.maxResourceTrails.get())continue;
-            double age=released-flight.started,t=Math.clamp(age/p.duration(),0,1);
+            double age=released-flight.started,t=com.cappleapple.astralrepository.platform.Backport.clamp(age/p.duration(),0,1);
             Vec3 point=position(flight,t);if(point.distanceToSqr(eye)>distance)continue;
             if(resource){
                 float opacity=resourceOpacity(flight,point,age);if(opacity<=0)continue;
@@ -118,7 +118,7 @@ public final class WorldVisuals {
     }
     @SubscribeEvent public static void astralCoordinates(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY)
-            AstralPlaneRenderType.beginWorld(event.getModelViewMatrix(), event.getCamera().getPosition());
+            AstralPlaneRenderType.beginWorld(event.getPoseStack().last().pose(), event.getCamera().getPosition());
         else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL)
             AstralPlaneRenderType.endWorld();
     }
@@ -128,13 +128,13 @@ public final class WorldVisuals {
         PoseStack pose=event.getPoseStack();Vec3 camera=event.getCamera().getPosition();var buffers=mc.renderBuffers().bufferSource();
         boolean profile=Boolean.getBoolean("astral_repository.transferStress");long renderStart=profile?System.nanoTime():0;
         lastRenderedItems=lastRenderedIcons=lastRenderedResources=lastRenderedTrails=0;
-        float partial=event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float partial=event.getPartialTick();
         double now=(double)visualTicks+partial;
         double distance=com.cappleapple.astralrepository.AstralClientConfig.transferRenderDistance.get();distance*=distance;
         int capacity=flights.size();if(visibleFlights.length<capacity){visibleFlights=new Flight[capacity];visiblePoints=new Vec3[capacity];visibleAges=new double[capacity];}
         int visible=0;
         for(Flight flight:flights){
-            var p=flight.packet;double age=AnimationTime.elapsed(visualTicks,flight.started,partial),t=Math.clamp(age/p.duration(),0,1);
+            var p=flight.packet;double age=AnimationTime.elapsed(visualTicks,flight.started,partial),t=com.cappleapple.astralrepository.platform.Backport.clamp(age/p.duration(),0,1);
             if(p.slot()>=-1&&p.stack().isEmpty()||(p.slot()==9&&t<.85))continue;
             Vec3 point=position(flight,t);if(!visible(event,point,camera,distance,.5))continue;
             if(p.slot()<=-2||p.slot()==-1&&!flight.detailedItem){visibleFlights[visible]=flight;visiblePoints[visible]=point;visibleAges[visible++]=age;continue;}
@@ -181,7 +181,7 @@ public final class WorldVisuals {
     private static boolean visible(RenderLevelStageEvent event,Vec3 point,Vec3 camera,double distance,double radius){
         return point.distanceToSqr(camera)<=distance&&event.getFrustum().isVisible(new net.minecraft.world.phys.AABB(point.x-radius,point.y-radius,point.z-radius,point.x+radius,point.y+radius,point.z+radius));
     }
-    private static void line(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color){Vec3 n=b.subtract(a).normalize();for(Vec3 p:List.of(a,b))vertex.addVertex(pose.last().pose(),(float)p.x,(float)p.y,(float)p.z).setColor(color>>16&255,color>>8&255,color&255,130).setNormal(pose.last(),(float)n.x,(float)n.y,(float)n.z);}
+    private static void line(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color){Vec3 n=b.subtract(a).normalize();for(Vec3 p:List.of(a,b))vertex.vertex(pose.last().pose(),(float)p.x,(float)p.y,(float)p.z).color(color>>16&255,color>>8&255,color&255,130).normal(pose.last().normal(),(float)n.x,(float)n.y,(float)n.z).endVertex();}
     private WorldVisuals(){}
 }
 

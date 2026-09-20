@@ -23,10 +23,10 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.presets.WorldPresets;
 import net.minecraft.world.phys.*;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.client.event.ClientTickEvent;
 import java.nio.file.*;
 import java.util.function.Consumer;
 
@@ -43,7 +43,7 @@ public final class ClientNexusSmoke {
     private static long jadeShownBefore,builtInShownBefore;
     private static final Path OUT=Path.of("../build/client-smoke");
     private static final BlockPos NEXUS=new BlockPos(1,-59,0),CHEST=new BlockPos(3,-59,0),PUSH_TARGET=new BlockPos(-2,-59,0),PULL_TARGET=new BlockPos(0,-59,2);
-    @SubscribeEvent(priority=net.neoforged.bus.api.EventPriority.HIGHEST) public static void tick(ClientTickEvent.Post event){
+    @SubscribeEvent(priority=net.minecraftforge.eventbus.api.EventPriority.HIGHEST) public static void tick(ClientTickEvent.Post event){
         if(!Boolean.getBoolean("astral_repository.clientSmoke")||done)return;
         Minecraft mc=Minecraft.getInstance();
         mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0.0);mc.mouseHandler.releaseMouse();
@@ -114,8 +114,8 @@ public final class ClientNexusSmoke {
                 server(9,p->{p.getInventory().selected=7;AstralContent.RECIPE_TOME.get().use(p.level(),p,InteractionHand.MAIN_HAND);});
             } else if(phase==9&&mc.screen instanceof RecipeTomeScreen screen&&ticks>10){screen.acceptItem(new ItemStack(Items.IRON_TRAPDOOR));next(10);
             } else if(phase==10&&mc.screen instanceof RecipeTomeScreen screen&&ticks>12){
-                if(screen.visibleRecipes().stream().noneMatch(e->e.recipe().equals(ResourceLocation.withDefaultNamespace("iron_trapdoor"))))return;
-                screenshot("tome_catalogue.png");check(screen.selectRecipe(ResourceLocation.withDefaultNamespace("iron_trapdoor")),"Recipe selection failed");next(11);
+                if(screen.visibleRecipes().stream().noneMatch(e->e.recipe().equals(new ResourceLocation("iron_trapdoor"))))return;
+                screenshot("tome_catalogue.png");check(screen.selectRecipe(new ResourceLocation("iron_trapdoor")),"Recipe selection failed");next(11);
             } else if(phase==11&&mc.screen instanceof RecipeTomeScreen screen&&ticks>10){screenshot("tome_recipe.png");screen.inscribeSelection();next(12);
             } else if(phase==12&&ticks>20&&!pending){
                 screenshot("tome_inscribed.png");
@@ -267,15 +267,15 @@ public final class ClientNexusSmoke {
                 check(mc.player.isShiftKeyDown(),"Rune pickup fixture did not hold Shift");
                 check(mc.hitResult instanceof BlockHitResult&&RuneRenderer.hover((BlockHitResult)mc.hitResult)!=null&&RuneRenderer.hover((BlockHitResult)mc.hitResult).layer().id().equals(pickupId),"Rune pickup client ray missed its glyph: "+mc.hitResult+" eye="+mc.player.getEyePosition()+" pose="+mc.player.getPose());
                 screenshot("rune_four_closeup.png");pickupBefore=RunePickupClient.pickupRequests;mc.options.keyAttack.setDown(true);
-                var input=new net.neoforged.neoforge.client.event.InputEvent.InteractionKeyMappingTriggered(0,mc.options.keyAttack,InteractionHand.MAIN_HAND);RunePickupClient.attack(input);check(input.isCanceled(),"Rune attack was not consumed before host mining");next(59);
+                var input=new net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered(0,mc.options.keyAttack,InteractionHand.MAIN_HAND);RunePickupClient.attack(input);check(input.isCanceled(),"Rune attack was not consumed before host mining");next(59);
             } else if(phase==59&&ticks>25&&!pending){
-                for(int i=0;i<5;i++){var input=new net.neoforged.neoforge.client.event.InputEvent.InteractionKeyMappingTriggered(0,mc.options.keyAttack,InteractionHand.MAIN_HAND);RunePickupClient.attack(input);check(input.isCanceled(),"Held attack reached the host after pickup");}
+                for(int i=0;i<5;i++){var input=new net.minecraftforge.client.event.InputEvent.InteractionKeyMappingTriggered(0,mc.options.keyAttack,InteractionHand.MAIN_HAND);RunePickupClient.attack(input);check(input.isCanceled(),"Held attack reached the host after pickup");}
                 check(RunePickupClient.pickupRequests==pickupBefore+1,"Held attack sent more than one pickup request");screenshot("rune_picked_up.png");
                 server(61,p->{var host=new BlockPos(9,-59,6);var surface=RuneSurfaces.get(p.serverLevel(),host,Direction.SOUTH);check(surface!=null&&surface.layers().size()==3&&surface.get(pickupId)==null,"Actual client pickup did not remove only its exact rune");check(p.getInventory().items.stream().filter(s->s.is(Items.PAPER)).mapToInt(ItemStack::getCount).sum()==runeItemsBefore,"Removing a painted rune must not create a legacy item");check(p.level().getBlockState(host).is(Blocks.CHEST),"Rune pickup damaged the host container");p.setShiftKeyDown(false);});
             } else if(phase==61){mc.options.keyAttack.setDown(false);mc.options.keyShift.setDown(false);next(62);
             } else if(phase==62&&ticks>3){next(60);
             } else if(phase==60){
-                if(Boolean.getBoolean("astral_repository.captureGuide")||!net.neoforged.fml.ModList.get().isLoaded("patchouli")||GuidebookSmoke.tick())next(63);
+                if(Boolean.getBoolean("astral_repository.captureGuide")||!net.minecraftforge.fml.ModList.get().isLoaded("patchouli")||GuidebookSmoke.tick())next(63);
             } else if(phase==37&&ticks>15&&!(mc.screen instanceof RuneSettingsScreen)&&!pending){
                 server(38,p->{var push=runes(p).get(pushId);var pull=runes(p).get(pullId);check(push.priority()==13&&!push.enabled()&&!push.filter().all()&&push.filter().blacklist()&&push.filter().minimum()==2&&push.filter().target()==64,"Advanced settings did not persist the actual edited controls");check(pull.priority()==0&&pull.enabled()&&pull.filter().minimum()==0,"Advanced settings changed another rune layer");});
             } else if(phase==38){next(41);
@@ -287,7 +287,7 @@ public final class ClientNexusSmoke {
             } else if(phase==63){
                 if(Boolean.getBoolean("astral_repository.guideOnly"))ParallaxMaterialSmoke.verify();
                 check(!mc.mouseHandler.isMouseGrabbed(),"Test client grabbed mouse");check(mc.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER)==0,"Test client volume was not muted");
-                Files.writeString(OUT.resolve("result.txt"),Boolean.getBoolean("astral_repository.guideOnly")?"PASS: silent mouse-free Patchouli guide-only client; all workshop and crystal entries, spreads, and screenshot resources rendered; frozen-time GPU parallax passed.":"PASS: silent mouse-free integrated client; Nexus cursor pickup/deposit and vanilla crafting-slot transitions; tome interactions; "+(Boolean.getBoolean("astral_repository.captureGuide")?"guide screenshot capture; ":net.neoforged.fml.ModList.get().isLoaded("patchouli")?"all Patchouli guide entries and screenshot spreads rendered; ":"Patchouli absent and gameplay client loaded; ")+" independent Push/Pull rune placement and plain-container transfers; Shift-only exact-layer icon/amount hover with unshifted popup suppression, missed-glyph container selection, target selection/toggle/reassignment, held block filter without consumption, clear-filter preserving target, and autosaved independent advanced settings with preserved caret, visual filter search, exact Shift-left rune pickup with held-click suppression; "+(jadeShownBefore>=0?"Jade plugin registered and appended actual Shift icons; ":"built-in Shift rune icons displayed; ")+"one-to-four fixed-size rune layouts rendered on matching chests; closed pixel-thick wand mesh and generated 2D Astral Nexus remote orb geometry and overlay dispatch checked by MaterialGeometrySmoke; real GPU culling and all bud-facing windings checked; depth-projected astral material rendered from front/back with timed drift frames; wand rendered front/oblique/edge-on; actual opacity-0/1 framebuffer comparison changed only the large crystal while every frame/grip and sampled small pommel-gem pixel stayed stable, and all four remote-orb quadrants changed with opacity; live opacity 0/1 verified against framebuffer pixels and configured opacity restored.");done=true;mc.stop();
+                Files.writeString(OUT.resolve("result.txt"),Boolean.getBoolean("astral_repository.guideOnly")?"PASS: silent mouse-free Patchouli guide-only client; all workshop and crystal entries, spreads, and screenshot resources rendered; frozen-time GPU parallax passed.":"PASS: silent mouse-free integrated client; Nexus cursor pickup/deposit and vanilla crafting-slot transitions; tome interactions; "+(Boolean.getBoolean("astral_repository.captureGuide")?"guide screenshot capture; ":net.minecraftforge.fml.ModList.get().isLoaded("patchouli")?"all Patchouli guide entries and screenshot spreads rendered; ":"Patchouli absent and gameplay client loaded; ")+" independent Push/Pull rune placement and plain-container transfers; Shift-only exact-layer icon/amount hover with unshifted popup suppression, missed-glyph container selection, target selection/toggle/reassignment, held block filter without consumption, clear-filter preserving target, and autosaved independent advanced settings with preserved caret, visual filter search, exact Shift-left rune pickup with held-click suppression; "+(jadeShownBefore>=0?"Jade plugin registered and appended actual Shift icons; ":"built-in Shift rune icons displayed; ")+"one-to-four fixed-size rune layouts rendered on matching chests; closed pixel-thick wand mesh and generated 2D Astral Nexus remote orb geometry and overlay dispatch checked by MaterialGeometrySmoke; real GPU culling and all bud-facing windings checked; depth-projected astral material rendered from front/back with timed drift frames; wand rendered front/oblique/edge-on; actual opacity-0/1 framebuffer comparison changed only the large crystal while every frame/grip and sampled small pommel-gem pixel stayed stable, and all four remote-orb quadrants changed with opacity; live opacity 0/1 verified against framebuffer pixels and configured opacity restored.");done=true;mc.stop();
             }
         }catch(Throwable failure){fail(failure);}
     }
@@ -347,7 +347,7 @@ public final class ClientNexusSmoke {
     private static void lookAtRune(ServerPlayer p,int index){look(p,3.5,-60,3.25,runeHit(p,index).getLocation());}
     private static int count(ChestBlockEntity chest,Item item){int result=0;for(int slot=0;slot<chest.getContainerSize();slot++)if(chest.getItem(slot).is(item))result+=chest.getItem(slot).getCount();return result;}
     private static long jadeShown()throws ReflectiveOperationException{
-        if(!net.neoforged.fml.ModList.get().isLoaded("jade")){check(!Boolean.getBoolean("astral_repository.jadeTest"),"Jade test requested but Jade is not loaded");return -1;}
+        if(!net.minecraftforge.fml.ModList.get().isLoaded("jade")){check(!Boolean.getBoolean("astral_repository.jadeTest"),"Jade test requested but Jade is not loaded");return -1;}
         Class<?> plugin=Class.forName("com.cappleapple.astralrepository.compat.AstralJadePlugin");check(plugin.getField("registered").getBoolean(null),"Jade did not register the rune tooltip provider");return plugin.getField("shown").getLong(null);
     }
     private static void look(ServerPlayer p,double x,double y,double z,Vec3 target){Vec3 delta=target.subtract(x,y+p.getEyeHeight(),z);float yaw=(float)Math.toDegrees(Math.atan2(delta.z,delta.x))-90;float pitch=(float)-Math.toDegrees(Math.atan2(delta.y,Math.sqrt(delta.x*delta.x+delta.z*delta.z)));p.connection.teleport(x,y,z,yaw,pitch);}

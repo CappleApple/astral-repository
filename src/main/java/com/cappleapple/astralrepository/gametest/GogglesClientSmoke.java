@@ -17,7 +17,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.neoforged.fml.ModList;
+import net.minecraftforge.fml.ModList;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -125,7 +125,7 @@ public final class GogglesClientSmoke {
         check(!model.isCustomRenderer()&&quads.size()==126,"Low-poly goggles geometry is missing or changed: "+quads.size());
         check(quads.stream().filter(q->q.getTintIndex()==0).count()==36,"Only the six lens cuboids should use the astral overlay");
         check(quads.stream().filter(q->!q.isTinted()).count()==90,"Frame and strap must retain their own unshaded material");
-        var texture=net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("astral_repository","item/astral_goggles");
+        var texture=new net.minecraft.resources.ResourceLocation("astral_repository","item/astral_goggles");
         check(quads.stream().allMatch(q->q.getSprite().contents().name().equals(texture)),"Goggles geometry lost its custom texture");
         for (var context : net.minecraft.world.item.ItemDisplayContext.values()) {
             var selected = com.cappleapple.astralrepository.client.AstralMineralClient.gogglesModel(context);

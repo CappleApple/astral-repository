@@ -7,13 +7,13 @@ import io.netty.buffer.Unpooled;
 import java.util.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.PacketSendListener;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
-import net.neoforged.neoforge.common.util.FakePlayer;
+import net.minecraftforge.common.util.FakePlayer;
 
 /** Codec-consuming observers exercise real audience/dispatch work without a client renderer or retained packet history. */
 final class RuneStressObservers {
@@ -29,7 +29,7 @@ final class RuneStressObservers {
             player.connection=new ServerGamePacketListenerImpl(player.getServer(),player.connection.getConnection(),player,CommonListenerCookie.createInitial(player.getGameProfile(),false)){
                 @Override public void send(Packet<?> packet){
                     if(!(packet instanceof ClientboundCustomPayloadPacket custom)||!(custom.payload() instanceof TransferVisualBatch batch))return;
-                    var buffer=new RegistryFriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
+                    var buffer=new FriendlyByteBuf(Unpooled.buffer(),level.registryAccess());
                     try{
                         TransferVisualBatch.CODEC.encode(buffer,batch);int size=buffer.readableBytes();
                         var decoded=TransferVisualBatch.CODEC.decode(buffer);

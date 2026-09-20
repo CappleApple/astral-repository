@@ -18,7 +18,7 @@ final class BoundedPathCache<K,P> {
         int weight=weight(path);if(weight>maxPoints)return;
         paths.put(key,List.copyOf(path));points+=weight;
         while(paths.size()>maxEntries||points>maxPoints){
-            var eldest=paths.pollFirstEntry();points-=weight(eldest.getValue());
+            var eldest=com.cappleapple.astralrepository.platform.Backport.pollFirst(paths);points-=weight(eldest.getValue());
         }
     }
     void clear(){paths.clear();points=0;}

@@ -15,16 +15,16 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
-import net.neoforged.neoforge.gametest.*;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.gametest.*;
+import net.minecraftforge.items.ItemStackHandler;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
 public final class DirectRuneGameTests {
-    private static final ResourceLocation PUSH=ResourceLocation.parse("astral_repository:push_rune"),PULL=ResourceLocation.parse("astral_repository:pull_rune");
+    private static final ResourceLocation PUSH=new ResourceLocation("astral_repository:push_rune"),PULL=new ResourceLocation("astral_repository:pull_rune");
     private static RuneLayer layer(RuneSurface rune,RuneLayer.Mode mode){return Objects.requireNonNull(rune.addLayer(mode==RuneLayer.Mode.PUSH?PUSH:PULL,mode));}
     private static GlobalPos at(GameTestHelper h,BlockPos relative){return GlobalPos.of(h.getLevel().dimension(),h.absolutePos(relative));}
     private static ChestBlockEntity chest(GameTestHelper h,BlockPos pos){h.setBlock(pos,Blocks.CHEST);return (ChestBlockEntity)h.getBlockEntity(pos);}
@@ -207,11 +207,11 @@ public final class DirectRuneGameTests {
         h.assertTrue(migrated.layers().size()==4&&migrated.archivedLayerCount()==2&&migrated.get(fifth)==null,"Legacy excess is retained outside active and visible layers");
         RuneSurface restored=RuneSurface.load(h.getLevel().getServer(),migrated.save(h.getLevel().registryAccess()),h.getLevel().registryAccess());
         h.assertTrue(restored.archivedLayerCount()==2,"Dormant excess survives a subsequent save and load");
-        h.assertTrue(restored.removeLayer(restored.layers().getFirst().id()),"Removing a visible layer frees one slot");
+        h.assertTrue(restored.removeLayer(restored.layers().get(0).id()),"Removing a visible layer frees one slot");
         RuneLayer promoted=restored.get(fifth);
         h.assertTrue(restored.layers().size()==4&&restored.archivedLayerCount()==1&&promoted!=null&&!promoted.enabled(),"The next preserved identity is restored paused without exceeding four visible layers");
         h.assertTrue(promoted.target().equals(new RuneLayer.Target(at(h,targetPos),Direction.EAST))&&promoted.priority()==19&&promoted.filter().minimum()==5&&promoted.filter().target()==23&&promoted.transferredItems()==99&&promoted.filter().matches(new ItemStack(Items.GOLD_INGOT)),"Restored layer keeps target face, priority, filter, stock settings and counters");
-        restored.removeLayer(restored.layers().getFirst().id());
+        restored.removeLayer(restored.layers().get(0).id());
         h.assertTrue(restored.get(sixth)!=null&&!restored.get(sixth).enabled()&&restored.archivedLayerCount()==0&&restored.layers().size()==4,"Every remaining legacy layer can be recovered in order, always paused");h.succeed();
         }finally{com.cappleapple.astralrepository.AstralServerConfig.maxRunesPerFace.set(previous);}
 

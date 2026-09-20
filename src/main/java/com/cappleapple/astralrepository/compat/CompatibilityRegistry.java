@@ -13,10 +13,10 @@ import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.capabilities.BlockCapability;
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
-import net.neoforged.neoforge.capabilities.Capabilities;
+import net.minecraftforge.fml.ModList;
+import com.cappleapple.astralrepository.platform.BlockCapability;
+import com.cappleapple.astralrepository.platform.BlockCapabilityCache;
+import com.cappleapple.astralrepository.platform.Capabilities;
 
 /** Registration and bounded, loaded-world-only discovery. Register adapters during common setup. */
 public final class CompatibilityRegistry {
@@ -49,7 +49,7 @@ public final class CompatibilityRegistry {
             return null;
         });
         if (loaded("ae2",CompatConfig.appliedEnergistics2.get())) attempt(level,pos,"ae2",() -> {
-            var tracked=trackOptional(level,pos,OptionalApi.field("appeng.api.AECapabilities","ME_STORAGE"),side);
+            var tracked=trackOptional(level,pos,OptionalApi.field("appeng.capabilities.Capabilities","STORAGE"),side);
             Object storage=tracked.handler;
             Object grid=storage==null?null:aeGrid(level,pos,side);
             if (storage != null && grid != null) {
@@ -61,13 +61,13 @@ public final class CompatibilityRegistry {
         });
         if (loaded("refinedstorage",CompatConfig.refinedStorage.get())) attempt(level,pos,"refinedstorage",() -> {
             for (Object node:rsNodes(level,pos)) {
-                Object network=OptionalApi.call(node,"com.refinedmods.refinedstorage.api.network.node.NetworkNode","getNetwork");
+                Object network=rsNetwork(node);
                 if (network==null) continue;
-                Object storage=rsComponent(network,"com.refinedmods.refinedstorage.api.network.storage.StorageNetworkComponent");
+                Object storage=OptionalApi.call(network,RefinedStorageProvider.NETWORK,"getItemStorageCache");
                 BooleanSupplier physical=validity(level,pos);
                 if (storage != null) result.add(ProviderGuard.storage(new RefinedStorageProvider(
                         location("refinedstorage",level,pos,side),network,storage,() -> physical.getAsBoolean()
-                        && network==OptionalApi.call(node,"com.refinedmods.refinedstorage.api.network.node.NetworkNode","getNetwork"))));
+                        && network==rsNetwork(node))));
             }
             return null;
         });
@@ -105,7 +105,7 @@ public final class CompatibilityRegistry {
         if (!level.hasChunkAt(pos)) return List.of();
         List<CraftingProvider> result=new ArrayList<>();
         if (loaded("ae2",CompatConfig.appliedEnergistics2.get())) attempt(level,pos,"ae2_crafting",() -> {
-            Object storage=capability(level,pos,OptionalApi.field("appeng.api.AECapabilities","ME_STORAGE"),side);
+            Object storage=capability(level,pos,OptionalApi.field("appeng.capabilities.Capabilities","STORAGE"),side);
             Object grid=storage==null?null:aeGrid(level,pos,side);
             if(grid!=null && storage==aeInventory(grid)) {
                 BooleanSupplier physical=validity(level,pos);
@@ -116,12 +116,11 @@ public final class CompatibilityRegistry {
         });
         if (loaded("refinedstorage",CompatConfig.refinedStorage.get())) attempt(level,pos,"refinedstorage_crafting",() -> {
             for(Object node:rsNodes(level,pos)) {
-                Object network=OptionalApi.call(node,"com.refinedmods.refinedstorage.api.network.node.NetworkNode","getNetwork");
+                Object network=rsNetwork(node);
                 if(network==null) continue;
                 BooleanSupplier physical=validity(level,pos);
                 result.add(ProviderGuard.crafting(new RefinedCraftingProvider(location("refinedstorage_crafting",level,pos,side),network,
-                        () -> physical.getAsBoolean() && network==OptionalApi.call(node,
-                                "com.refinedmods.refinedstorage.api.network.node.NetworkNode","getNetwork"))));
+                        () -> physical.getAsBoolean() && network==rsNetwork(node))));
             }
             return null;
         });
@@ -219,18 +218,18 @@ public final class CompatibilityRegistry {
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static Object capability(ServerLevel level,BlockPos pos,Object capability,Direction side) {
-        return level.getCapability((BlockCapability)capability,pos,side);
+        return com.cappleapple.astralrepository.platform.Capabilities.get(level,new BlockCapability((net.minecraftforge.common.capabilities.Capability)capability),pos,side);
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static TrackedCapability<Object,Object> trackOptional(ServerLevel level,BlockPos pos,Object capability,Object context) {
-        return track((BlockCapability)capability,level,pos,context);
+        return track(new BlockCapability((net.minecraftforge.common.capabilities.Capability)capability),level,pos,context);
     }
     private static Object aeInventory(Object grid) {
         Object service=OptionalApi.call(grid,"appeng.api.networking.IGrid","getStorageService");
         return OptionalApi.call(service,"appeng.api.networking.storage.IStorageService","getInventory");
     }
     static Object aeGrid(ServerLevel level,BlockPos pos,Direction side) {
-        Object host=capability(level,pos,OptionalApi.field("appeng.api.AECapabilities","IN_WORLD_GRID_NODE_HOST"),null);
+        Object host=capability(level,pos,OptionalApi.field("appeng.capabilities.Capabilities","IN_WORLD_GRID_NODE_HOST"),null);
         if (host==null) return null;
         Direction[] sides=side==null?Direction.values():new Direction[]{side};
         for (Direction direction:sides) {
@@ -242,19 +241,16 @@ public final class CompatibilityRegistry {
     }
     static List<Object> rsNodes(ServerLevel level,BlockPos pos) {
         BlockEntity tile=level.getBlockEntity(pos);
-        String host="com.refinedmods.refinedstorage.common.api.support.network.AbstractNetworkNodeContainerBlockEntity";
-        if (tile==null || !OptionalApi.type(host).isInstance(tile)) return List.of();
-        Object provider=OptionalApi.call(tile,host,"getContainerProvider");
-        Iterable<?> containers=(Iterable<?>)OptionalApi.call(provider,
-                "com.refinedmods.refinedstorage.common.api.support.network.NetworkNodeContainerProvider","getContainers");
-        List<Object> nodes=new ArrayList<>();
-        for(Object container:containers) nodes.add(OptionalApi.call(container,
-                "com.refinedmods.refinedstorage.api.network.node.container.NetworkNodeContainer","getNode"));
-        return nodes;
+        String host="com.refinedmods.refinedstorage.api.network.node.INetworkNodeProxy";
+        if(tile==null || !OptionalApi.type(host).isInstance(tile))return List.of();
+        Object node=OptionalApi.call(tile,host,"getNode");
+        return node==null?List.of():List.of(node);
     }
-    static Object rsComponent(Object network,String type) {
-        return OptionalApi.call(network,"com.refinedmods.refinedstorage.api.core.component.ComponentAccessor",
-                "getComponent",new Class<?>[]{Class.class},OptionalApi.type(type));
+    private static Object rsNetwork(Object node) {
+        String contract="com.refinedmods.refinedstorage.api.network.node.INetworkNode";
+        if(!(Boolean)OptionalApi.call(node,contract,"isActive"))return null;
+        Object network=OptionalApi.call(node,contract,"getNetwork");
+        return network!=null&&(Boolean)OptionalApi.call(network,RefinedStorageProvider.NETWORK,"canRun")?network:null;
     }
     private static List<StorageProvider> distinctStorage(List<StorageProvider> providers) {
         Map<Object,StorageProvider> unique=new LinkedHashMap<>();

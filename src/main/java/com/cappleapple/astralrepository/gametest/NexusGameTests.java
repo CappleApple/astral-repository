@@ -14,8 +14,8 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -77,7 +77,7 @@ public final class NexusGameTests {
             menu.clicked(1,0,ClickType.PICKUP,player);
             h.assertTrue(stored(menu,iron)+menu.grid.getItem(0).getCount()+menu.grid.getItem(1).getCount()+menu.grid.getItem(2).getCount()==95,"Storage and crafting grid conserve every ordinary iron ingot");
             action(menu,NetworkPackets.PICKUP,named,1);
-            h.assertTrue(menu.getCarried().getCount()==5&&ItemStack.isSameItemSameComponents(menu.getCarried(),named)&&stored(menu,named)==4,"Half pickup preserves exact component identity");
+            h.assertTrue(menu.getCarried().getCount()==5&&ItemStack.isSameItemSameTags(menu.getCarried(),named)&&stored(menu,named)==4,"Half pickup preserves exact component identity");
             action(menu,NetworkPackets.DEPOSIT,ItemStack.EMPTY,1);
             action(menu,NetworkPackets.DEPOSIT,ItemStack.EMPTY,0);
             ItemStack absent=named.copy();absent.set(DataComponents.CUSTOM_NAME,Component.literal("Not stored"));

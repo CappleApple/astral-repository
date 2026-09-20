@@ -4,7 +4,6 @@ import com.cappleapple.astralrepository.client.AstralTrimItemModel;
 import com.cappleapple.astralrepository.content.AstralTrims;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -18,7 +17,7 @@ public abstract class AstralTrimItemMixin {
     @Inject(method="getModel", at=@At("RETURN"), cancellable=true)
     private void astral$trimIcon(ItemStack stack, Level level, LivingEntity wearer, int seed,
             CallbackInfoReturnable<BakedModel> ci) {
-        if (AstralTrims.isAstral(stack.get(DataComponents.TRIM)))
+        if (level != null && AstralTrims.isAstral(net.minecraft.world.item.armortrim.ArmorTrim.getTrim(level.registryAccess(),stack).orElse(null)))
             ci.setReturnValue(AstralTrimItemModel.wrap(ci.getReturnValue()));
     }
 }

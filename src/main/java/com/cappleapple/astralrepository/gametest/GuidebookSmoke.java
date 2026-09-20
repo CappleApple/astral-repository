@@ -120,7 +120,7 @@ public final class GuidebookSmoke {
                 if (!page.has("type") || !page.get("type").getAsString().equals("patchouli:image")) continue;
                 check(page.has("images") && page.getAsJsonArray("images").size() > 0, "Image page has no screenshot resource: " + source);
                 for (var image : page.getAsJsonArray("images")) {
-                    ResourceLocation texture = ResourceLocation.parse(image.getAsString());
+                    ResourceLocation texture = new ResourceLocation(image.getAsString());
                     check(client.getResourceManager().getResource(texture).isPresent(), "Guide screenshot resource is missing: " + texture);
                     if (images.add(texture)) try (var input = client.getResourceManager().open(texture); NativeImage decoded = NativeImage.read(input)) {
                         check(decoded.getWidth() > 1 && decoded.getHeight() > 1, "Guide screenshot resource is empty: " + texture);
@@ -134,7 +134,7 @@ public final class GuidebookSmoke {
         try (NativeImage frame = Screenshot.takeScreenshot(client.getMainRenderTarget())) { frame.writeToFile(path); }
         check(Files.size(path) > 0, "Guide screenshot was not saved: " + name);
     }
-    private static ResourceLocation id(String path) { return ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, path); }
+    private static ResourceLocation id(String path) { return new ResourceLocation(AstralRepository.MOD_ID, path); }
     private static void check(boolean value, String message) { if (!value) throw new AssertionError(message); }
     private GuidebookSmoke() {}
 }

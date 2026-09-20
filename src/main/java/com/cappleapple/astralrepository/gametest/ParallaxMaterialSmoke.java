@@ -60,7 +60,7 @@ public final class ParallaxMaterialSmoke {
             RenderSystem.disableScissor(); RenderSystem.depthMask(true); RenderSystem.disableBlend(); RenderSystem.enableDepthTest(); RenderSystem.enableCull();
             RenderSystem.setShaderFogStart(1000); RenderSystem.setShaderFogEnd(2000); RenderSystem.setShaderColor(1, 1, 1, 1);
             target = new TextureTarget(SIZE, SIZE, true, Minecraft.ON_OSX);
-            TextureAtlasSprite sprite = minecraft.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"block/astral_geode"));
+            TextureAtlasSprite sprite = minecraft.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(new ResourceLocation(AstralRepository.MOD_ID,"block/astral_geode"));
             try (NativeImage zero = render(target, sprite, 0, FRONT, 4200);
                  NativeImage zeroShift = render(target, sprite, 0, SHIFT, 4200);
                  NativeImage zeroAngle = render(target, sprite, 0, ANGLE, 4200);
@@ -428,8 +428,8 @@ public final class ParallaxMaterialSmoke {
     }
     private static int projectedPixel(NativeImage image, Matrix4f transform, float x, float y) {
         Vector4f point = transform.transform(new Vector4f(x, y, 0, 1));
-        int px = Math.clamp((int)((point.x / point.w * .5F + .5F) * SIZE), 0, SIZE - 1);
-        int py = Math.clamp((int)((.5F - point.y / point.w * .5F) * SIZE), 0, SIZE - 1);
+        int px = com.cappleapple.astralrepository.platform.Backport.clamp((int)((point.x / point.w * .5F + .5F) * SIZE), 0, SIZE - 1);
+        int py = com.cappleapple.astralrepository.platform.Backport.clamp((int)((.5F - point.y / point.w * .5F) * SIZE), 0, SIZE - 1);
         return image.getPixelRGBA(px, py);
     }
     private static double meanBrightness(NativeImage image) {

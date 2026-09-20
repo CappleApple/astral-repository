@@ -77,7 +77,7 @@ final class VisualAudienceIndex<T> {
             double dx = (double) b.getX() - a.getX(), dy = (double) b.getY() - a.getY(), dz = (double) b.getZ() - a.getZ();
             double px = observer.x - ax, py = observer.y - ay, pz = observer.z - az;
             double length = dx * dx + dy * dy + dz * dz;
-            double t = length == 0 ? 0 : Math.clamp((px * dx + py * dy + pz * dz) / length, 0, 1);
+            double t = length == 0 ? 0 : com.cappleapple.astralrepository.platform.Backport.clamp((px * dx + py * dy + pz * dz) / length, 0, 1);
             px -= dx * t; py -= dy * t; pz -= dz * t;
             if (px * px + py * py + pz * pz < RANGE * RANGE) return true;
         }

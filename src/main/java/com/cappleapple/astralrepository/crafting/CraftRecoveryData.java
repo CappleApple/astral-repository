@@ -20,7 +20,7 @@ final class CraftRecoveryData extends SavedData {
     record Entry(GlobalPos origin, Map<ItemKey, Long> items, boolean uncertain) {}
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
     static CraftRecoveryData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(CraftRecoveryData::new, CraftRecoveryData::load), "astral_repository_craft_recovery");
+        return server.overworld().getDataStorage().computeIfAbsent((tag)->CraftRecoveryData.load(tag,null),CraftRecoveryData::new, "astral_repository_craft_recovery");
     }
     void put(UUID id, GlobalPos origin, Map<ItemKey, Long> items) {
         Entry next = new Entry(origin, Map.copyOf(items), false);
@@ -39,12 +39,12 @@ final class CraftRecoveryData extends SavedData {
         for (int i = 0; i < entries.size(); i++) {
             CompoundTag entry = entries.getCompound(i);
             try {
-                GlobalPos origin = GlobalPos.of(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension"))), BlockPos.of(entry.getLong("Position")));
+                GlobalPos origin = GlobalPos.of(ResourceKey.create(Registries.DIMENSION, new ResourceLocation(entry.getString("Dimension"))), BlockPos.of(entry.getLong("Position")));
                 Map<ItemKey, Long> items = new LinkedHashMap<>();
                 ListTag savedItems = entry.getList("Escrow", Tag.TAG_COMPOUND);
                 for (int j = 0; j < savedItems.size(); j++) {
                     CompoundTag savedItem = savedItems.getCompound(j);
-                    ItemStack stack = ItemStack.parseOptional(registries, savedItem.getCompound("Stack"));
+                    ItemStack stack = ItemStack.of(savedItem.getCompound("Stack"));
                     long count = savedItem.getLong("Count");
                     if (!stack.isEmpty() && count > 0) items.merge(new ItemKey(stack), count, Math::addExact);
                 }
@@ -55,7 +55,7 @@ final class CraftRecoveryData extends SavedData {
         }
         return data;
     }
-    @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    @Override public CompoundTag save(CompoundTag tag) {HolderLookup.Provider registries=null;
         ListTag jobs = new ListTag();
         entries.forEach((id, entry) -> {
             CompoundTag job = new CompoundTag();
@@ -66,7 +66,7 @@ final class CraftRecoveryData extends SavedData {
             ListTag items = new ListTag();
             entry.items().forEach((key, count) -> {
                 CompoundTag item = new CompoundTag();
-                item.put("Stack", key.sample().save(registries));
+                item.put("Stack", key.sample().save(new net.minecraft.nbt.CompoundTag()));
                 item.putLong("Count", count);
                 items.add(item);
             });

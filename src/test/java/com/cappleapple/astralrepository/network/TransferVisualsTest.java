@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class TransferVisualsTest {
     @Test void randomBatchesKeepEndpointsAndContinuousVelocityWithoutRelayPinching(){
         var path=List.of(BlockPos.ZERO,new BlockPos(8,0,0),new BlockPos(8,0,16));
-        var packet=new NetworkPackets.Visual(path.getFirst(),path.getLast(),net.minecraft.world.item.ItemStack.EMPTY,0xffffff,60,-2,path);
+        var packet=new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),net.minecraft.world.item.ItemStack.EMPTY,0xffffff,60,-2,path);
         double relay=1.0/3,h=1e-6;
         for(long seed=0;seed<30;seed++){
             assertEquals(TransferVisuals.position(packet,0),TransferVisuals.variedPosition(packet,0,seed,2));
@@ -22,7 +22,7 @@ class TransferVisualsTest {
     }
     @Test void relaySpreadMatchesMidflightSpreadAndNeverExceedsConfiguredVariation(){
         var path=List.of(BlockPos.ZERO,new BlockPos(8,0,0),new BlockPos(8,0,16));
-        var packet=new NetworkPackets.Visual(path.getFirst(),path.getLast(),net.minecraft.world.item.ItemStack.EMPTY,0xffffff,60,-1,path);
+        var packet=new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),net.minecraft.world.item.ItemStack.EMPTY,0xffffff,60,-1,path);
         double relayEnergy=0,midEnergy=0;
         for(long seed=0;seed<200;seed++){
             relayEnergy+=TransferVisuals.variedPosition(packet,1.0/3,seed,.2).distanceToSqr(TransferVisuals.position(packet,1.0/3));
@@ -38,7 +38,7 @@ class TransferVisualsTest {
         var path=List.of(BlockPos.ZERO,BlockPos.ZERO,new BlockPos(4,1,0));
         var normal=new net.minecraft.world.phys.Vec3(0,1,0);
         var endpoint=new TransferVisuals.Endpoint(normal.scale(.502),net.minecraft.core.Direction.UP);
-        var packet=new NetworkPackets.Visual(path.getFirst(),path.getLast(),net.minecraft.world.item.ItemStack.EMPTY,0xffffff,40,-1,path,endpoint,endpoint,null);
+        var packet=new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),net.minecraft.world.item.ItemStack.EMPTY,0xffffff,40,-1,path,endpoint,endpoint,null);
         for(int i=0;i<=100;i++)assertTrue(Double.isFinite(TransferVisuals.variedPosition(packet,i/100.0,7,2).lengthSqr()));
         var start=TransferVisuals.variedPosition(packet,0,7,2);
         assertTrue(TransferVisuals.variedPosition(packet,1e-5,7,2).subtract(start).scale(100000).normalize().dot(normal)>.999);
@@ -68,7 +68,7 @@ class TransferVisualsTest {
             var normal=net.minecraft.world.phys.Vec3.atLowerCornerOf(face.getNormal());
             var endpoint=new TransferVisuals.Endpoint(normal.scale(.502),face);
             var start=TransferVisuals.position(path,0,endpoint,endpoint);var finish=TransferVisuals.position(path,1,endpoint,endpoint);
-            assertEquals(path.getFirst().getCenter().add(endpoint.offset()),start);assertEquals(path.getLast().getCenter().add(endpoint.offset()),finish);
+            assertEquals(path.get(0).getCenter().add(endpoint.offset()),start);assertEquals(path.get(path.size()-1).getCenter().add(endpoint.offset()),finish);
             assertTrue(TransferVisuals.position(path,1e-4,endpoint,endpoint).subtract(start).scale(100000).normalize().dot(normal)>.999);
             assertTrue(finish.subtract(TransferVisuals.position(path,1-1e-4,endpoint,endpoint)).normalize().dot(normal)<-.999);
         }

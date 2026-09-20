@@ -19,7 +19,7 @@ public record AnchorAddress(GlobalPos position, @Nullable Direction face) implem
         if(face!=null)tag.putString("Face",face.getName()); return tag;
     }
     public static AnchorAddress load(CompoundTag tag) {
-        var dimension=net.minecraft.resources.ResourceKey.create(Registries.DIMENSION,ResourceLocation.parse(tag.getString("Dimension")));
+        var dimension=net.minecraft.resources.ResourceKey.create(Registries.DIMENSION,new ResourceLocation(tag.getString("Dimension")));
         Direction face=tag.contains("Face")?Direction.byName(tag.getString("Face")):null;
         if(tag.contains("Face")&&face==null)throw new IllegalArgumentException("Invalid rune face");
         return new AnchorAddress(GlobalPos.of(dimension,BlockPos.of(tag.getLong("Position"))),face);

@@ -10,7 +10,7 @@ import net.minecraft.gametest.framework.*;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class RelayRoutingGameTests {
@@ -29,9 +29,9 @@ public final class RelayRoutingGameTests {
             var a=(ChestBlockEntity)h.getBlockEntity(host);var b=(ChestBlockEntity)h.getBlockEntity(target);var c=(ChestBlockEntity)h.getBlockEntity(other);a.setItem(0,new ItemStack(Items.IRON_INGOT,32));
             h.assertTrue(surface.toggleTarget(rune.id(),at(h,target),Direction.UP).success()&&surface.toggleTarget(rune.id(),at(h,other),Direction.NORTH).success(),"Multiple distant sided assignments accepted");
             tick.invoke(manager);
-            var network=manager.networkAt(nodes.getFirst().address());h.assertTrue(network!=null&&nodes.stream().allMatch(n->manager.networkAt(n.address())==network),"Relays, Nexus, and Storage Crystal join without saved bindings");
-            h.assertTrue(manager.links(nodes.getFirst().address()).isEmpty()&&manager.adjacent(nodes.get(1)).size()>=3,"Automatic graph retains multiple paths without saved edges");
-            var route=manager.route(at(h,host),at(h,target),14,4);h.assertTrue(route.size()>=7&&route.getFirst().equals(at(h,host))&&route.getLast().equals(at(h,target)),"Distant containers use ordered relay hops");
+            var network=manager.networkAt(nodes.get(0).address());h.assertTrue(network!=null&&nodes.stream().allMatch(n->manager.networkAt(n.address())==network),"Relays, Nexus, and Storage Crystal join without saved bindings");
+            h.assertTrue(manager.links(nodes.get(0).address()).isEmpty()&&manager.adjacent(nodes.get(1)).size()>=3,"Automatic graph retains multiple paths without saved edges");
+            var route=manager.route(at(h,host),at(h,target),14,4);h.assertTrue(route.size()>=7&&route.get(0).equals(at(h,host))&&route.getLast().equals(at(h,target)),"Distant containers use ordered relay hops");
             var treesField=NetworkManager.class.getDeclaredField("routeTrees");treesField.setAccessible(true);var trees=treesField.get(manager);
             var entriesField=trees.getClass().getDeclaredField("entries");entriesField.setAccessible(true);var treeEntries=(Map<?,?>)entriesField.get(trees);
             var warmTrees=new HashMap<>(treeEntries);
@@ -46,10 +46,10 @@ public final class RelayRoutingGameTests {
             alternate.setChannel(13);tick.invoke(manager);h.assertTrue(manager.route(at(h,host),at(h,target),14,4).isEmpty(),"Wrong-channel bridge cannot connect the split network");
             a.setItem(0,new ItemStack(Items.IRON_INGOT,16));rune.filter().setTarget(32);for(int i=0;i<4;i++)worker.tick();h.assertTrue(count(a)==16&&count(b)+count(c)==32,"Disconnected transfers pause without moving or losing contents");
             rune.setEnabled(false);alternate.setChannel(14);tick.invoke(manager);h.assertTrue(!manager.route(at(h,host),at(h,target),14,4).isEmpty(),"Restoring the channel restores reachability");
-            surface.clearTarget(rune.id());surface.toggleTarget(rune.id(),nodes.getFirst().address().position(),null);rune.setMode(RuneLayer.Mode.PULL);rune.filter().setTarget(24);a.clearContent();rune.setEnabled(true);
+            surface.clearTarget(rune.id());surface.toggleTarget(rune.id(),nodes.get(0).address().position(),null);rune.setMode(RuneLayer.Mode.PULL);rune.filter().setTarget(24);a.clearContent();rune.setEnabled(true);
             nodes.get(4).inventory().insertItem(0,new ItemStack(Items.IRON_INGOT,24),false);
             // Inventory discovery is globally budgeted; unrelated fixture components must not determine readiness.
-            var current=manager.networkAt(nodes.getFirst().address());
+            var current=manager.networkAt(nodes.get(0).address());
             for(var position:List.of(at(h,host),at(h,target),at(h,other),nodes.get(4).address().position()))current.invalidate(position);
             current.tick(32,32);
             h.assertTrue(current.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)),0L)==56,"Fixture providers are discovered before checking aggregate transfer quantities");

@@ -17,7 +17,7 @@ final class ResourceTransferRenderer extends RenderType {
     private static Sprite source;
     private static final Sprite ENERGY_SPRITE=new Sprite(0,0,1,1,0xffffd65c);
     private static ShaderInstance shader;
-    private static final ResourceLocation ENERGY=ResourceLocation.withDefaultNamespace("textures/particle/glow.png");
+    private static final ResourceLocation ENERGY=new ResourceLocation("textures/particle/glow.png");
     private static final RenderType ATLAS=material(TextureAtlas.LOCATION_BLOCKS), POWER=material(ENERGY);
     static void loaded(ShaderInstance value){shader=value;clearCache();}
     static void clearCache(){FLUIDS.clear();source=null;}
@@ -35,7 +35,7 @@ final class ResourceTransferRenderer extends RenderType {
         boolean energy=packet.slot()==-3,circle=packet.slot()==-2||energy;
         Sprite sprite=energy?ENERGY_SPRITE:packet.slot()==-2?fluid(packet.fluid()):source();
         var vertices=buffers.getBuffer(energy?POWER:ATLAS);
-        int color=(sprite.color&0xffffff)|((int)((sprite.color>>>24)*Math.clamp(opacity,0,1))<<24);
+        int color=(sprite.color&0xffffff)|((int)((sprite.color>>>24)*com.cappleapple.astralrepository.platform.Backport.clamp(opacity,0,1))<<24);
         pose.pushPose();pose.translate(position.x,position.y,position.z);pose.mulPose(camera);
         vertex(vertices,pose,-size,-size,sprite.u0,sprite.v1,color,circle?0:-1,0);
         vertex(vertices,pose,size,-size,sprite.u1,sprite.v1,color,circle?32767:-1,0);
@@ -44,25 +44,26 @@ final class ResourceTransferRenderer extends RenderType {
         pose.popPose();
     }
     private static Sprite fluid(ResourceLocation id){
-        var key=id==null?ResourceLocation.withDefaultNamespace("water"):id;
+        var key=id==null?new ResourceLocation("water"):id;
         return FLUIDS.computeIfAbsent(key,k->{
             var fluid=net.minecraft.core.registries.BuiltInRegistries.FLUID.get(k);
-            var properties=net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions.of(fluid);
+            var properties=net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions.of(fluid);
             var texture=properties.getFlowingTexture();if(texture==null)texture=properties.getStillTexture();
             if(texture==null)texture=MissingTextureAtlasSprite.getLocation();
             var sprite=Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(texture);
-            return new Sprite(sprite.getU0(),sprite.getV0(),sprite.getU(.5F),sprite.getV(.5F),properties.getTintColor());
+            return new Sprite(sprite.getU0(),sprite.getV0(),sprite.getU(8F),sprite.getV(8F),properties.getTintColor());
         });
     }
     private static Sprite source(){
         if(source==null){var atlas=Minecraft.getInstance().getTextureAtlas(TextureAtlas.LOCATION_BLOCKS);
-            var sprite=atlas.apply(ResourceLocation.parse("ars_nouveau:block/mana_still"));
-            if(sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation()))sprite=atlas.apply(ResourceLocation.withDefaultNamespace("block/amethyst_block"));
+            var sprite=atlas.apply(new ResourceLocation("ars_nouveau:block/mana_still"));
+            if(sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation()))sprite=atlas.apply(new ResourceLocation("block/amethyst_block"));
             source=new Sprite(sprite.getU0(),sprite.getV0(),sprite.getU1(),sprite.getV1(),0xffffffff);}
         return source;
     }
     private static void vertex(VertexConsumer out,PoseStack pose,float x,float y,float u,float v,int color,int maskX,int maskY){
-        out.addVertex(pose.last().pose(),x,y,0).setColor(color).setUv(u,v).setUv1(maskX,maskY).setLight(LightTexture.FULL_BRIGHT).setNormal(pose.last(),0,0,1);
+        out.vertex(pose.last().pose(),x,y,0).color(color).uv(u,v).overlayCoords(maskX,maskY).uv2(LightTexture.FULL_BRIGHT).normal(pose.last().normal(),0,0,1).endVertex();
     }
     private ResourceTransferRenderer(){super("unused",DefaultVertexFormat.NEW_ENTITY,VertexFormat.Mode.QUADS,0,false,false,()->{},()->{});}
 }
+

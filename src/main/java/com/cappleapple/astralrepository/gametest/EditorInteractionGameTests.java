@@ -11,8 +11,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -37,8 +37,8 @@ public final class EditorInteractionGameTests {
             var cells=RuneLayout.placed(surface);h.assertTrue(cells.size()==8,"Renderer has eight cells");
             for(int i=0;i<8;i++)h.assertTrue(RuneLayout.selectedIndex(cells,cells.get(i).center())==i,"Every rune has an independent click target");
             var packet=new RunePackets.Faces(List.of(new RunePackets.Face(surface.getBlockPos(),surface.facing(),-1,surface.layers().stream().map(l->RunePackets.snapshot(surface,l)).toList())));
-            var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),world.registryAccess());
-            try{RunePackets.Faces.CODEC.encode(buffer,packet);h.assertTrue(RunePackets.Faces.CODEC.decode(buffer).faces().getFirst().layers().size()==8,"Eight runes survive actual packet codec");}finally{buffer.release();}
+            var buffer=new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),world.registryAccess());
+            try{RunePackets.Faces.CODEC.encode(buffer,packet);h.assertTrue(RunePackets.Faces.CODEC.decode(buffer).faces().get(0).layers().size()==8,"Eight runes survive actual packet codec");}finally{buffer.release();}
             AstralServerConfig.maxRunesPerFace.set(2);
             var loaded=RuneSurface.load(world.getServer(),surface.save(world.registryAccess()),world.registryAccess());
             h.assertTrue(loaded.layers().size()==8&&loaded.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH)==null,"Lowering limit preserves existing saved runes and rejects additions");
@@ -55,7 +55,7 @@ public final class EditorInteractionGameTests {
         for(var block:List.of(Blocks.CHEST,AstralContent.RELAY_CRYSTAL.get(),AstralContent.STORAGE_NEXUS.get(),AstralContent.SEED_STORAGE_CRYSTAL.get())){
             h.setBlock(pos,block);WandPackets.selection(wand,preset.id(),true);
             var hit=new BlockHitResult(h.absolutePos(pos).getCenter().add(0,0,.4375),Direction.SOUTH,h.absolutePos(pos),false);
-            var event=new net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock(player,InteractionHand.MAIN_HAND,hit.getBlockPos(),hit);
+            var event=new net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock(player,InteractionHand.MAIN_HAND,hit.getBlockPos(),hit);
             RuneProgramming.interact(event);
             h.assertTrue(event.isCanceled()&&RuneProgramming.selection(wand)!=null&&!WandPackets.placing(wand)&&wand.hasFoil(),"Shift enters binding and glints on "+block);
             h.assertTrue(!player.getPersistentData().hasUUID("AstralWandSession"),"Shift did not open the library");
@@ -70,7 +70,7 @@ public final class EditorInteractionGameTests {
         var world=h.getLevel();var player=new FakePlayer(world,new GameProfile(UUID.randomUUID(),"binding-completion"));
         var wand=new ItemStack(AstralContent.ATTUNEMENT_WAND.get());player.setItemInHand(InteractionHand.MAIN_HAND,wand);
         var surface=RuneSurfaces.getOrCreate(world,h.absolutePos(source),Direction.SOUTH);var layer=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);
-        var glyph=new BlockHitResult(RuneLayout.placed(surface).getFirst().center(),Direction.SOUTH,h.absolutePos(source),false);
+        var glyph=new BlockHitResult(RuneLayout.placed(surface).get(0).center(),Direction.SOUTH,h.absolutePos(source),false);
         var destination=new BlockHitResult(h.absolutePos(target).getCenter().add(0,0,.5),Direction.SOUTH,h.absolutePos(target),false);
         for(boolean holdShift:new boolean[]{false,true}){
             player.setShiftKeyDown(true);player.gameMode.useItemOn(player,world,wand,InteractionHand.MAIN_HAND,glyph);

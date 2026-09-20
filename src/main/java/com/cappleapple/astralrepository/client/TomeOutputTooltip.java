@@ -5,11 +5,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 
 /** Recipe output uses the same item icon and localized name as an ordinary item tooltip. */
 public final class TomeOutputTooltip implements ClientTooltipComponent {
@@ -18,7 +16,7 @@ public final class TomeOutputTooltip implements ClientTooltipComponent {
         var level=Minecraft.getInstance().level;
         ItemStack sample=level==null?ItemStack.EMPTY:RecipeTomeItem.product(data.tome(),level.registryAccess());
         if(sample.isEmpty()){
-            var id=ResourceLocation.tryParse(data.tome().getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag().getString("OutputId"));
+            var id=ResourceLocation.tryParse(com.cappleapple.astralrepository.platform.Backport.customData(data.tome()).getString("OutputId"));
             if(id!=null&&BuiltInRegistries.ITEM.containsKey(id))sample=new ItemStack(BuiltInRegistries.ITEM.get(id));
         }
         output=sample;

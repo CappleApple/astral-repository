@@ -10,8 +10,8 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.energy.EnergyStorage;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.energy.EnergyStorage;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
 import javax.annotation.Nullable;
 
 public final class CrystalNodeBlockEntity extends BlockEntity implements com.cappleapple.astralrepository.network.NetworkAnchor {
@@ -38,6 +38,14 @@ public final class CrystalNodeBlockEntity extends BlockEntity implements com.cap
         @Override public int extractEnergy(int amount, boolean simulate) { int result = super.extractEnergy(amount, simulate); if (result > 0 && !simulate) changed(); return result; }
     };
 
+    private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.items.IItemHandler> itemCapability=net.minecraftforge.common.util.LazyOptional.of(()->inventory);
+    private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.fluids.capability.IFluidHandler> fluidCapability=net.minecraftforge.common.util.LazyOptional.of(()->tank);
+    private net.minecraftforge.common.util.LazyOptional<net.minecraftforge.energy.IEnergyStorage> energyCapability=net.minecraftforge.common.util.LazyOptional.of(()->energy);
+    @Override public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(net.minecraftforge.common.capabilities.Capability<T> capability,Direction side){
+        if(hasInventory()) {if(capability==net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER)return itemCapability.cast();if(capability==net.minecraftforge.common.capabilities.ForgeCapabilities.FLUID_HANDLER)return fluidCapability.cast();if(capability==net.minecraftforge.common.capabilities.ForgeCapabilities.ENERGY)return energyCapability.cast();}return super.getCapability(capability,side);
+    }
+    @Override public void invalidateCaps(){super.invalidateCaps();itemCapability.invalidate();fluidCapability.invalidate();energyCapability.invalidate();}
+    @Override public void reviveCaps(){super.reviveCaps();itemCapability=net.minecraftforge.common.util.LazyOptional.of(()->inventory);fluidCapability=net.minecraftforge.common.util.LazyOptional.of(()->tank);energyCapability=net.minecraftforge.common.util.LazyOptional.of(()->energy);}
     public CrystalNodeBlockEntity(BlockPos pos, BlockState state) { super(AstralContent.NODE_ENTITY.get(), pos, state); }
     public NodeKind kind() { return ((CrystalNodeBlock) getBlockState().getBlock()).kind(); }
     public int channel() { return channel; }
@@ -57,8 +65,8 @@ public final class CrystalNodeBlockEntity extends BlockEntity implements com.cap
     public EnergyStorage energy() { return energy; }
     public boolean hasInventory() { return kind() == NodeKind.STORAGE || kind() == NodeKind.BUFFER || kind() == NodeKind.POWER; }
     public long capacity() { return AstralContent.capacityForTier.applyAsLong(storageTier()); }
-    public void setChannel(int value) { channel = Math.clamp(value, -1, 15); topologyChanged(); }
-    public void setPriority(int value) { priority = Math.clamp(value, -999, 999); topologyChanged(); }
+    public void setChannel(int value) { channel = com.cappleapple.astralrepository.platform.Backport.clamp(value, -1, 15); topologyChanged(); }
+    public void setPriority(int value) { priority = com.cappleapple.astralrepository.platform.Backport.clamp(value, -999, 999); topologyChanged(); }
     public void setPartner(@Nullable GlobalPos value) { partner = value; topologyChanged(); }
     public void setDimensional(boolean value) { dimensional = value; topologyChanged(); }
     public void cycleDistribution() { distributionMode = distributionMode.next(); topologyChanged(); }
@@ -76,10 +84,11 @@ public final class CrystalNodeBlockEntity extends BlockEntity implements com.cap
     @Override public void onLoad() { super.onLoad(); if (level instanceof ServerLevel server) ContentHooks.topologyChanged.accept(server, worldPosition); }
     @Override public void setRemoved() { if (level instanceof ServerLevel server) ContentHooks.topologyChanged.accept(server, worldPosition); super.setRemoved(); }
 
-    @Override protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    @Override protected void saveAdditional(CompoundTag tag) {
+        super.saveAdditional(tag);
+        HolderLookup.Provider registries=level==null?null:level.registryAccess();
         writeSettings(tag, registries);
-        if (hasInventory()) { tag.put("Storage", inventory.save(registries)); tag.put("Tank", tank.writeToNBT(registries, new CompoundTag())); tag.put("Energy", energy.serializeNBT(registries)); }
+        if (hasInventory()) { tag.put("Storage", inventory.save(registries)); tag.put("Tank", tank.writeToNBT(new CompoundTag())); tag.put("Energy", energy.serializeNBT()); }
     }
     private void writeSettings(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putInt("Channel", channel); tag.putInt("Priority", priority); tag.putBoolean("Dimensional", dimensional);
@@ -88,21 +97,22 @@ public final class CrystalNodeBlockEntity extends BlockEntity implements com.cap
         tag.put("Insertion", insertion.save(registries)); tag.put("Extraction", extraction.save(registries));
         if (partner != null) GlobalPos.CODEC.encodeStart(NbtOps.INSTANCE, partner).result().ifPresent(value -> tag.put("Partner", value));
     }
-    @Override protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        channel = tag.contains("Channel") ? Math.clamp(tag.getInt("Channel"), -1, 15) : -1;
-        priority = Math.clamp(tag.getInt("Priority"), -999, 999); dimensional = tag.getBoolean("Dimensional");
+    @Override public void load(CompoundTag tag) {
+        super.load(tag);
+        HolderLookup.Provider registries=level==null?null:level.registryAccess();
+        channel = tag.contains("Channel") ? com.cappleapple.astralrepository.platform.Backport.clamp(tag.getInt("Channel"), -1, 15) : -1;
+        priority = com.cappleapple.astralrepository.platform.Backport.clamp(tag.getInt("Priority"), -999, 999); dimensional = tag.getBoolean("Dimensional");
         editingExtraction = tag.getBoolean("EditingExtraction"); excludeNext = tag.getBoolean("ExcludeNext"); enabled = !tag.contains("Enabled") || tag.getBoolean("Enabled");
-        storageTier=Math.clamp(tag.getInt("StorageTier"),0,3);longRange=tag.getBoolean("LongRange");
+        storageTier=com.cappleapple.astralrepository.platform.Backport.clamp(tag.getInt("StorageTier"),0,3);longRange=tag.getBoolean("LongRange");
         try { distributionMode = DistributionMode.valueOf(tag.getString("Distribution")); } catch (IllegalArgumentException ignored) { distributionMode = DistributionMode.PRIORITY; }
         insertion.load(tag.getCompound("Insertion"), registries); extraction.load(tag.getCompound("Extraction"), registries);
         partner = tag.contains("Partner") ? GlobalPos.CODEC.parse(NbtOps.INSTANCE, tag.get("Partner")).result().orElse(null) : null;
         if (tag.contains("Storage")) inventory.load(tag.getCompound("Storage"), registries);
-        if (tag.contains("Tank")) tank.readFromNBT(registries, tag.getCompound("Tank"));
-        if (tag.contains("Energy")) energy.deserializeNBT(registries, tag.get("Energy"));
+        if (tag.contains("Tank")) tank.readFromNBT(tag.getCompound("Tank"));
+        if (tag.contains("Energy")) energy.deserializeNBT(tag.get("Energy"));
     }
-    @Override public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
-        CompoundTag tag = new CompoundTag(); writeSettings(tag, registries); return tag;
+    @Override public CompoundTag getUpdateTag() {
+        CompoundTag tag = new CompoundTag(); writeSettings(tag, level==null?null:level.registryAccess()); return tag;
     }
     @Override public ClientboundBlockEntityDataPacket getUpdatePacket() { return ClientboundBlockEntityDataPacket.create(this); }
 }

@@ -16,8 +16,8 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -42,7 +42,7 @@ public final class NexusManualCraftingGameTests {
         await(h,f,named,32).thenExecute(()->{
             f.menu().grid.setItem(0,named.copy());f.menu().clicked(0,0,ClickType.PICKUP,f.player());
             h.assertTrue(f.menu().getCarried().is(Items.OAK_PLANKS)&&f.menu().getCarried().getCount()==4,"Normal result pickup crafts one actual recipe");
-            h.assertTrue(ItemStack.isSameItemSameComponents(f.menu().grid.getItem(0),named)&&stored(f,named)==31&&stored(f,new ItemStack(Items.OAK_LOG))==10,"Refill consumes the exact named component variant and leaves ordinary logs untouched");
+            h.assertTrue(ItemStack.isSameItemSameTags(f.menu().grid.getItem(0),named)&&stored(f,named)==31&&stored(f,new ItemStack(Items.OAK_LOG))==10,"Refill consumes the exact named component variant and leaves ordinary logs untouched");
             f.menu().clicked(10,0,ClickType.PICKUP,f.player());
             f.menu().clicked(0,0,ClickType.QUICK_MOVE,f.player());
             h.assertTrue(inventory(f,Items.OAK_PLANKS)==68,"One Shift click adds exactly64 outputs, despite space and ingredients for more");
@@ -60,11 +60,11 @@ public final class NexusManualCraftingGameTests {
             for(int i=0;i<3;i++)f.menu().grid.setItem(i,new ItemStack(Items.MILK_BUCKET));
             f.menu().grid.setItem(3,new ItemStack(Items.SUGAR));f.menu().grid.setItem(4,new ItemStack(Items.EGG));f.menu().grid.setItem(5,new ItemStack(Items.SUGAR));
             for(int i=6;i<9;i++)f.menu().grid.setItem(i,new ItemStack(Items.WHEAT));
-            h.assertTrue(f.menu().slots.getFirst().getItem().is(Items.CAKE),"The loaded vanilla cake recipe matches the grid");f.menu().clicked(0,0,ClickType.PICKUP,f.player());
+            h.assertTrue(f.menu().slots.get(0).getItem().is(Items.CAKE),"The loaded vanilla cake recipe matches the grid");f.menu().clicked(0,0,ClickType.PICKUP,f.player());
             h.assertTrue(f.menu().getCarried().is(Items.CAKE)&&f.menu().getCarried().getCount()==1,"Exactly one vanilla cake reaches the cursor");
             h.assertTrue(stored(f,new ItemStack(Items.BUCKET))==3&&stored(f,new ItemStack(Items.MILK_BUCKET))==0,"The three real container remainders enter storage and replacement milk buckets leave it");
             for(int i=0;i<3;i++)h.assertTrue(f.menu().grid.getItem(i).is(Items.MILK_BUCKET),"The original milk-bucket slots are refilled");
-            h.assertTrue(f.menu().slots.getFirst().getItem().is(Items.CAKE),"Refill retains the same actual recipe");h.succeed();
+            h.assertTrue(f.menu().slots.get(0).getItem().is(Items.CAKE),"Refill retains the same actual recipe");h.succeed();
         });
     }
 
@@ -74,7 +74,7 @@ public final class NexusManualCraftingGameTests {
         for(int i=0;i<f.chest().getContainerSize();i++)f.chest().setItem(i,new ItemStack(Items.STONE,64));f.chest().setItem(0,named.copyWithCount(63));
         await(h,f,named,63).thenExecute(()->{
             f.menu().grid.setItem(4,named.copyWithCount(10));clear(f);
-            h.assertTrue(stored(f,named)==64&&f.menu().grid.getItem(4).getCount()==9&&ItemStack.isSameItemSameComponents(f.menu().grid.getItem(4),named),"Only the one accepted item leaves its exact grid slot");
+            h.assertTrue(stored(f,named)==64&&f.menu().grid.getItem(4).getCount()==9&&ItemStack.isSameItemSameTags(f.menu().grid.getItem(4),named),"Only the one accepted item leaves its exact grid slot");
             clear(f);h.assertTrue(stored(f,named)==64&&f.menu().grid.getItem(4).getCount()==9&&!f.menu().error.isEmpty(),"Repeated full-storage clears preserve all nine rejected items and report the capacity failure");
             h.assertTrue(f.menu().getCarried().isEmpty()&&inventory(f,Items.IRON_INGOT)==0,"Clear does not use the cursor or player inventory as an implicit destination");h.succeed();
         });
