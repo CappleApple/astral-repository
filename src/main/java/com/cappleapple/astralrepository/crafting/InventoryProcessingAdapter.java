@@ -32,7 +32,9 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
                 if (output.isEmpty()) continue;
                 Map<ItemKey, Long> outputs = possibleOutputs(recipe, output);
                 if (outputs.isEmpty()) continue;
-                Ingredient ingredient = com.cappleapple.astralrepository.port.RecipeCompat.ingredients(recipe).getFirst();
+                var possibleIngredient = com.cappleapple.astralrepository.port.RecipeCompat.ingredients(recipe).getFirst();
+                if (possibleIngredient.isEmpty()) continue;
+                Ingredient ingredient = possibleIngredient.get();
                 Set<ItemKey> alternatives = new LinkedHashSet<>();
                 for (ItemStack display : com.cappleapple.astralrepository.port.RecipeCompat.samples(ingredient,access.level().registryAccess())) stockByItem.getOrDefault(display.getItem(), List.of()).stream().filter(key -> ingredient.test(key.sample())).forEach(alternatives::add);
                 for (ItemStack stack : com.cappleapple.astralrepository.port.RecipeCompat.samples(ingredient,access.level().registryAccess())) if (!stack.isEmpty()) alternatives.add(new ItemKey(stack));

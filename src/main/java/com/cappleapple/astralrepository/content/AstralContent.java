@@ -85,7 +85,7 @@ public final class AstralContent {
     }
     private static <T extends Block> DeferredBlock<T> block(String id, Function<BlockBehaviour.Properties,T> factory, Supplier<BlockBehaviour.Properties> properties) {
         DeferredBlock<T> result = BLOCKS.registerBlock(id, factory, properties);
-        ITEMS.registerItem(id, props -> new BlockItem(result.get(), props.stacksTo(result.get() instanceof CrystalNodeBlock crystal && (crystal.kind() == NodeKind.STORAGE || crystal.kind() == NodeKind.BUFFER || crystal.kind() == NodeKind.POWER) ? 1 : 64))); return result;
+        ITEMS.registerItem(id, props -> new BlockItem(result.get(), props.useBlockDescriptionPrefix().stacksTo(result.get() instanceof CrystalNodeBlock crystal && (crystal.kind() == NodeKind.STORAGE || crystal.kind() == NodeKind.BUFFER || crystal.kind() == NodeKind.POWER) ? 1 : 64))); return result;
     }
     private static DeferredBlock<AstralClusterBlock> bud(String id, float height, float inset, Block vanilla) {
         return block(id, props -> new AstralClusterBlock(height, inset, props), () -> BlockBehaviour.Properties.ofFullCopy(vanilla));

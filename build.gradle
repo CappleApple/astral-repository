@@ -36,8 +36,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     compileOnly 'top.theillusivec4.curios:curios-neoforge:16.0.0+26.2:api'
-    compileOnly 'mezz.jei:jei-26.3-common-api:31.0.0.11'
-    compileOnly 'mezz.jei:jei-26.3-neoforge-api:31.0.0.11'
+    compileOnly 'mezz.jei:jei-26.3-common-api:31.1.0.12'
+    compileOnly 'mezz.jei:jei-26.3-neoforge-api:31.1.0.12'
     compileOnly 'dev.emi:emi-neoforge:1.1.24+1.21.1:api'
     compileOnly 'vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE'
     compileOnly 'maven.modrinth:jade:26.3.1+neoforge'

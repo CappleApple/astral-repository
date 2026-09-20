@@ -1,0 +1,20 @@
+import groovy.json.JsonOutput
+gradle.projectsEvaluated {
+  allprojects { p ->
+    p.tasks.matching { it.name == 'runClientSmoke' || it.name == 'runServer' }.configureEach {
+      dependsOn p.tasks.named('jar')
+      def jar = p.tasks.named('jar').get().archiveFile.get().asFile
+      def fixture = p.file('build/packaged-audit-fixture')
+      def original = new ArrayList(classpathProvider.files)
+      def excluded = p.sourceSets.main.output.files.collect { it.absoluteFile }
+      classpathProvider.setFrom(original.findAll { !excluded.contains(it.absoluteFile) }, jar, fixture)
+      jvmArgumentProviders.removeAll { it.class.name.contains('ModFoldersProvider') }
+      systemProperty 'fml.modFolders', "astral_repository%%${jar.absolutePath};astral_repository%%${fixture.absolutePath}"
+      systemProperty 'astral_repository.packagedAudit', 'true'
+      doFirst {
+        p.copy { from p.file('build/classes/java/main'); include 'com/cappleapple/astralrepository/smoke/**'; include 'com/cappleapple/astralrepository/port/PortRuntimeSmoke.class'; into fixture }
+        p.file('build/packaged-audit-launch.json').text=JsonOutput.prettyPrint(JsonOutput.toJson([jar:jar.absolutePath,classpath:classpathProvider.files.collect{it.absolutePath},jvmArgs:allJvmArgs]))
+      }
+    }
+  }
+}
