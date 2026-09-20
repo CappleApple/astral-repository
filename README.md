@@ -1,46 +1,49 @@
-# Astral Repository â€” Fabric 26.2
+# Astral Repository — Fabric 26.2
 
-A magical storage and automation network for Minecraft 26.2. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. The `CappleApple/fabric-26.2` branch contains Astral Repository 1.11.8 for Fabric.
+A magical storage and automation network for Minecraft 26.2. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This branch contains Astral Repository 1.11.9 for Fabric.
 
 ## Installation
 
-Install `astral_repository-fabric-26.2-1.11.8.jar` on both the client and server. Requires Minecraft **26.2**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.161.0+26.2**, and **Java 25**. Required configuration, energy, and applicable model libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-26.2-1.11.9.jar` on both the client and server. Requires Minecraft **26.2**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.161.0+26.2**, and **Java 25**. Configuration and energy libraries are bundled in the mod JAR.
 
-JEI and Jade APIs are supported by optional adapters. No public Patchouli, EMI, or Trinkets release was available for this Minecraft version during validation. Their hooks stay inactive without those mods; goggles work in the normal helmet slot. Full optional-mod packs were not part of the runtime checks.
+JEI 30.29.0.201 and Jade 26.2.11 were installed during gameplay checks. These integrations are optional. No public Patchouli, EMI or Trinkets build was available for this target during validation; goggles work in the helmet slot. Tests with these integrations do not establish compatibility with every modpack.
 
 ## Start a workshop
 
 1. Collect Astral Gems from an Astral geode and craft a Storage Nexus.
-2. Place the Nexus near chests or barrels and open it after automatic discovery.
-3. Extend the network with same-channel Relay Crystals. Storage Crystals provide their own capacity-based storage.
-4. Put an inscribed Recipe Tome in a nearby Chiseled Bookshelf to teach its selected recipe to the network.
+2. Place it near chests or barrels and open it after automatic discovery.
+3. Extend the network with same-channel Relay Crystals. Storage Crystals provide their own storage.
+4. Inscribe a Recipe Tome and place it in a nearby Chiseled Bookshelf to expose its recipe to autocrafting.
 
-Right-click the Attunement Wand in the air to choose or edit rune presets. Place a Push or Pull rune on a container, then Shift-right-click the glyph with the wand to assign target containers.
+Right-click the Attunement Wand in the air to choose or edit rune presets. Place a Push or Pull rune on a container, then Shift-right-click the glyph with the wand to assign targets.
 
 ## Building
 
-Run Gradle with **JDK 25**.
+Run Gradle with JDK 25:
 
 ```powershell
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-26.2-1.11.8.jar`. Do not package a release with `-PclientSmoke`.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-26.2-1.11.9.jar`. Release builds must omit `-PclientSmoke`.
 
 All source sets and resources live under `src/`.
 
 ## Validation
 
-The port passed 146 JUnit tests and native server checks for item, fluid, and energy storage; transaction rollback; persistence; all 13 unconditional recipes; and ordinary and Silk Touch harvesting. A background client check covered world rendering, rune packets and geometry, Nexus storage, ordinary and foil items, armor trims, goggles, and wand-editor artwork and text. The independent branch layout is checked again with `test build`; the gameplay checks apply to the same port implementation.
+The port passes 147 JUnit tests. Actual packaged-client checks cover all ten block-item placements, every registered block and item name, storage upgrades and preserved drops, Nexus packets and inventory transfers, crafting and refill, Recipe Tome inscription, bookshelf discovery and completed autocrafting, rune filter/stock limits, remote access, local storage, rendering and the wand editor. Dedicated-server checks cover native item/fluid/energy transactions, recipes and harvesting, and a second process verifies saved resources after restart.
 
 ```powershell
+.\gradlew.bat gameplayFixtureJar -PclientSmoke
+.\gradlew.bat productionGameplay
+.\gradlew.bat productionGameplay -PoptionalRuntime
 .\gradlew.bat runServerSmoke
-.\gradlew.bat runClientSmoke -PclientSmoke
+.\gradlew.bat runServerSmoke
 ```
 
-The dedicated fixture uses `run-server-smoke/`. Accept the Minecraft EULA in that directory before running it. Client smoke runs are hidden, muted, and do not grab the mouse. Runtime checks do not establish complete optional-pack compatibility or cross-version world conversion.
+The separate gameplay fixture is never packaged into the release mod. Client runs are hidden, muted and do not grab the mouse. The production launcher includes Minecraft's required JVM native-access and stack settings. Accept the Minecraft EULA in `run-server-smoke/eula.txt` before using the dedicated fixture.
 
-The [main branch](https://github.com/CappleApple/astral-repository/tree/main) retains the original NeoForge 1.21.1 implementation and its documentation. See the [port validation record](https://github.com/CappleApple/astral-repository/blob/main/ports/VALIDATION.md) for the original runtime evidence. Its loader APIs and compatibility descriptions do not automatically apply to this Fabric branch.
+The original NeoForge 1.21.1 edition remains on `main`. These tests do not cover world conversion or complete AE2/Refined Storage networks.
 
 ## License
 

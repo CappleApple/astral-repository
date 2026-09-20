@@ -38,10 +38,16 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
         var mc=Minecraft.getInstance();
         mc.options.pauseOnLostFocus=false;mc.mouseHandler.releaseMouse();mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0D);
         try {
-            if(++ticks>600)throw new AssertionError("Client gate timeout in phase "+phase);
+            if(++ticks>1800)throw new AssertionError("Client gate timeout in phase "+phase);
             if(pending!=null){if(!pending.isDone())return;pending.join();pending=null;}
             if(phase==0&&mc.gui.screen()!=null&&mc.gui.overlay()==null){
                 verifyModels();
+                if(Boolean.getBoolean("astral_repository.productionGameplay")){
+                    check(!net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment(),"Packaged gate accidentally uses a development runtime");
+                    var source=com.cappleapple.astralrepository.AstralRepository.class.getProtectionDomain().getCodeSource().getLocation();
+                    check(source.toString().contains(".jar"),"Mod classes did not load from the release JAR: "+source);
+                    LogUtils.getLogger().info("FABRIC_PRODUCTION_JAR {}",source);
+                }
                 mc.options.guiScale().set(2);mc.options.renderDistance().set(3);mc.resizeGui();
                 mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
                 next(1);
@@ -49,7 +55,7 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
                         new LevelSettings("Astral port smoke",GameType.CREATIVE,new LevelSettings.DifficultySettings(Difficulty.PEACEFUL,false,false),true,WorldDataConfiguration.DEFAULT),
                         new WorldOptions(42,false,false),r->r.lookupOrThrow(Registries.WORLD_PRESET).getOrThrow(WorldPresets.FLAT).value().createWorldDimensions(),mc.gui.screen());
             } else if(phase==1&&mc.player!=null&&mc.level!=null&&mc.getSingleplayerServer()!=null&&mc.gui.overlay()==null){
-                mc.gui.setScreen(null);server(ModernClientSmoke::workshop);next(2);
+                verifyNames();mc.gui.setScreen(null);server(ModernClientSmoke::workshop);next(2);
             } else if(phase==2&&ticks>120){
                 check(AstralPlaneRenderType.ready(),"Astral render pipelines did not register");
                 check(RuneRenderer.visibleFaces()>0,"Rune packets did not reach the client");
@@ -61,7 +67,7 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
             } else if(phase==4&&mc.gui.screen() instanceof NexusScreen screen&&ticks>30){
                 check(!screen.getMenu().entries.isEmpty(),"Nexus did not receive real linked inventory contents");
                 capture("nexus.png");next(5);
-            } else if(phase==5){mc.options.guiScale().set(2);mc.resizeGui();mc.gui.setScreen(new ItemGallery());next(6);
+            } else if(phase==5&&ModernGameplayChecks.tick(mc)){mc.options.guiScale().set(2);mc.resizeGui();mc.gui.setScreen(new ItemGallery());next(6);
             } else if(phase==6&&ticks>30){capture("items.png");next(7);
             } else if(phase==7){mc.gui.setScreen(null);mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);next(8);
             } else if(phase==8&&ticks>30){capture("armor.png");next(9);
@@ -79,7 +85,7 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
                 capture("wand.png");next(11);
             } else if(phase==11){
                 check(!mc.mouseHandler.isMouseGrabbed(),"Client grabbed the mouse");
-                Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: background client; registered models; world crystals and minerals; live rune packets and glyph drawing; linked Nexus menu; item gallery; astral trim and foil; worn armor; wand editor with embedded 3D item artwork; captures saved.\n");
+                Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: localization for every registered block/item; actual block-item placement for all 10 blocks; upgrades and stored-block replacement; packet-driven Nexus search, pickup, deposit, shift transfers; recipe teaching and bookshelf insertion; autocrafting conservation; rune filtered transfers and persistence; remote/local menus; background client; registered models; world crystals and minerals; live rune packets and glyph drawing; linked Nexus menu; item gallery; astral trim and foil; worn armor; wand editor with embedded 3D item artwork; captures saved.\n");
                 LogUtils.getLogger().info("FABRIC_MODERN_PORT_CLIENT_SMOKE_OK");done=true;mc.stop();
             }
         }catch(Throwable failure){fail(failure);}
@@ -94,7 +100,37 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
             check(!model.getParticleIcon().contents().name().getPath().equals("missingno"),"Model has missing texture: "+key.id());
         }
     }
+    private static void verifyNames(){
+        int items=0,blocks=0;
+        for(var entry:AstralContent.BLOCKS.getEntries()){
+            var block=entry.get();String key=block.getDescriptionId();
+            check(net.minecraft.locale.Language.getInstance().has(key),"Untranslated block: "+entry.getId()+" key="+key);
+            check(!block.getName().getString().equals(key),"Literal block translation key: "+key);blocks++;
+        }
+        for(var entry:AstralContent.ITEMS.getEntries()){
+            var stack=new ItemStack(entry.get());String actual=stack.getHoverName().getString();
+            check(!actual.contains("astral_repository."),"Untranslated item: "+entry.getId()+" name="+actual);
+            String key=(entry.get() instanceof BlockItem?"block.":"item.")+"astral_repository."+entry.getId().getPath();
+            check(net.minecraft.locale.Language.getInstance().has(key),"Missing item key: "+key);
+            check(actual.equals(net.minecraft.client.resources.language.I18n.get(key)),"Wrong name: "+entry.getId()+" name="+actual);items++;
+        }
+        LogUtils.getLogger().info("FABRIC_GAMEPLAY_LOCALIZATION_OK items={} blocks={}",items,blocks);
+    }
+    private static void verifyPlacement(ServerPlayer p){
+        var level=p.level();int index=0;
+        for(var entry:AstralContent.BLOCKS.getEntries()){
+            var pos=new BlockPos(20+index*2,-60,0);level.setBlockAndUpdate(pos.below(),Blocks.STONE.defaultBlockState());
+            var stack=new ItemStack(entry.get());p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND,stack);
+            p.teleportTo(level,pos.getX()+.5,-60,3.5,Set.of(),180,0,false);
+            var hit=new net.minecraft.world.phys.BlockHitResult(Vec3.atCenterOf(pos.below()).add(0,.5,0),Direction.UP,pos.below(),false);
+            var result=p.gameMode.useItemOn(p,level,stack,net.minecraft.world.InteractionHand.MAIN_HAND,hit);
+            check(result.consumesAction()&&level.getBlockState(pos).is(entry.get()),"Real item placement failed: "+entry.getId()+" result="+result);
+            check(level.getBlockEntity(pos)!=null,"Placed block has no block entity: "+entry.getId());index++;
+        }
+        LogUtils.getLogger().info("FABRIC_GAMEPLAY_PLACEMENT_OK blocks={}",index);
+    }
     private static void workshop(ServerPlayer p){
+        verifyPlacement(p);
         var level=p.level();
         for(int x=-4;x<15;x++)for(int z=-2;z<12;z++)level.setBlockAndUpdate(new BlockPos(x,-61,z),Blocks.SMOOTH_STONE.defaultBlockState());
         level.setBlockAndUpdate(NEXUS,AstralContent.STORAGE_NEXUS.get().defaultBlockState());
@@ -108,6 +144,7 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
         p.setItemSlot(EquipmentSlot.HEAD,new ItemStack(AstralContent.RESONANCE_GOGGLES.get()));
         p.getInventory().setItem(0,new ItemStack(AstralContent.ATTUNEMENT_WAND.get()));p.getInventory().setSelectedSlot(0);
         p.getAbilities().flying=true;p.onUpdateAbilities();
+        ModernGameplayChecks.setup(p);
         Vec3 target=new Vec3(5.5,-59.3,.5),eye=new Vec3(5.5,-58,8.5),delta=target.subtract(eye);
         float yaw=(float)Math.toDegrees(Math.atan2(delta.z,delta.x))-90,pitch=(float)-Math.toDegrees(Math.atan2(delta.y,Math.sqrt(delta.x*delta.x+delta.z*delta.z)));
         p.teleportTo(level,eye.x,eye.y-p.getEyeHeight(),eye.z,Set.of(),yaw,pitch,false);
