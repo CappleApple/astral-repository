@@ -62,7 +62,7 @@ class ShortestPathTest {
     }
     private static double routeCost(List<Integer> path,Map<Integer,Double> starts,Map<Integer,Map<Integer,Double>> graph,Map<Integer,Double> exits){
         if(path.isEmpty())return Double.POSITIVE_INFINITY;
-        double cost=starts.get(path.getFirst())+exits.get(path.getLast());
+        double cost=starts.get(path.get(0))+exits.get(path.get(path.size()-1));
         for(int i=1;i<path.size();i++)cost+=graph.get(path.get(i-1)).get(path.get(i));return cost;
     }
 

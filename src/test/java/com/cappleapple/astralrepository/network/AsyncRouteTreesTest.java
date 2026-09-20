@@ -15,7 +15,7 @@ class AsyncRouteTreesTest {
             assertEquals(List.of("a","b","c"),tree.path(List.of("c"),n->0));
             assertSame(tree,scheduler.request("a"));assertTrue(scheduler.retainedStates()<=128);
             var threadField=AsyncRouteTrees.class.getDeclaredField("lastWorkerThreadId");threadField.setAccessible(true);
-            assertNotEquals(Thread.currentThread().threadId(),threadField.getLong(scheduler),"Graph traversal ran on a worker, not the owner thread");
+            assertNotEquals(Thread.currentThread().getId(),threadField.getLong(scheduler),"Graph traversal ran on a worker, not the owner thread");
             assertTrue(threadField.getLong(scheduler)>0);
         }
     }

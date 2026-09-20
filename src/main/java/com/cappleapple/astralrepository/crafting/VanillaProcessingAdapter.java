@@ -13,16 +13,16 @@ import java.util.*;
 
 /** Uses recipe assembly on real tables and actual vanilla furnace inventories and server ticks. */
 public final class VanillaProcessingAdapter implements ProcessingAdapter {
-    private record Binding(RecipeHolder<?> holder, List<Integer> slots) {}
+    private record Binding(Recipe<?> holder, List<Integer> slots) {}
     private final Map<String, Binding> bindings = new HashMap<>();
     @Override public List<CraftRecipe<ItemKey>> recipes(CraftingService.NetworkAccess access) {
         bindings.clear();
         List<CraftRecipe<ItemKey>> result = new ArrayList<>();
         Map<ItemKey, Long> snapshot = access.snapshot();
         Map<net.minecraft.world.item.Item, List<ItemKey>> stockByItem = snapshot.keySet().stream().collect(java.util.stream.Collectors.groupingBy(key -> key.sample().getItem()));
-        for (RecipeHolder<?> holder : access.level().getRecipeManager().getRecipes()) {
+        for (Recipe<?> holder : access.level().getRecipeManager().getRecipes()) {
             try {
-            Recipe<?> recipe = holder.value();
+            Recipe<?> recipe = holder;
             String process = process(recipe);
             if (process == null || recipe.isSpecial()) continue;
             ItemStack output = recipe.getResultItem(access.level().registryAccess());
@@ -44,18 +44,15 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             }
             if (!valid || ingredients.isEmpty()) continue;
             int ticks = recipe instanceof AbstractCookingRecipe cooking ? cooking.getCookingTime() : process.equals("crafting") ? 36 : 20;
-            String id = holder.id().toString();
+            String id = holder.getId().toString();
             result.add(new CraftRecipe<>(id, new ItemKey(output), output.getCount(), process, ingredients, 0, ticks));
             bindings.put(id, new Binding(holder, List.copyOf(slots)));
-            } catch (RuntimeException failure) { CraftingService.LOGGER.warn("Skipping invalid processing recipe {}", holder.id(), failure); }
+            } catch (RuntimeException failure) { CraftingService.LOGGER.warn("Skipping invalid processing recipe {}", holder.getId(), failure); }
         }
         return result;
     }
     static String ingredientTag(Ingredient ingredient) {
-        if(!ingredient.isSimple())return "";
-        net.minecraft.world.item.crafting.Ingredient.Value[] values;
-        try{values=ingredient.getValues();}catch(IllegalStateException custom){return "";}
-        return values.length==1 && values[0] instanceof Ingredient.TagValue tag ? tag.tag().location().toString() : "";
+        var value=ingredient.toJson();if(!value.isJsonObject())return "";var object=value.getAsJsonObject();return object.size()==1&&object.has("tag")?object.get("tag").getAsString():"";
     }
     private static String process(Recipe<?> recipe) {
         if (recipe instanceof CraftingRecipe && recipe.canCraftInDimensions(3, 3)) return "crafting";
@@ -97,12 +94,12 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             // player grid and preview output; neither is read or mutated by this operation.
             List<ItemStack> grid = new ArrayList<>(Collections.nCopies(9, ItemStack.EMPTY));
             for (int i = 0; i < node.selected().size(); i++) grid.set(binding.slots().get(i), node.selected().get(i).key().sample());
-            RecipeInput input = binding.holder().value() instanceof CraftingRecipe ? CraftingInput.of(3, 3, grid) : new SingleRecipeInput(grid.getFirst());
-            ItemStack result = assemble(binding.holder().value(), input, level);
+            net.minecraft.world.Container input = binding.holder() instanceof CraftingRecipe ? com.cappleapple.astralrepository.platform.Backport.craftingGrid(grid) : new net.minecraft.world.SimpleContainer(grid.get(0));
+            ItemStack result = assemble(binding.holder(), input, level);
             if (result.isEmpty() || !new ItemKey(result).equals(node.recipe().output()) || result.getCount() != node.recipe().outputCount())
                 throw new IllegalStateException("Recipe output changed: " + node.recipe().id());
             Map<ItemKey, Long> produced = counts(List.of(result));
-            for (ItemStack remainder : remaining(binding.holder().value(), input)) add(produced, remainder);
+            for (ItemStack remainder : remaining(binding.holder(), input)) add(produced, remainder);
             CraftingService.animateTable(access, position, grid, result.copy(), node.recipe().durationTicks());
             return new CraftScheduler.Operation<>() {
                 int ticks;
@@ -121,11 +118,11 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         }
         if (!(level.getBlockEntity(position.pos()) instanceof AbstractFurnaceBlockEntity furnace)) return null;
         if (!furnace.getItem(0).isEmpty() || !furnace.getItem(2).isEmpty()) return null;
-        ItemStack ingredient = node.selected().getFirst().key().sample();
+        ItemStack ingredient = node.selected().get(0).key().sample();
         RecipeType<? extends AbstractCookingRecipe> type = cookingType(node.recipe().process());
-        var actual = level.getRecipeManager().getRecipeFor(type, new SingleRecipeInput(ingredient), level);
+        var actual = level.getRecipeManager().getRecipeFor(type, new net.minecraft.world.SimpleContainer(ingredient), level);
         if (actual.isEmpty()) return null;
-        ItemStack expected = actual.get().value().assemble(new SingleRecipeInput(ingredient), level.registryAccess());
+        ItemStack expected = actual.get().assemble(new net.minecraft.world.SimpleContainer(ingredient), level.registryAccess());
         if (expected.isEmpty() || !new ItemKey(expected).equals(node.recipe().output()) || expected.getCount() != node.recipe().outputCount()) return null;
         boolean lit = level.getBlockState(position.pos()).getValue(AbstractFurnaceBlock.LIT);
         FuelDelivery fuel = FuelDelivery.EMPTY;
@@ -138,19 +135,19 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         return new FurnaceOperation(access, position, node, furnace, ingredient, expected, fuel, type);
     }
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static ItemStack assemble(Recipe recipe, RecipeInput input, ServerLevel level) {
+    private static ItemStack assemble(Recipe recipe, net.minecraft.world.Container input, ServerLevel level) {
         if (!recipe.matches(input, level)) throw new IllegalStateException("Recipe ingredients no longer match");
         return recipe.assemble(input, level.registryAccess());
     }
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static List<ItemStack> remaining(Recipe recipe, RecipeInput input) { return recipe.getRemainingItems(input); }
+    private static List<ItemStack> remaining(Recipe recipe, net.minecraft.world.Container input) { return recipe.getRemainingItems(input); }
     private static RecipeType<? extends AbstractCookingRecipe> cookingType(String process) {
         return switch (process) { case "blasting" -> RecipeType.BLASTING; case "smoking" -> RecipeType.SMOKING; default -> RecipeType.SMELTING; };
     }
     private record FuelDelivery(ItemStack stack,int ticks){static final FuelDelivery EMPTY=new FuelDelivery(ItemStack.EMPTY,0);}
     private static FuelDelivery takeFuel(CraftingService.NetworkAccess access, RecipeType<?> type, GlobalPos position) {
-        for (var entry : access.snapshot().entrySet().stream().sorted(Comparator.<Map.Entry<ItemKey, Long>>comparingInt(e -> e.getKey().sample().getBurnTime(type)).reversed()).toList()) {
-            if (entry.getValue() <= 0 || entry.getKey().sample().getBurnTime(type) <= 0) continue;
+        for (var entry : access.snapshot().entrySet().stream().sorted(Comparator.<Map.Entry<ItemKey, Long>>comparingInt(e -> fuelTime(e.getKey().sample())).reversed()).toList()) {
+            if (entry.getValue() <= 0 || fuelTime(entry.getKey().sample()) <= 0) continue;
             int[] delay={0};
             ItemStack extracted = access.extractForDelivery(entry.getKey(),1,position,(from,stack)->{
                 delay[0]=Math.max(delay[0],access.travelTicks(from,position));CraftingService.animate(access,from,position,stack,Math.max(1,delay[0]));
@@ -190,7 +187,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             if (level.getBlockEntity(position.pos()) != original) throw new IllegalStateException("Processor removed; its physical contents remain in-world");
             if(fuelTicks>0)fuelTicks--;if(fuelTicks==0)acceptFuel();
             ItemStack output = original.getItem(2);
-            if (ItemStack.isSameItemSameComponents(output, expected) && output.getCount() >= expected.getCount() && original.getItem(0).isEmpty()) {
+            if (ItemStack.isSameItemSameTags(output, expected) && output.getCount() >= expected.getCount() && original.getItem(0).isEmpty()) {
                 Map<ItemKey, Long> results = counts(List.of(original.removeItem(2, expected.getCount())));
                 reclaimFuel(results);returnPendingFuel(results);
                 original.setChanged();
@@ -211,8 +208,8 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             // Unloaded or broken processors retain/drop their physical contents; never synthesize a refund.
             Map<ItemKey, Long> result = new LinkedHashMap<>();returnPendingFuel(result);
             if (level == null || !level.hasChunkAt(position.pos()) || level.getBlockEntity(position.pos()) != original) return result;
-            if (ItemStack.isSameItemSameComponents(original.getItem(0), input)) add(result, original.removeItem(0, input.getCount()));
-            if (ItemStack.isSameItemSameComponents(original.getItem(2), expected)) add(result, original.removeItem(2, expected.getCount()));
+            if (ItemStack.isSameItemSameTags(original.getItem(0), input)) add(result, original.removeItem(0, input.getCount()));
+            if (ItemStack.isSameItemSameTags(original.getItem(2), expected)) add(result, original.removeItem(2, expected.getCount()));
             reclaimFuel(result);
             original.setChanged();
             return result;
@@ -226,10 +223,11 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         private void reclaimFuel(Map<ItemKey, Long> result) {
             if (ownedFuel.isEmpty()) return;
             ItemStack current = original.getItem(1);
-            if (ItemStack.isSameItemSameComponents(current, ownedFuel)) add(result, original.removeItem(1, ownedFuel.getCount()));
-            else if (ownedFuel.hasCraftingRemainingItem() && ItemStack.isSameItemSameComponents(current, ownedFuel.getCraftingRemainingItem()))
-                add(result, original.removeItem(1, ownedFuel.getCraftingRemainingItem().getCount()));
+            if (ItemStack.isSameItemSameTags(current, ownedFuel)) add(result, original.removeItem(1, ownedFuel.getCount()));
+            else if (ownedFuel.getItem().hasCraftingRemainingItem() && ItemStack.isSameItemSameTags(current, new ItemStack(ownedFuel.getItem().getCraftingRemainingItem())))
+                add(result, original.removeItem(1, new ItemStack(ownedFuel.getItem().getCraftingRemainingItem()).getCount()));
             ownedFuel = ItemStack.EMPTY;
         }
     }
+    private static int fuelTime(net.minecraft.world.item.ItemStack stack){Integer ticks=net.fabricmc.fabric.api.registry.FuelRegistry.INSTANCE.get(stack.getItem());return ticks==null?0:ticks;}
 }

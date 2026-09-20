@@ -54,18 +54,18 @@ public final class AstralTrimClientSmoke {
             int index=0;
             for(var item:List.of(Items.IRON_HELMET,Items.IRON_CHESTPLATE,Items.IRON_LEGGINGS,Items.IRON_BOOTS)){
                 var stack=new ItemStack(item);
-                stack.set(DataComponents.TRIM,new ArmorTrim(material,patterns.getHolder(ResourceLocation.withDefaultNamespace("silence")).orElseThrow()));
+                stack.set(DataComponents.TRIM,new ArmorTrim(material,patterns.getHolder(new ResourceLocation("silence")).orElseThrow()));
                 icons.add(stack);verifyIcon(stack);
                 iron.setItemSlot(List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET).get(index++),stack);
             }
             index=0;
             for(var item:List.of(Items.NETHERITE_HELMET,Items.NETHERITE_CHESTPLATE,Items.NETHERITE_LEGGINGS,Items.NETHERITE_BOOTS)){
                 var stack=new ItemStack(item);
-                stack.set(DataComponents.TRIM,new ArmorTrim(material,patterns.getHolder(ResourceLocation.withDefaultNamespace("sentry")).orElseThrow()));
+                stack.set(DataComponents.TRIM,new ArmorTrim(material,patterns.getHolder(new ResourceLocation("sentry")).orElseThrow()));
                 netherite.setItemSlot(List.of(EquipmentSlot.HEAD,EquipmentSlot.CHEST,EquipmentSlot.LEGS,EquipmentSlot.FEET).get(index++),stack);
             }
             check(!(mc.getItemRenderer().getModel(new ItemStack(Items.IRON_CHESTPLATE),mc.level,mc.player,0) instanceof AstralTrimItemModel),"Untrimmed armor was wrapped");
-            var ordinary=icons.get(1).copy();ordinary.set(DataComponents.TRIM,new ArmorTrim(mc.level.registryAccess().registryOrThrow(Registries.TRIM_MATERIAL).getHolder(ResourceLocation.withDefaultNamespace("gold")).orElseThrow(),patterns.getHolder(ResourceLocation.withDefaultNamespace("silence")).orElseThrow()));
+            var ordinary=icons.get(1).copy();ordinary.set(DataComponents.TRIM,new ArmorTrim(mc.level.registryAccess().registryOrThrow(Registries.TRIM_MATERIAL).getHolder(new ResourceLocation("gold")).orElseThrow(),patterns.getHolder(new ResourceLocation("silence")).orElseThrow()));
             check(!(mc.getItemRenderer().getModel(ordinary,mc.level,mc.player,0) instanceof AstralTrimItemModel),"Other trim materials were changed");
             AstralClientConfig.astralOverlayOpacity.set(0.0);mc.setScreen(new Preview());phase=1;ticks=0;
         }else if(phase==1&&ticks>20){

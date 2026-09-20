@@ -11,19 +11,15 @@ import java.util.Map;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.RegistryAccess;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.event.server.ServerStoppedEvent;
+import com.cappleapple.astralrepository.platform.event.tick.ServerTickEvent;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** Bounded cosmetic work, independent of transfer commits and machine timing. */
-@EventBusSubscriber(modid = AstralRepository.MOD_ID)
 public final class TransferVisualDispatcher {
     private static final int MAX_STATION_CHANGES = 512;
     private static final int MAX_CACHED_ROUTES = 1024;
@@ -41,7 +37,7 @@ public final class TransferVisualDispatcher {
             if (encoded) return bytes;
             encoded = true;
             // Bound both the output allocation and failed work on component-heavy item icons.
-            var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(Math.min(256, maximum), maximum), registries);
+            var buffer = new FriendlyByteBuf(Unpooled.buffer(Math.min(256, maximum), maximum));
             try {
                 NetworkPackets.Visual.CODEC.encode(buffer, visual);
                 bytes = new byte[buffer.readableBytes()]; buffer.readBytes(bytes); encodingBytes = bytes.length;
@@ -143,18 +139,17 @@ public final class TransferVisualDispatcher {
     }
 
     // Run after NetworkManager and other tick listeners have committed this tick's transfers.
-    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void flush(ServerTickEvent.Post event) {
         var frame = FRAMES.remove(event.getServer()); if (frame == null) return;
         for (var audience : frame.queues.entrySet()) {
             var player = audience.getKey();
-            var batch = audience.getValue().batch(player.registryAccess(), frame.byteBudget);
+            var batch = audience.getValue().batch(player.level().registryAccess(), frame.byteBudget);
             if (batch == null) continue;
             try { PacketDistributor.sendToPlayer(player, batch); }
             catch (RuntimeException failure) { AstralRepository.LOGGER.debug("Cosmetic batch skipped: {}", failure.toString()); }
         }
     }
 
-    @SubscribeEvent public static void stop(ServerStoppedEvent event) { FRAMES.remove(event.getServer()); }
+    public static void stop(ServerStoppedEvent event) { FRAMES.remove(event.getServer()); }
     private TransferVisualDispatcher() {}
 }

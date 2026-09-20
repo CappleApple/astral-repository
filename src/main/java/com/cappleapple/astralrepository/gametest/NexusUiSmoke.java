@@ -58,7 +58,7 @@ public final class NexusUiSmoke {
             }
             case 2 -> {
                 if(ticks<8||screen.scrollRow()!=1||screen.getMenu().scrollRow!=1)return false;
-                check(ItemStack.isSameItemSameComponents(first.get(9).stack(),screen.getMenu().entries.getFirst().stack()),"Wheel skipped a page instead of one row");
+                check(ItemStack.isSameItemSameTags(first.get(9).stack(),screen.getMenu().entries.get(0).stack()),"Wheel skipped a page instead of one row");
                 check(screen.hoveredEntry(left+18,top+57)==0,"Hover did not resolve first visible slot");
                 capture("nexus_scrolled.png");
                 screen.mouseClicked(left+194,top+151,0);screen.mouseDragged(left+194,top+155,0,0,4);screen.mouseReleased(left+194,top+155,0);advance();
@@ -71,7 +71,7 @@ public final class NexusUiSmoke {
             case 4 -> {
                 if(ticks<8||screen.getMenu().entries.size()!=1)return false;
                 check(screen.scrollRow()==0&&screen.maxScrollRow()==0,"Narrowing search did not clamp scrollbar");
-                var entry=screen.getMenu().entries.getFirst();
+                var entry=screen.getMenu().entries.get(0);
                 check(entry.stack().is(Items.OAK_PLANKS)&&entry.count()==7&&entry.craftable(),"Fixture output is not both stored and craftable");
                 System.setProperty("astral_repository.testShift","true");
                 try{click(screen,0,1);}finally{System.clearProperty("astral_repository.testShift");}
@@ -111,7 +111,7 @@ public final class NexusUiSmoke {
                 search(screen).setValue("oak log");advance();
             }
             case 9 -> {
-                if(ticks<8||screen.getMenu().entries.size()!=1||!screen.getMenu().entries.getFirst().stack().is(Items.OAK_LOG))return false;
+                if(ticks<8||screen.getMenu().entries.size()!=1||!screen.getMenu().entries.get(0).stack().is(Items.OAK_LOG))return false;
                 click(screen,0,0);advance();
             }
             case 10 -> {
@@ -143,13 +143,13 @@ public final class NexusUiSmoke {
                 if(planks!=64)capture("nexus_shift_failure.png");
                 check(planks==64,"Shift-result must craft exactly one max output stack; got "+planks+", cursor="+screen.getMenu().getCarried()+", grid="+screen.getMenu().grid.getItem(0)+", result="+screen.getMenu().slots.get(0).getItem()+", error="+screen.getMenu().error);
                 check(screen.getMenu().grid.getItem(0).is(Items.OAK_LOG),"Stack craft did not retain a refilled ingredient");
-                logsBeforeClear=screen.getMenu().entries.getFirst().count();
+                logsBeforeClear=screen.getMenu().entries.get(0).count();
                 screen.mouseClicked(left+294,top+38,0);screen.mouseReleased(left+294,top+38,0);advance();
             }
             case 16 -> {
                 if(ticks<8||!screen.getMenu().grid.isEmpty())return false;
                 check(screen.getMenu().slots.get(0).getItem().isEmpty(),"Clear grid left a ghost result");
-                check(screen.getMenu().entries.getFirst().count()==logsBeforeClear+1,"Clear grid did not return its one ingredient to storage");
+                check(screen.getMenu().entries.get(0).count()==logsBeforeClear+1,"Clear grid did not return its one ingredient to storage");
                 check(screen.getMenu().error.isEmpty(),"Cleared grid produced an unnecessary warning");
                 search(screen).setFocused(false);screen.setFocused(null);
                 work=server(p->{var n=NetworkManager.get(p.server).networkAt(GlobalPos.of(p.level().dimension(),new BlockPos(1,-59,0)));n.crafting().cancelAll();check(n.crafting().request(p,new ItemStack(Items.OAK_PLANKS),4096).accepted(),"Missing-ingredient request was not queued");});advance();
@@ -186,7 +186,7 @@ public final class NexusUiSmoke {
         for(int i=0;i<4;i++){var pos=new BlockPos(i,-59,-1);level.setBlockAndUpdate(pos,Blocks.BARREL.defaultBlockState());barrels[i]=(Container)level.getBlockEntity(pos);barrels[i].setItem(25,new ItemStack(Items.OAK_LOG,64));}
         int index=0;
         for(String kind:List.of("wool","terracotta","concrete","stained_glass","concrete_powder"))for(DyeColor color:DyeColor.values()){
-            var item=BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(color.getName()+"_"+kind));
+            var item=BuiltInRegistries.ITEM.get(new ResourceLocation(color.getName()+"_"+kind));
             barrels[index/25].setItem(index%25,new ItemStack(item,32));index++;
         }
         barrels[0].setItem(26,new ItemStack(Items.OAK_PLANKS,7));

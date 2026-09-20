@@ -15,13 +15,13 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** Personal instance library, pixel editor, independent item layers, and preset behavior. */
 public final class WandScreen extends Screen implements GhostIngredientScreen {
     private static final int W=420,H=290,CANVAS=144;
-    private static final ResourceLocation PANEL=ResourceLocation.fromNamespaceAndPath("astral_repository","textures/gui/rune_settings.png");
-    private static final ResourceLocation BUTTON=ResourceLocation.fromNamespaceAndPath("astral_repository","rune_button"),HOVER=ResourceLocation.fromNamespaceAndPath("astral_repository","rune_button_hovered");
+    private static final ResourceLocation PANEL=new ResourceLocation("astral_repository","textures/gui/rune_settings.png");
+    private static final ResourceLocation BUTTON=new ResourceLocation("astral_repository","rune_button"),HOVER=new ResourceLocation("astral_repository","rune_button_hovered");
     private final UUID session;
     private final LinkedHashMap<UUID,RunePreset> library=new LinkedHashMap<>();
     private final ArrayDeque<RuneDesign> undo=new ArrayDeque<>();
@@ -118,19 +118,19 @@ public final class WandScreen extends Screen implements GhostIngredientScreen {
         else {if(icons.size()>=8)return false;icons.add(new RuneDesign.Icon(BuiltInRegistries.ITEM.getKey(item.getItem()),resolution()/2f,resolution()/2f,resolution()/2f,0));selectedIcon=icons.size()-1;}
         changed();rebuild();return true;
     }
-    @Override public boolean acceptFluid(net.neoforged.neoforge.fluids.FluidStack fluid){
+    @Override public boolean acceptFluid(com.cappleapple.astralrepository.platform.fluids.FluidStack fluid){
         if(!editing||draft==null||!behavior||fluid.isEmpty())return false;
         rules.add(FilterRules.Kind.FLUID,BuiltInRegistries.FLUID.getKey(fluid.getFluid()).toString(),false,ItemStack.EMPTY);changed();rebuild();return true;
     }
     private void refresh(){
         if(behavior){
             var samples=new ArrayList<RuneFilterSearch.Option>();
-            var handler=minecraft.player.getCapability(net.neoforged.neoforge.capabilities.Capabilities.ItemHandler.ENTITY_AUTOMATION,null);
-            if(handler==null)handler=new net.neoforged.neoforge.items.wrapper.PlayerInvWrapper(minecraft.player.getInventory());
+            var handler=new com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper(minecraft.player.getInventory());
+            if(handler==null)handler=new com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper(minecraft.player.getInventory());
             for(int i=0;i<Math.min(handler.getSlots(),8192);i++){var item=handler.getStackInSlot(i);if(!item.isEmpty()){var option=catalogue.option(RuneSettingsPackets.sampleRule(item));if(option!=null&&samples.stream().noneMatch(o->o.rule().equals(option.rule())))samples.add(option);}}
             results=List.copyOf(samples);
         }else results=catalogue.search(search.getValue(),RuneFilterSearch.Category.ITEMS);resultOffset=Math.min(resultOffset,Math.max(0,results.size()-12));}
-    private Button button(int x,int y,int w,int h,String text,Runnable action){return addRenderableWidget(new Button(left+x,top+y,w,h,Component.literal(text),b->action.run(),supplier -> supplier.get()){@Override protected void renderWidget(GuiGraphics g,int mx,int my,float partial){g.blitSprite(isHovered()?HOVER:BUTTON,getX(),getY(),getWidth(),getHeight());g.drawCenteredString(font,getMessage(),getX()+getWidth()/2,getY()+(getHeight()-8)/2,0xd9defb);}});}
+    private Button button(int x,int y,int w,int h,String text,Runnable action){return addRenderableWidget(new Button(left+x,top+y,w,h,Component.literal(text),b->action.run(),supplier -> supplier.get()){@Override protected void renderWidget(GuiGraphics g,int mx,int my,float partial){com.cappleapple.astralrepository.platform.ClientBackport.blitSprite(g,isHovered()?HOVER:BUTTON,getX(),getY(),getWidth(),getHeight());g.drawCenteredString(font,getMessage(),getX()+getWidth()/2,getY()+(getHeight()-8)/2,0xd9defb);}});}
     private EditBox edit(int x,int y,int w,int h,String value,java.util.function.Consumer<String> responder){EditBox e=new AstralEditBox(font,left+x,top+y,w,h,Component.empty());e.setBordered(false);e.setMaxLength(64);e.setValue(value);e.setTextColor(0xd9defb);e.setResponder(responder);return addRenderableWidget(e);}
     private boolean in(double x,double y,int rx,int ry,int w,int h){return x>=left+rx&&y>=top+ry&&x<left+rx+w&&y<top+ry+h;}
     @Override public boolean mouseClicked(double x,double y,int button){
@@ -144,21 +144,21 @@ public final class WandScreen extends Screen implements GhostIngredientScreen {
         if(draft!=null&&in(x,y,278,77,132,38)){int i=resultOffset+(int)(x-left-278)/22+6*((int)(y-top-77)/19);if(i<results.size()){var option=results.get(i);if(behavior){var rule=RuneSettingsPackets.parseRule((exclude?"!":"")+option.rule());rules.add(rule.kind(),rule.id(),rule.exclude(),rule.sample());}else if(icons.size()<8){icons.add(new RuneDesign.Icon(BuiltInRegistries.ITEM.getKey(option.icon().getItem()),resolution()/2f,resolution()/2f,resolution()/2f,0));selectedIcon=icons.size()-1;}changed();rebuild();}return true;}
         return super.mouseClicked(x,y,button);
     }
-    private void paint(double x,double y,int button){int n=resolution(),px=Math.clamp((int)((x-left-120)*n/CANVAS),0,n-1),py=Math.clamp((int)((y-top-80)*n/CANVAS),0,n-1);if(selectedIcon>=0&&!erase&&button==0){var icon=icons.get(selectedIcon);icons.set(selectedIcon,new RuneDesign.Icon(icon.item(),px+.5f,py+.5f,icon.scale(),icon.rotation()));}else{if(lastX<0){lastX=px;lastY=py;}int steps=Math.max(Math.abs(px-lastX),Math.abs(py-lastY));for(int i=0;i<=steps;i++){int a=steps==0?px:Math.round(lastX+(px-lastX)*i/(float)steps),b=steps==0?py:Math.round(lastY+(py-lastY)*i/(float)steps);pixels[b*storedSize()+a]=(button==1||erase?0:brush);}lastX=px;lastY=py;}changed();}
+    private void paint(double x,double y,int button){int n=resolution(),px=com.cappleapple.astralrepository.platform.Backport.clamp((int)((x-left-120)*n/CANVAS),0,n-1),py=com.cappleapple.astralrepository.platform.Backport.clamp((int)((y-top-80)*n/CANVAS),0,n-1);if(selectedIcon>=0&&!erase&&button==0){var icon=icons.get(selectedIcon);icons.set(selectedIcon,new RuneDesign.Icon(icon.item(),px+.5f,py+.5f,icon.scale(),icon.rotation()));}else{if(lastX<0){lastX=px;lastY=py;}int steps=Math.max(Math.abs(px-lastX),Math.abs(py-lastY));for(int i=0;i<=steps;i++){int a=steps==0?px:Math.round(lastX+(px-lastX)*i/(float)steps),b=steps==0?py:Math.round(lastY+(py-lastY)*i/(float)steps);pixels[b*storedSize()+a]=(button==1||erase?0:brush);}lastX=px;lastY=py;}changed();}
     @Override public boolean keyPressed(int key,int scan,int modifiers){if(colorPicker!=null){if(key==256)colorPicker.onClose();else colorPicker.keyPressed(key,scan,modifiers);return true;}if(editing&&hasControlDown()&&key==org.lwjgl.glfw.GLFW.GLFW_KEY_Z&&!undo.isEmpty()){var art=undo.removeLast();pixels=art.argbPixels();icons.clear();icons.addAll(art.icons());selectedIcon=-1;changed();rebuild();return true;}return super.keyPressed(key,scan,modifiers);}
     @Override public boolean charTyped(char c,int modifiers){return colorPicker!=null?colorPicker.charTyped(c,modifiers):super.charTyped(c,modifiers);}
     @Override public boolean mouseDragged(double x,double y,int button,double dx,double dy){if(colorPicker!=null){colorPicker.mouseDragged(x,y,button,dx,dy);return true;}if(dragging){paint(x,y,button);return true;}return super.mouseDragged(x,y,button,dx,dy);}
     @Override public boolean mouseReleased(double x,double y,int button){if(colorPicker!=null){colorPicker.mouseReleased(x,y,button);return true;}if(dragging){dragging=false;flush();return true;}return super.mouseReleased(x,y,button);}
-    @Override public boolean mouseScrolled(double x,double y,double dx,double dy){
+    @Override public boolean mouseScrolled(double x,double y,double dy){
         if(colorPicker!=null)return true;
-        if(!editing){if(in(x,y,20,40,384,192)){listOffset=Math.clamp(listOffset-(int)Math.signum(dy),0,Math.max(0,(library.size()+1+7)/8-4));return true;}return super.mouseScrolled(x,y,dx,dy);}
+        if(!editing){if(in(x,y,20,40,384,192)){listOffset=com.cappleapple.astralrepository.platform.Backport.clamp(listOffset-(int)Math.signum(dy),0,Math.max(0,(library.size()+1+7)/8-4));return true;}return super.mouseScrolled(x,y,dy);}
         if(dy!=0&&modeButton!=null&&modeButton.isMouseOver(x,y)){cycleMode(dy>0?1:-1);return true;}
         if(NumericScroll.adjust(minimum,x,y,dy,0,Long.MAX_VALUE,false)||NumericScroll.adjust(target,x,y,dy,0,Long.MAX_VALUE,true)||NumericScroll.adjust(priority,x,y,dy,-999,999,false))return true;
         for(int i=0;i<transforms.size();i++)if(NumericScroll.adjust(transforms.get(i),x,y,dy,i==3?-360:i==2?1:0,i==3?360:128,false))return true;
-        if(behavior&&in(x,y,278,218,132,38)){filterOffset=Math.clamp(filterOffset-(int)Math.signum(dy)*6,0,Math.max(0,(rules.entries().size()+5)/6-2)*6);return true;}
-if(in(x,y,8,34,98,192)){listOffset=Math.clamp(listOffset-(int)Math.signum(dy),0,Math.max(0,library.size()-8));return true;}if(in(x,y,278,77,134,38)){resultOffset=Math.clamp(resultOffset-(int)Math.signum(dy)*6,0,Math.max(0,results.size()-12));return true;}if(draft!=null&&selectedIcon>=0&&in(x,y,120,80,144,144)){var icon=icons.get(selectedIcon);transform(hasShiftDown()?2:3,Float.toString((hasShiftDown()?icon.scale():icon.rotation())+(float)Math.signum(dy)*NumericScroll.step()));rebuild();return true;}return super.mouseScrolled(x,y,dx,dy);}
+        if(behavior&&in(x,y,278,218,132,38)){filterOffset=com.cappleapple.astralrepository.platform.Backport.clamp(filterOffset-(int)Math.signum(dy)*6,0,Math.max(0,(rules.entries().size()+5)/6-2)*6);return true;}
+if(in(x,y,8,34,98,192)){listOffset=com.cappleapple.astralrepository.platform.Backport.clamp(listOffset-(int)Math.signum(dy),0,Math.max(0,library.size()-8));return true;}if(in(x,y,278,77,134,38)){resultOffset=com.cappleapple.astralrepository.platform.Backport.clamp(resultOffset-(int)Math.signum(dy)*6,0,Math.max(0,results.size()-12));return true;}if(draft!=null&&selectedIcon>=0&&in(x,y,120,80,144,144)){var icon=icons.get(selectedIcon);transform(hasShiftDown()?2:3,Float.toString((hasShiftDown()?icon.scale():icon.rotation())+(float)Math.signum(dy)*NumericScroll.step()));rebuild();return true;}return super.mouseScrolled(x,y,dy);}
     private static int[] colors(){return new int[]{0xffffffff,0xffaaddff,0xff4488ff,0xff9944ff,0xffff88cc,0xffffbb44,0xff44dd88,0xffff4444,0xff000000};}
-    @Override public void render(GuiGraphics g,int mx,int my,float partial){renderBackground(g,mx,my,partial);AstralInterfaceRenderer.blit(g,PANEL,left,top,W,H);g.drawString(font,"Rune library",left+9,top+13,0xe1d4ff,false);for(var child:children())if(child instanceof AbstractWidget widget)widget.render(g,mx,my,partial);
+    @Override public void render(GuiGraphics g,int mx,int my,float partial){renderBackground(g);AstralInterfaceRenderer.blit(g,PANEL,left,top,W,H);g.drawString(font,"Rune library",left+9,top+13,0xe1d4ff,false);for(var child:children())if(child instanceof AbstractWidget widget)widget.render(g,mx,my,partial);
         if(!editing){
             var entries=new ArrayList<>(library.values());int count=entries.size()+(entries.size()<64?1:0),hover=libraryCell(mx,my);
             for(int i=listOffset*8;i<Math.min(count,listOffset*8+32);i++){int k=i-listOffset*8,x=left+20+k%8*48,y=top+40+k/8*48;RuneUi.slot(g,x,y,44,i==hover);

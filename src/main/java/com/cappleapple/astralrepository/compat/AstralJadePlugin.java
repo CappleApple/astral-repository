@@ -18,7 +18,7 @@ public final class AstralJadePlugin implements IWailaPlugin {
     @Override public void registerClient(IWailaClientRegistration registration){registration.registerBlockComponent(RuneInfo.INSTANCE,Block.class);registered=true;}
     public enum RuneInfo implements IBlockComponentProvider {
         INSTANCE;
-        @Override public ResourceLocation getUid(){return ResourceLocation.fromNamespaceAndPath("astral_repository","rune_assignment");}
+        @Override public ResourceLocation getUid(){return new ResourceLocation("astral_repository","rune_assignment");}
         @Override public void appendTooltip(ITooltip tooltip,BlockAccessor accessor,IPluginConfig config){
             var rows=RuneRenderer.hoverIcons(accessor.getHitResult());
             if(rows.isEmpty())return;

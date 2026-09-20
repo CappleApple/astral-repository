@@ -22,13 +22,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class AstralArmorTrimMixin {
     @Shadow @Final private TextureAtlas armorTrimAtlas;
 
-    @Inject(method="renderTrim(Lnet/minecraft/core/Holder;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/item/armortrim/ArmorTrim;Lnet/minecraft/client/model/Model;Z)V", at=@At("HEAD"), cancellable=true)
-    private void astral$renderTrim(Holder<ArmorMaterial> armor, PoseStack poses, MultiBufferSource buffers,
-            int light, ArmorTrim trim, Model model, boolean leggings, CallbackInfo ci) {
+    @Inject(method="renderTrim(Lnet/minecraft/world/item/ArmorMaterial;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/item/armortrim/ArmorTrim;Lnet/minecraft/client/model/HumanoidModel;Z)V", at=@At("HEAD"), cancellable=true)
+    private void astral$renderTrim(ArmorMaterial armor, PoseStack poses, MultiBufferSource buffers,
+            int light, ArmorTrim trim, net.minecraft.client.model.HumanoidModel<?> model, boolean leggings, CallbackInfo ci) {
         if (!AstralTrims.isAstral(trim) || !AstralPlaneRenderType.ready()) return;
         var sprite = armorTrimAtlas.getSprite(leggings ? trim.innerTexture(armor) : trim.outerTexture(armor));
-        var material = AstralPlaneRenderType.armorTrim(trim.pattern().value().decal());
-        model.renderToBuffer(poses, sprite.wrap(buffers.getBuffer(material)), light, OverlayTexture.NO_OVERLAY);
+        var material = AstralPlaneRenderType.armorTrim(false);
+        model.renderToBuffer(poses, sprite.wrap(buffers.getBuffer(material)), light, OverlayTexture.NO_OVERLAY,1,1,1,1);
         ci.cancel();
     }
 }

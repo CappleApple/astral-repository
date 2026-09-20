@@ -9,9 +9,9 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.UUID;
 
 @GameTestHolder("astral_repository")
@@ -26,8 +26,8 @@ public final class MenuGameTests {
         player.getInventory().setItem(0, new ItemStack(Items.OAK_PLANKS, 63));
         NexusMenu menu = new NexusMenu(71, player.getInventory());
         menu.grid.setItem(0, new ItemStack(Items.OAK_LOG));
-        h.assertTrue(menu.slots.getFirst().getItem().is(Items.OAK_PLANKS)
-                && menu.slots.getFirst().getItem().getCount() == 4, "Actual server recipe produces four planks");
+        h.assertTrue(menu.slots.get(0).getItem().is(Items.OAK_PLANKS)
+                && menu.slots.get(0).getItem().getCount() == 4, "Actual server recipe produces four planks");
         ItemStack crafted = menu.quickMoveStack(player, 0);
         h.assertTrue(crafted.isEmpty(), "A four-item recipe waits when only one item fits");
         h.assertTrue(player.getInventory().getItem(0).getCount() == 63, "The partial output is not inserted");
@@ -46,7 +46,7 @@ public final class MenuGameTests {
         for(int slot=0;slot<36;slot++)player.getInventory().setItem(slot,new ItemStack(Items.STONE,64));
         player.getInventory().setItem(0,new ItemStack(Items.SUGAR,61));
         NexusMenu menu=new NexusMenu(72,player.getInventory());menu.grid.setItem(0,new ItemStack(Items.HONEY_BOTTLE,2));
-        h.assertTrue(menu.slots.getFirst().getItem().is(Items.SUGAR)&&menu.slots.getFirst().getItem().getCount()==3,"Actual vanilla honey recipe produces three sugar");
+        h.assertTrue(menu.slots.get(0).getItem().is(Items.SUGAR)&&menu.slots.get(0).getItem().getCount()==3,"Actual vanilla honey recipe produces three sugar");
         h.assertTrue(menu.quickMoveStack(player,0).isEmpty(),"Output space alone is insufficient when a returned bottle also needs inventory space");
         h.assertTrue(menu.grid.getItem(0).getCount()==2&&player.getInventory().getItem(0).getCount()==61,"Rejected batch consumes neither honey nor output capacity");
         h.assertTrue(h.getLevel().getEntitiesOfClass(ItemEntity.class,new AABB(position).inflate(4)).stream().noneMatch(e->e.getItem().is(Items.GLASS_BOTTLE)),"Rejected batch drops no glass bottle");

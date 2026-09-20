@@ -12,18 +12,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ResourceArrivalTest {
     private static NetworkPackets.Visual packet(List<BlockPos> path,int slot,TransferVisuals.Endpoint arrival){
-        return new NetworkPackets.Visual(path.getFirst(),path.getLast(),ItemStack.EMPTY,0xffffff,TransferVisuals.duration(path),slot,path,null,arrival);
+        return new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),ItemStack.EMPTY,0xffffff,TransferVisuals.duration(path),slot,path,null,arrival);
     }
     @Test void stableSeededLandingsStayInsideTheDestinationWithConfigurableSpread(){
         var path=List.of(new BlockPos(0,8,0),new BlockPos(12,8,0));
         for(int slot=-4;slot<=-2;slot++){
             var packet=packet(path,slot,null);
-            assertEquals(path.getLast().getCenter(),ResourceArrival.create(packet,7,0).endpoint());
+            assertEquals(path.get(path.size()-1).getCenter(),ResourceArrival.create(packet,7,0).endpoint());
             assertEquals(ResourceArrival.create(packet,7,.18),ResourceArrival.create(packet,7,.18));
             assertNotEquals(ResourceArrival.create(packet,7,.18).endpoint(),ResourceArrival.create(packet,8,.18).endpoint());
             for(long seed=0;seed<100;seed++){
                 var arrival=ResourceArrival.create(packet,seed,.45);
-                assertTrue(arrival.endpoint().distanceTo(path.getLast().getCenter())<=.45);
+                assertTrue(arrival.endpoint().distanceTo(path.get(path.size()-1).getCenter())<=.45);
                 assertEquals(0,arrival.opacity(arrival.endpoint()));
                 assertEquals(0,arrival.position(TransferVisuals.position(packet,1),1).distanceTo(arrival.endpoint()),1e-10);
             }
@@ -81,7 +81,7 @@ class ResourceArrivalTest {
         for(int i=0;i<=1000;i++){
             double t=i/1000.0;
             var point=arrival.position(TransferVisuals.variedPosition(packet,t,19,2),t);
-            var target=path.getLast();
+            var target=path.get(path.size()-1);
             boolean inside=point.x>target.getX()&&point.x<target.getX()+1&&point.y>target.getY()&&point.y<target.getY()+1&&point.z>target.getZ()&&point.z<target.getZ()+1;
             if(!inside)assertEquals(1,arrival.opacity(point));
             else{entered=true;assertTrue(arrival.opacity(point)<1);}

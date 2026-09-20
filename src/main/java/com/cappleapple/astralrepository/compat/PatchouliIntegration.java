@@ -5,19 +5,19 @@ import java.util.Optional;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.registries.DeferredItem;
-import net.neoforged.neoforge.registries.DeferredRegister;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.registry.RegistryObject;
+import com.cappleapple.astralrepository.platform.registry.DeferredRegister;
 
 /** Optional book registration; the API bridge is loaded only when Patchouli is installed. */
 public final class PatchouliIntegration {
-    public static final ResourceLocation BOOK = ResourceLocation.fromNamespaceAndPath("astral_repository", "field_guide");
+    public static final ResourceLocation BOOK = new ResourceLocation("astral_repository", "field_guide");
 
     public static final String POWER_FLAG = "astral_repository:power_enabled";
 
     public static boolean isLoaded() { return ModList.get().isLoaded("patchouli"); }
 
-    public static Optional<DeferredItem<FieldGuideItem>> register(DeferredRegister.Items items) {
+    public static Optional<RegistryObject<FieldGuideItem>> register(DeferredRegister<net.minecraft.world.item.Item> items) {
         return isLoaded() ? Optional.of(items.register("field_guide", () -> new FieldGuideItem(new Item.Properties().stacksTo(1)))) : Optional.empty();
     }
 

@@ -8,7 +8,7 @@ import net.minecraft.world.item.armortrim.TrimMaterial;
 
 public final class AstralTrims {
     public static final ResourceKey<TrimMaterial> MATERIAL = ResourceKey.create(Registries.TRIM_MATERIAL,
-            ResourceLocation.fromNamespaceAndPath(AstralContent.MOD_ID, "astral_gem"));
+            new ResourceLocation(AstralContent.MOD_ID, "astral_gem"));
     public static boolean isAstral(ArmorTrim trim) { return trim != null && trim.material().is(MATERIAL); }
     private AstralTrims() {}
 }

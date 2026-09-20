@@ -15,8 +15,8 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)

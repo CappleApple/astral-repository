@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.CommonHooks;
+import net.minecraftforge.common.CommonHooks;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.flag.FeatureFlags;
@@ -21,10 +21,10 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -175,13 +175,13 @@ public final class RuneProgrammingGameTests {
         var tab=AstralContent.CREATIVE_TAB.get();
         tab.buildContents(new CreativeModeTab.ItemDisplayParameters(FeatureFlags.DEFAULT_FLAGS,true,h.getLevel().registryAccess()));
         for (String name : new String[]{"push_rune","pull_rune"}) {
-            var id=ResourceLocation.fromNamespaceAndPath("astral_repository",name);
+            var id=new ResourceLocation("astral_repository",name);
             h.assertTrue(h.getLevel().getRecipeManager().byKey(id).isEmpty(),"Rune item recipe removed: "+name);
             h.assertTrue(tab.getDisplayItems().stream().noneMatch(stack->BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(id)),"Rune item hidden from creative: "+name);
             h.assertTrue(!BuiltInRegistries.ITEM.containsKey(id),"Rune items are no longer registered");
         }
         for (String name : AstralContent.REMOVED_IDS) {
-            var id=ResourceLocation.fromNamespaceAndPath("astral_repository",name);
+            var id=new ResourceLocation("astral_repository",name);
             h.assertTrue(!BuiltInRegistries.ITEM.containsKey(id),"Retired item ID removed: "+name);
             h.assertTrue(tab.getDisplayItems().stream().noneMatch(stack->BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(id)),"Legacy item is hidden from creative: "+name);
             h.assertTrue(h.getLevel().getRecipeManager().byKey(id).isEmpty(),"Legacy rune recipe is removed: "+name);

@@ -17,8 +17,8 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class ProviderLifecycleGameTests {
@@ -26,7 +26,7 @@ public final class ProviderLifecycleGameTests {
         var method=CompatibilityRegistry.class.getDeclaredMethod("validity",ServerLevel.class,BlockPos.class);method.setAccessible(true);
         return (BooleanSupplier)method.invoke(null,level,pos);
     }
-    private static StorageProvider provider(ServerLevel level,BlockPos pos){return CompatibilityRegistry.discoverStorage(level,pos,Direction.UP).getFirst();}
+    private static StorageProvider provider(ServerLevel level,BlockPos pos){return CompatibilityRegistry.discoverStorage(level,pos,Direction.UP).get(0);}
     @GameTest(templateNamespace="astral_repository",template="empty_workshop",batch="provider_lifecycle")
     public static void capturedProviderViewsRejectReplacementStateChangesAndCapabilityInvalidation(GameTestHelper h)throws Exception{
         var level=h.getLevel();var relative=new BlockPos(3,2,3);h.setBlock(relative,Blocks.CHEST);var pos=h.absolutePos(relative);

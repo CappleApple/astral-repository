@@ -1,6 +1,6 @@
 package com.cappleapple.astralrepository;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import io.github.fabricators_of_create.porting_lib.config.ModConfigSpec;
 
 public final class AstralConfig {
     private static final ModConfigSpec.Builder B = new ModConfigSpec.Builder();
@@ -27,7 +27,7 @@ public final class AstralConfig {
     public static final ModConfigSpec.DoubleValue particleDensity = B.defineInRange("particleDensity", 1.0, 0.0, 2.0);
     public static final ModConfigSpec.BooleanValue powerEnabled = B.define("powerEnabled", false);
     public static final ModConfigSpec.ConfigValue<String> powerMode = B.comment("any or all: how allowed power resources satisfy cost.").define("powerMode", "any");
-    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> powerProviders = B.defineListAllowEmpty("powerProviders", java.util.List.of("energy"), o -> o instanceof String);
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> powerProviders = B.defineListAllowEmpty(java.util.List.of("powerProviders"), () -> java.util.List.of("energy"), o -> o instanceof String);
     public static final ModConfigSpec.ConfigValue<String> itemFuel = B.define("itemFuel", "minecraft:amethyst_shard");
     public static final ModConfigSpec.ConfigValue<String> fluidFuel = B.define("fluidFuel", "minecraft:lava");
     public static final ModConfigSpec.IntValue itemFuelValue = B.defineInRange("itemFuelValue", 10000, 1, 1000000000);

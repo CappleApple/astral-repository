@@ -18,18 +18,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.client.event.RenderGuiEvent;
+import com.cappleapple.astralrepository.platform.client.event.RenderLevelStageEvent;
 
 /** The same visible cells select independent runes for editing, hover details, and link previews. */
-@EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.CLIENT)
 public final class RuneRenderer {
     public record Hover(RunePackets.Face face,RunePackets.Layer layer,int index,RuneLayout.Cell cell) {}
-    private static final ResourceLocation WHITE=ResourceLocation.withDefaultNamespace("textures/block/white_concrete.png");
+    private static final ResourceLocation WHITE=new ResourceLocation("textures/block/white_concrete.png");
     private static List<RunePackets.Face> faces=List.of();
     private static Object level;
     private static long received;
@@ -102,14 +98,14 @@ public final class RuneRenderer {
             default->{}
         }
     }
-    @SubscribeEvent public static void disconnect(net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut event){faces=List.of();RuneDesignRenderer.disconnect();}
-    @SubscribeEvent public static void render(RenderLevelStageEvent event){
+    public static void disconnect(com.cappleapple.astralrepository.platform.client.event.ClientPlayerNetworkEvent.LoggingOut event){faces=List.of();RuneDesignRenderer.disconnect();}
+    public static void render(RenderLevelStageEvent event){
         if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES)return;
         rendered=0;if(!current())faces=List.of();var mc=Minecraft.getInstance();if(mc.level==null||mc.player==null)return;var pose=event.getPoseStack();var buffers=mc.renderBuffers().bufferSource();
         var vertex=buffers.getBuffer(RenderType.entityTranslucent(WHITE));Vec3 camera=event.getCamera().getPosition();var hovered=hover();var selected=RuneProgramming.selection(mc.player.getMainHandItem());
         for(var face:faces){if(!visible(face)||face.pos().getCenter().distanceToSqr(camera)>4096)continue;var cells=cells(face);
             for(int i=0;i<cells.size();i++){var cell=cells.get(i);var layer=face.layers().get(i);var origin=cell.center().subtract(camera);double glyph=cell.size()*0.78;
-                int color=face.channel()<0?RuneGlyph.color(layer.item().getPath()):DyeColor.byId(face.channel()).getTextureDiffuseColor();if(!layer.enabled())color=0x777777;
+                int color=face.channel()<0?RuneGlyph.color(layer.item().getPath()):com.cappleapple.astralrepository.platform.Backport.dyeColor(DyeColor.byId(face.channel()));if(!layer.enabled())color=0x777777;
                 var design=RuneDesignRenderer.find(layer.design());
                 if(design!=null){buffers.endBatch(RenderType.entityTranslucent(WHITE));var texture=RuneDesignRenderer.texture(design,com.cappleapple.astralrepository.AstralServerConfig.runeResolution.get());var material=RenderType.entityTranslucentEmissive(texture);var art=buffers.getBuffer(material);rectangle(art,pose,cell,origin,-cell.size()/2,cell.size()/2,cell.size(),cell.size(),layer.enabled()?0xffffff:0x777777);buffers.endBatch(material);vertex=buffers.getBuffer(RenderType.entityTranslucent(WHITE));}
                 if(hovered!=null&&hovered.layer().id().equals(layer.id())||selected!=null&&layer.id().equals(selected.layer())){double half=cell.size()*0.46,stroke=Math.max(0.004,cell.size()*0.028);Vec3 front=origin.add(cell.normal().scale(0.001));rectangle(vertex,pose,cell,front,-half,half,half*2,stroke,0xFFFFFF);rectangle(vertex,pose,cell,front,-half,-half+stroke,half*2,stroke,0xFFFFFF);rectangle(vertex,pose,cell,front,-half,half,stroke,half*2,0xFFFFFF);rectangle(vertex,pose,cell,front,half-stroke,half,stroke,half*2,0xFFFFFF);}
@@ -121,11 +117,11 @@ public final class RuneRenderer {
     private static void rectangle(VertexConsumer vertex,PoseStack pose,RuneLayout.Cell cell,Vec3 origin,double x,double y,double width,double height,int color){
         Vec3 a=origin.add(cell.right().scale(x)).add(cell.up().scale(y)),b=a.add(cell.right().scale(width)),c=b.add(cell.up().scale(-height)),d=a.add(cell.up().scale(-height));
         Vec3[] points={d,c,b,a};float[][] uv={{0,1},{1,1},{1,0},{0,0}};
-        for(int i=0;i<4;i++)vertex.addVertex(pose.last().pose(),(float)points[i].x,(float)points[i].y,(float)points[i].z).setColor(color>>16&255,color>>8&255,color&255,240).setUv(uv[i][0],uv[i][1]).setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT).setNormal(pose.last(),(float)cell.normal().x,(float)cell.normal().y,(float)cell.normal().z);
+        for(int i=0;i<4;i++)vertex.vertex(pose.last().pose(),(float)points[i].x,(float)points[i].y,(float)points[i].z).color(color>>16&255,color>>8&255,color&255,240).uv(uv[i][0],uv[i][1]).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(LightTexture.FULL_BRIGHT).normal(pose.last().normal(),(float)cell.normal().x,(float)cell.normal().y,(float)cell.normal().z).endVertex();
     }
-    private static void line(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color){if(a.distanceToSqr(b)<0.000001)return;Vec3 n=b.subtract(a).normalize();for(Vec3 p:List.of(a,b))vertex.addVertex(pose.last().pose(),(float)p.x,(float)p.y,(float)p.z).setColor(color>>16&255,color>>8&255,color&255,220).setNormal(pose.last(),(float)n.x,(float)n.y,(float)n.z);}
+    private static void line(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color){if(a.distanceToSqr(b)<0.000001)return;Vec3 n=b.subtract(a).normalize();for(Vec3 p:List.of(a,b))vertex.vertex(pose.last().pose(),(float)p.x,(float)p.y,(float)p.z).color(color>>16&255,color>>8&255,color&255,220).normal(pose.last().normal(),(float)n.x,(float)n.y,(float)n.z).endVertex();}
     private static void arrow(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color,long time){line(vertex,pose,a,b,color);Vec3 d=b.subtract(a).normalize(),side=d.cross(new Vec3(0,1,0));if(side.lengthSqr()<0.01)side=d.cross(new Vec3(1,0,0));side=side.normalize().scale(0.10);Vec3 tip=a.lerp(b,0.2+(time%50)/50.0*0.65),back=tip.subtract(d.scale(0.18));line(vertex,pose,back.add(side),tip,color);line(vertex,pose,back.subtract(side),tip,color);}
-    @SubscribeEvent public static void hud(RenderGuiEvent.Post event){
+    public static void hud(RenderGuiEvent.Post event){
         var mc=Minecraft.getInstance();if(mc.screen!=null||!current())return;
         var selection=RuneProgramming.selection(mc.player.getMainHandItem());
         if(ModList.get().isLoaded("jade")||!(mc.hitResult instanceof BlockHitResult hit))return;

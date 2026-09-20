@@ -26,14 +26,14 @@ public final class RuneColorPicker extends Screen {
         hex=addRenderableWidget(new AstralEditBox(font,left+15,top+182,123,20,Component.literal("Hex color")));
         hex.setBordered(false);hex.setMaxLength(7);hex.setValue(String.format("#%06X",color&0xffffff));hex.setResponder(text->{if(!updating&&text.matches("#?[0-9a-fA-F]{6}")){setRgb(Integer.parseInt(text.replace("#",""),16));changed.accept(color);}});
         addRenderableWidget(new Button(left+145,top+182,50,20,Component.literal("Done"),b->onClose(),supplier->supplier.get()){
-            @Override protected void renderWidget(GuiGraphics g,int x,int y,float partial){g.blitSprite(ResourceLocation.fromNamespaceAndPath("astral_repository",isHovered()?"rune_button_hovered":"rune_button"),getX(),getY(),getWidth(),getHeight());g.drawCenteredString(font,getMessage(),getX()+25,getY()+6,0xD9DEFB);}
+            @Override protected void renderWidget(GuiGraphics g,int x,int y,float partial){com.cappleapple.astralrepository.platform.ClientBackport.blitSprite(g,new ResourceLocation("astral_repository",isHovered()?"rune_button_hovered":"rune_button"),getX(),getY(),getWidth(),getHeight());g.drawCenteredString(font,getMessage(),getX()+25,getY()+6,0xD9DEFB);}
         });
     }
     public EditBox hexField(){return hex;}
     public int color(){return color;}
     private void choose(double x,double y){
-        if(drag==1){double dx=x-left-82,dy=y-top-100;hue=(float)((Math.atan2(dy,dx)/(Math.PI*2)+1)%1);saturation=(float)Math.clamp(Math.hypot(dx,dy)/64,0,1);}
-        else value=(float)Math.clamp(1-(y-top-36)/128,0,1);
+        if(drag==1){double dx=x-left-82,dy=y-top-100;hue=(float)((Math.atan2(dy,dx)/(Math.PI*2)+1)%1);saturation=(float)com.cappleapple.astralrepository.platform.Backport.clamp(Math.hypot(dx,dy)/64,0,1);}
+        else value=(float)com.cappleapple.astralrepository.platform.Backport.clamp(1-(y-top-36)/128,0,1);
         color=java.awt.Color.HSBtoRGB(hue,saturation,value);updating=true;hex.setValue(String.format("#%06X",color&0xffffff));updating=false;changed.accept(color);
     }
     @Override public boolean mouseClicked(double x,double y,int button){if(button==0){
@@ -45,7 +45,7 @@ public final class RuneColorPicker extends Screen {
     @Override public boolean isPauseScreen(){return false;}
     @Override public void onClose(){if(wheel!=null){minecraft.getTextureManager().release(wheel);wheel=null;}close.run();}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
-        AstralInterfaceRenderer.blit(g,ResourceLocation.fromNamespaceAndPath("astral_repository","textures/gui/rune_settings.png"),left,top,210,224);
+        AstralInterfaceRenderer.blit(g,new ResourceLocation("astral_repository","textures/gui/rune_settings.png"),left,top,210,224);
         g.drawString(font,title,left+12,top+12,0xD9DEFB,false);g.fill(left+153,top+10,left+194,top+25,color);
         g.setColor(value,value,value,1);g.blit(wheel,left+18,top+36,0,0,128,128,128,128);g.setColor(1,1,1,1);
         for(int y=0;y<128;y++)g.fill(left+168,top+36+y,left+188,top+37+y,java.awt.Color.HSBtoRGB(hue,saturation,1-y/127f));

@@ -10,7 +10,7 @@ import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import java.util.function.BooleanSupplier;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 
 /** Sided capability adapter with incremental snapshots and verified, bounded slot lookups. */
 public final class ItemHandlerStorageProvider implements StorageProvider {
@@ -198,7 +198,7 @@ public final class ItemHandlerStorageProvider implements StorageProvider {
     private ItemStack offer(int slot,ItemStack stack,boolean simulate,ItemKey key) {
         if(!handler.isItemValid(slot,stack)) return stack;
         ItemStack remainder=handler.insertItem(slot,stack,simulate);
-        if(!remainder.isEmpty()&&!ItemStack.isSameItemSameComponents(stack,remainder))
+        if(!remainder.isEmpty()&&!ItemStack.isSameItemSameTags(stack,remainder))
             throw new IllegalStateException("Item capability changed insertion remainder at "+id);
         if(remainder.getCount()>stack.getCount()) throw new IllegalStateException("Item capability grew insertion remainder at "+id);
         if(simulate&&remainder.getCount()<stack.getCount()) {

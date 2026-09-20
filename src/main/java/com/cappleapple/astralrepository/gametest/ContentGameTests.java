@@ -12,10 +12,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import com.cappleapple.astralrepository.platform.Capabilities;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -94,18 +94,18 @@ public final class ContentGameTests {
         h.assertTrue(capability != null, "Storage exposes an item capability");
         capability.insertItem(0, new ItemStack(Items.DIAMOND, 47), false);
         var drops = Block.getDrops(node.getBlockState(), h.getLevel(), node.getBlockPos(), node);
-        h.assertTrue(drops.size() == 1 && drops.getFirst().has(DataComponents.BLOCK_ENTITY_DATA), "Drop contains block entity component");
+        h.assertTrue(drops.size() == 1 && drops.get(0).has(DataComponents.BLOCK_ENTITY_DATA), "Drop contains block entity component");
         h.setBlock(pos, Blocks.AIR); h.setBlock(pos.below(), Blocks.STONE);
         var player = h.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         var below = h.absolutePos(pos.below());
         var hit = new net.minecraft.world.phys.BlockHitResult(below.getCenter().add(0,.5,0),Direction.UP,below,false);
-        var context = new net.minecraft.world.item.context.BlockPlaceContext(h.getLevel(),player,net.minecraft.world.InteractionHand.MAIN_HAND,drops.getFirst().copy(),hit);
-        var placed = ((net.minecraft.world.item.BlockItem)drops.getFirst().getItem()).place(context);
+        var context = new net.minecraft.world.item.context.BlockPlaceContext(h.getLevel(),player,net.minecraft.world.InteractionHand.MAIN_HAND,drops.get(0).copy(),hit);
+        var placed = ((net.minecraft.world.item.BlockItem)drops.get(0).getItem()).place(context);
         h.assertTrue(placed.consumesAction(), "Dropped block item can actually be placed");
         var restored = (CrystalNodeBlockEntity) h.getBlockEntity(pos);
         h.assertTrue(restored.inventory().getStackInSlot(0).getCount() == 47, "Contents survive block item round trip");
         h.assertTrue(restored.channel() == 11 && restored.priority() == 7, "Physical programming survives move");
-        h.assertTrue(!restored.inventory().isItemValid(0, drops.getFirst()), "Recursive storage nesting is rejected");
+        h.assertTrue(!restored.inventory().isItemValid(0, drops.get(0)), "Recursive storage nesting is rejected");
         h.succeed();
     }
 
@@ -124,7 +124,7 @@ public final class ContentGameTests {
         h.assertTrue(!resources.isEmpty(), "Packaged crafting recipes are discoverable");
         for (var resource : resources.keySet()) {
             String path = resource.getPath();
-            var id = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(resource.getNamespace(),path.substring("recipe/".length(),path.length()-".json".length()));
+            var id = new net.minecraft.resources.ResourceLocation(resource.getNamespace(),path.substring("recipe/".length(),path.length()-".json".length()));
             var loaded = h.getLevel().getRecipeManager().byKey(id);
             if (id.equals(com.cappleapple.astralrepository.compat.PatchouliIntegration.BOOK) && !com.cappleapple.astralrepository.compat.PatchouliIntegration.isLoaded()) {
                 h.assertTrue(loaded.isEmpty(), "The optional guide recipe is absent without Patchouli");

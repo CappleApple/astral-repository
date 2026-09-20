@@ -8,7 +8,6 @@ import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -19,16 +18,15 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.common.CommonHooks;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
-import net.neoforged.neoforge.items.wrapper.PlayerMainInvWrapper;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.common.CommonHooks;
+import com.cappleapple.astralrepository.platform.items.ItemHandlerHelper;
+import com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper;
+import com.cappleapple.astralrepository.platform.event.entity.player.PlayerInteractEvent;
 
 /** Each visible Push/Pull rune has its own target and filter. All mutations are server-owned. */
 public final class RuneProgramming {
@@ -53,7 +51,7 @@ public final class RuneProgramming {
             BlockHitResult hit = pickupHit(player, event.getPos(), event.getFace());
             if (hit != null && selectedLayer(player.serverLevel(), hit) != null) event.setCanceled(true);
         } else {
-            var hit = event.getEntity().pick(event.getEntity().blockInteractionRange(), 1, false);
+            var hit = event.getEntity().pick(com.cappleapple.astralrepository.platform.FabricReach.range(event.getEntity()), 1, false);
             if (hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK
                     && blockHit.getBlockPos().equals(event.getPos()) && blockHit.getDirection() == event.getFace()
                     && clientSelection.apply(blockHit) >= 0) event.setCanceled(true);
@@ -79,13 +77,13 @@ public final class RuneProgramming {
         ServerLevel level = player.serverLevel();
         if (face == null || !player.isAlive() || player.isSpectator() || !player.isShiftKeyDown()
                 || !level.hasChunkAt(pos) || !level.getWorldBorder().isWithinBounds(pos)
-                || !player.canInteractWithBlock(pos, 0) || !level.mayInteract(player, pos)
+                || !com.cappleapple.astralrepository.platform.FabricReach.canReach(player,pos) || !level.mayInteract(player, pos)
                 || player.blockActionRestricted(level, pos, player.gameMode.getGameModeForPlayer())) return null;
-        double reach = player.blockInteractionRange();
+        double reach = com.cappleapple.astralrepository.platform.FabricReach.range(player);
         // Check the short ray's chunks before calling vanilla outline clipping; pickup never loads chunks.
         var eye = player.getEyePosition();
         // Movement packets update body yaw before the next server tick updates animated head yaw.
-        var view = player.calculateViewVector(player.getXRot(), player.getYRot());
+        var view = player.getViewVector(1);
         for (double distance = 0; distance <= reach; distance += 1) {
             if (!level.hasChunkAt(BlockPos.containing(eye.add(view.scale(distance))))) return null;
         }
@@ -140,9 +138,9 @@ public final class RuneProgramming {
                 }
                 com.cappleapple.astralrepository.network.WandPackets.selection(stack,com.cappleapple.astralrepository.network.WandPackets.selected(stack),false);
                 select(stack,new Selection(AnchorAddress.rune(server,pos,hit.getDirection()),selected==null?null:selected.id()));
-                var data=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+                var data=com.cappleapple.astralrepository.platform.Backport.customData(stack);
                 data.putBoolean(selected!=null?"RuneTargeting":"ContainerTargeting",true);
-                stack.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
+                stack.setTag(data);
             }else cancel(stack);
             return true;
         }
@@ -178,9 +176,9 @@ public final class RuneProgramming {
         return false;
     }
     public static boolean isContainer(ServerLevel level, BlockPos pos, Direction face) {
-        return level.hasChunkAt(pos) && (level.getCapability(Capabilities.ItemHandler.BLOCK, pos, face) != null
-                || level.getCapability(Capabilities.FluidHandler.BLOCK, pos, face) != null
-                || level.getCapability(Capabilities.EnergyStorage.BLOCK,pos,face)!=null
+        return level.hasChunkAt(pos) && (com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, pos, face) != null
+                || com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.FluidHandler.BLOCK, pos, face) != null
+                || com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.EnergyStorage.BLOCK,pos,face)!=null
                 || !com.cappleapple.astralrepository.compat.CompatibilityRegistry.discoverStorage(level,pos,face).isEmpty()
                 || !com.cappleapple.astralrepository.compat.CompatibilityRegistry.discoverResources(level,pos,face).isEmpty());
     }
@@ -210,7 +208,7 @@ public final class RuneProgramming {
             }
             var result = surface.toggleTarget(rune.layer(), target.address().position(), crystal(level,target)?null:face(target));
             message(player, result.message());
-            var data=wand.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
+            var data=com.cappleapple.astralrepository.platform.Backport.customData(wand);
             if(result.success()&&!data.getBoolean("RuneTargeting")&&!data.getBoolean("ContainerTargeting"))cancel(wand);
             return;
         }
@@ -239,14 +237,14 @@ public final class RuneProgramming {
     private static Direction face(Selection selection) { return selection.address().face() == null ? Direction.UP : selection.address().face(); }
     private static String mode(RuneLayer layer) { return layer == null ? "" : layer.mode() == RuneLayer.Mode.PUSH ? "Push" : "Pull"; }
     private static void select(ItemStack wand, Selection selected) {
-        CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.cappleapple.astralrepository.platform.Backport.customData(wand);
         CompoundTag endpoint = selected.address().save();
         if (selected.layer() != null) endpoint.putUUID("Layer", selected.layer());
         tag.put(SELECTION, endpoint);
-        wand.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        wand.setTag(tag);
     }
     public static Selection selection(ItemStack wand) {
-        CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.cappleapple.astralrepository.platform.Backport.customData(wand);
         if (!tag.contains(SELECTION)) return null;
         try {
             CompoundTag endpoint = tag.getCompound(SELECTION);
@@ -254,9 +252,9 @@ public final class RuneProgramming {
         } catch (IllegalArgumentException invalid) { return null; }
     }
     public static void cancel(ItemStack wand) {
-        CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        CompoundTag tag = com.cappleapple.astralrepository.platform.Backport.customData(wand);
         tag.remove(SELECTION);tag.remove("RuneTargeting");tag.remove("ContainerTargeting");
-        wand.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+        wand.setTag(tag);
     }
     private static void message(Player player, String text) {}
 }

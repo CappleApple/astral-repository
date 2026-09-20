@@ -10,8 +10,8 @@ import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.gametest.*;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import net.minecraftforge.gametest.*;
+import net.minecraftforge.items.ItemStackHandler;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class ProviderNotificationGameTests {
@@ -72,7 +72,7 @@ public final class ProviderNotificationGameTests {
         Object[] endpoints=new Object[3],views=new Object[3];
         for(int i=0;i<targets.size();i++)endpoints[i]=endpoint.invoke(worker,targets.get(i));
         var items=endpoints[0].getClass().getDeclaredField("items");items.setAccessible(true);
-        for(int i=0;i<views.length;i++)views[i]=((List<?>)items.get(endpoints[i])).getFirst();
+        for(int i=0;i<views.length;i++)views[i]=((List<?>)items.get(endpoints[i])).get(0);
         var poll=views[0].getClass().getDeclaredMethod("poll",long.class);poll.setAccessible(true);
         var contents=views[0].getClass().getDeclaredField("contents");contents.setAccessible(true);
         var ready=views[0].getClass().getDeclaredField("ready");ready.setAccessible(true);
@@ -84,7 +84,7 @@ public final class ProviderNotificationGameTests {
         for(int i=0;i<views.length;i++){poll.invoke(views[i],sameTick);h.assertTrue(Objects.equals(((Map<?,?>)contents.get(views[i])).get(key),i<2?5L:7L),"Position invalidation refreshes every face of that host without discarding unrelated cached views");}
         generation.incrementAndGet();Object[] replacements=new Object[3];
         for(int i=0;i<targets.size();i++){
-            endpoints[i]=endpoint.invoke(worker,targets.get(i));replacements[i]=((List<?>)items.get(endpoints[i])).getFirst();poll.invoke(replacements[i],sameTick);
+            endpoints[i]=endpoint.invoke(worker,targets.get(i));replacements[i]=((List<?>)items.get(endpoints[i])).get(0);poll.invoke(replacements[i],sameTick);
             h.assertTrue(replacements[i]!=views[i]&&Objects.equals(((Map<?,?>)contents.get(replacements[i])).get(key),5L),"Invalid providers are replaced with current live views");
         }
         var index=DirectRuneTransfers.class.getDeclaredMethod("index",endpoints[0].getClass());index.setAccessible(true);index.invoke(worker,endpoints[0]);

@@ -10,7 +10,7 @@ import net.minecraft.world.phys.Vec3;
 
 /** One cosmetic flight follows the complete route; it never owns transferred resources. */
 public final class TransferVisuals {
-    public static int legTicks(BlockPos a,BlockPos b){return Math.clamp((int)Math.ceil(Math.sqrt(a.distSqr(b))*2.5),20,100);}
+    public static int legTicks(BlockPos a,BlockPos b){return com.cappleapple.astralrepository.platform.Backport.clamp((int)Math.ceil(Math.sqrt(a.distSqr(b))*2.5),20,100);}
     public static int duration(List<BlockPos> path){int ticks=0;for(int i=1;i<path.size();i++)ticks+=legTicks(path.get(i-1),path.get(i));return ticks;}
     /** Offset is relative to the endpoint block center; normal points out of its rune face. */
     public record Endpoint(Vec3 offset,net.minecraft.core.Direction face){
@@ -24,11 +24,11 @@ public final class TransferVisuals {
     public static Vec3 position(NetworkPackets.Visual packet,double progress){return position(packet.path(),progress,packet.departure(),packet.arrival());}
     /** Shared tangents round relay corners, with each influence point within half a block of its relay. */
     public static Vec3 position(List<BlockPos> path,double progress,Endpoint departure,Endpoint arrival){
-        double elapsed=Math.clamp(progress,0,1)*duration(path);
+        double elapsed=com.cappleapple.astralrepository.platform.Backport.clamp(progress,0,1)*duration(path);
         for(int i=1;i<path.size();i++){
             int ticks=legTicks(path.get(i-1),path.get(i));
             if(elapsed<=ticks||i==path.size()-1){
-                double t=Math.clamp(elapsed/ticks,0,1),t2=t*t,t3=t2*t;
+                double t=com.cappleapple.astralrepository.platform.Backport.clamp(elapsed/ticks,0,1),t2=t*t,t3=t2*t;
                 Vec3 a=point(path,i-1,departure,arrival),b=point(path,i,departure,arrival);
                 Vec3 m0=velocity(path,i-1,departure,arrival).scale(ticks),m1=velocity(path,i,departure,arrival).scale(ticks);
                 return a.scale(2*t3-3*t2+1).add(m0.scale(t3-2*t2+t)).add(b.scale(-2*t3+3*t2)).add(m1.scale(t3-t2));
@@ -39,9 +39,9 @@ public final class TransferVisuals {
     }
     public static Vec3 variedPosition(NetworkPackets.Visual packet,double progress,long seed,double variation){
         Vec3 base=position(packet,progress);if(variation<=0)return base;
-        var path=packet.path();double elapsed=Math.clamp(progress,0,1)*duration(path);int leg=1;
+        var path=packet.path();double elapsed=com.cappleapple.astralrepository.platform.Backport.clamp(progress,0,1)*duration(path);int leg=1;
         for(;leg<path.size()-1;leg++){int ticks=legTicks(path.get(leg-1),path.get(leg));if(elapsed<=ticks)break;elapsed-=ticks;}
-        double t=Math.clamp(elapsed/legTicks(path.get(leg-1),path.get(leg)),0,1);
+        double t=com.cappleapple.astralrepository.platform.Backport.clamp(elapsed/legTicks(path.get(leg-1),path.get(leg)),0,1);
         // Shared random knots at relays and mid-leg positions. Only the source and
         // destination have zero offset: relay crossings keep the full variation.
         int knot=(leg-1)*2+(t<.5?0:1);
@@ -87,9 +87,9 @@ public final class TransferVisuals {
     public static void send(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,Endpoint departure,Endpoint arrival){send(server,route,stack,color,style,departure,arrival,null);}
     public static void send(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,Endpoint departure,Endpoint arrival,net.minecraft.resources.ResourceLocation fluid){
         if(route.size()<2||route.size()>130||AstralConfig.particleDensity.get()<=0)return;
-        var level=server.getLevel(route.getFirst().dimension());if(level==null||level.players().isEmpty())return;
+        var level=server.getLevel(route.get(0).dimension());if(level==null||level.players().isEmpty())return;
         var path=projectedPath(route);
-        TransferVisualDispatcher.enqueue(level,path,style,()->new NetworkPackets.Visual(path.getFirst(),path.getLast(),stack.isEmpty()?ItemStack.EMPTY:stack.copyWithCount(1),color,duration(path),style,path,departure,arrival,fluid));
+        TransferVisualDispatcher.enqueue(level,path,style,()->new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),stack.isEmpty()?ItemStack.EMPTY:stack.copyWithCount(1),color,duration(path),style,path,departure,arrival,fluid));
     }
     /** Suppliers run synchronously on the server thread, only after an observer admits the visual. */
     public static void sendWithEndpoints(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,
@@ -99,13 +99,13 @@ public final class TransferVisuals {
     public static void sendWithEndpoints(MinecraftServer server,List<GlobalPos> route,java.util.function.Supplier<ItemStack> stack,int color,int style,
             java.util.function.Supplier<Endpoint> departure,java.util.function.Supplier<Endpoint> arrival,net.minecraft.resources.ResourceLocation fluid){
         if(route.size()<2||route.size()>130||AstralConfig.particleDensity.get()<=0)return;
-        var level=server.getLevel(route.getFirst().dimension());if(level==null||level.players().isEmpty())return;
+        var level=server.getLevel(route.get(0).dimension());if(level==null||level.players().isEmpty())return;
         var path=projectedPath(route);
         TransferVisualDispatcher.enqueue(level,path,style,()->{
             Endpoint from=departure==null?null:departure.get();
             Endpoint to=arrival==null?null:arrival==departure?from:arrival.get();
             ItemStack sample=stack.get();
-            return new NetworkPackets.Visual(path.getFirst(),path.getLast(),sample.isEmpty()?ItemStack.EMPTY:sample.copyWithCount(1),color,duration(path),style,path,from,to,fluid);
+            return new NetworkPackets.Visual(path.get(0),path.get(path.size()-1),sample.isEmpty()?ItemStack.EMPTY:sample.copyWithCount(1),color,duration(path),style,path,from,to,fluid);
         });
     }
     /** Shares immutable routes; mutable callers are snapshotted before the audience cache retains the view. */

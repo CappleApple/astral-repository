@@ -6,8 +6,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 /** A per-editor catalogue of the registries and tags actually loaded by this client. */
 public final class RuneFilterSearch {
@@ -34,7 +34,7 @@ public final class RuneFilterSearch {
         BuiltInRegistries.FLUID.forEach(fluid -> {
             if (fluid == Fluids.EMPTY) return;
             var id = BuiltInRegistries.FLUID.getKey(fluid); var icon = fluidIcon(fluid);
-            String name = new FluidStack(fluid, 1000).getHoverName().getString();
+            String name = new FluidStack(fluid, 1000).getDisplayName().getString();
             values.add(new Option("fluid:" + id, name, "Fluid " + id, icon, Category.FLUIDS));
             namespaces.putIfAbsent(id.getNamespace(), icon);
         });
@@ -44,7 +44,7 @@ public final class RuneFilterSearch {
             values.add(new Option("fluid:#" + id, readable(id.getPath()), "Fluid tag #" + id, icon, Category.TAGS));
         });
         namespaces.forEach((namespace, icon) -> {
-            String name = namespace.equals("minecraft") ? "Minecraft" : ModList.get().getModContainerById(namespace).map(container -> container.getModInfo().getDisplayName()).orElse(namespace);
+            String name = namespace.equals("minecraft") ? "Minecraft" : net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(namespace).map(container->container.getMetadata().getName()).orElse(namespace);
             values.add(new Option("@" + namespace, name, "Mod @" + namespace, icon, Category.MODS));
         });
         values.sort(Comparator.comparing(Option::name, String.CASE_INSENSITIVE_ORDER).thenComparing(Option::rule));

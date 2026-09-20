@@ -36,9 +36,9 @@ import org.lwjgl.opengl.GL13;
 /** Client-development assertions and real render previews. The release JAR excludes gametest classes. */
 public final class MaterialGeometrySmoke {
     private static final float EPSILON = 0.00001F;
-    private static final ResourceLocation WAND = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "item/attunement_wand");
-    private static final ResourceLocation WAND_BITMAP = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/item/attunement_wand.png");
-    private static final ResourceLocation REMOTE_BITMAP = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/item/astral_nexus.png");
+    private static final ResourceLocation WAND = new ResourceLocation(AstralRepository.MOD_ID, "item/attunement_wand");
+    private static final ResourceLocation WAND_BITMAP = new ResourceLocation(AstralRepository.MOD_ID, "textures/item/attunement_wand.png");
+    private static final ResourceLocation REMOTE_BITMAP = new ResourceLocation(AstralRepository.MOD_ID, "textures/item/astral_nexus.png");
     private static List<WandProbe> wandBaseline = List.of();
     private static List<RemoteProbe> remoteBaseline = List.of();
     private MaterialGeometrySmoke() {}
@@ -74,7 +74,7 @@ public final class MaterialGeometrySmoke {
         check(!remote.isCustomRenderer()&&!remote.isGui3d(),"Remote overlay must retain flat generated underlying geometry");
         var remoteQuads=allQuads(remote,null);EnumSet<Direction> remoteSides=EnumSet.noneOf(Direction.class);
         check(!remoteQuads.isEmpty(),"Remote access item geometry is missing");
-        for(var quad:remoteQuads){remoteSides.add(quad.getDirection());check(quad.getSprite().contents().name().equals(ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"item/astral_nexus")),"Remote must use its original Astral Nexus bitmap");for(var point:geometry(quad).vertices())check(point.z()>=7.5F/16-EPSILON&&point.z()<=8.5F/16+EPSILON,"Remote must stay one pixel thick");}
+        for(var quad:remoteQuads){remoteSides.add(quad.getDirection());check(quad.getSprite().contents().name().equals(new ResourceLocation(AstralRepository.MOD_ID,"item/astral_nexus")),"Remote must use its original Astral Nexus bitmap");for(var point:geometry(quad).vertices())check(point.z()>=7.5F/16-EPSILON&&point.z()<=8.5F/16+EPSILON,"Remote must stay one pixel thick");}
         check(remoteSides.equals(EnumSet.allOf(Direction.class)),"Remote tool lacks filled silhouette edges");
         verifyNaturalSprites(client);
         verifyCullState();
@@ -91,7 +91,7 @@ public final class MaterialGeometrySmoke {
                 AstralContent.SMALL_ASTRAL_BUD.get(),AstralContent.MEDIUM_ASTRAL_BUD.get(),
                 AstralContent.LARGE_ASTRAL_BUD.get(),AstralContent.ASTRAL_CLUSTER.get())) {
             var id=net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block);
-            var expected=ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"block/"+id.getPath());
+            var expected=new ResourceLocation(AstralRepository.MOD_ID,"block/"+id.getPath());
             var state=block.defaultBlockState();
             var quads=allQuads(client.getBlockRenderer().getBlockModel(state),state);
             check(!quads.isEmpty()&&quads.stream().allMatch(q->q.getSprite().contents().name().equals(expected)),
@@ -99,7 +99,7 @@ public final class MaterialGeometrySmoke {
         }
         var gem=allQuads(client.getModelManager().getModel(AstralMineralClient.GEM_MODEL),null);
         check(!gem.isEmpty()&&gem.stream().allMatch(q->q.getSprite().contents().name().equals(
-                ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"item/astral_gem"))),
+                new ResourceLocation(AstralRepository.MOD_ID,"item/astral_gem"))),
                 "Astral Gem must use its own item artwork");
     }
 
@@ -205,8 +205,8 @@ public final class MaterialGeometrySmoke {
                 double u = 0, v = 0;
                 for (int i = 0; i < 4; i++) { u += Float.intBitsToFloat(data[i * stride + 4]); v += Float.intBitsToFloat(data[i * stride + 5]); }
                 var sprite = quad.getSprite();
-                int x = Math.clamp((int)Math.floor((u / 4 - sprite.getU0()) / (sprite.getU1() - sprite.getU0()) * source.getWidth()), 0, source.getWidth() - 1);
-                int y = Math.clamp((int)Math.floor((v / 4 - sprite.getV0()) / (sprite.getV1() - sprite.getV0()) * source.getHeight()), 0, source.getHeight() - 1);
+                int x = com.cappleapple.astralrepository.platform.Backport.clamp((int)Math.floor((u / 4 - sprite.getU0()) / (sprite.getU1() - sprite.getU0()) * source.getWidth()), 0, source.getWidth() - 1);
+                int y = com.cappleapple.astralrepository.platform.Backport.clamp((int)Math.floor((v / 4 - sprite.getV0()) / (sprite.getV1() - sprite.getV0()) * source.getHeight()), 0, source.getHeight() - 1);
                 WandRegion region = wandRegion(x, y);
                 check(quad.getTintIndex() == (region == WandRegion.CRYSTAL ? 0 : -1), "Wand shader mask includes the wrong bitmap region at " + x + "," + y);
                 if (region == WandRegion.CRYSTAL) crystal++; else body++;

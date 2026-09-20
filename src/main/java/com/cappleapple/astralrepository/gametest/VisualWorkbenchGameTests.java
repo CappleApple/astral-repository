@@ -21,15 +21,15 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.*;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 /** Uses the installed mod's replacement block, persistent container, menu and NBT serializer. */
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
 public final class VisualWorkbenchGameTests {
-    private static final ResourceLocation TABLE=ResourceLocation.parse("visualworkbench:minecraft/crafting_table");
+    private static final ResourceLocation TABLE=new ResourceLocation("visualworkbench:minecraft/crafting_table");
     private static final ItemKey IRON=new ItemKey(new ItemStack(Items.IRON_INGOT));
     private static final ItemKey OUTPUT=new ItemKey(new ItemStack(Items.IRON_TRAPDOOR));
     private record Fixture(GlobalPos origin,GlobalPos table,Container chest,BlockEntity persistentTable,
@@ -54,7 +54,7 @@ public final class VisualWorkbenchGameTests {
         FakePlayer player=new FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"workbench-test"));
         player.setPos(absolute.getX()+.5,absolute.getY(),absolute.getZ()+1.5);
         var manual=((MenuProvider)original).createMenu(87,player.getInventory(),player);
-        h.assertTrue(manual!=null&&manual.slots.getFirst().getItem().is(Items.IRON_TRAPDOOR),"Visual Workbench's actual menu computes its persistent preview result");
+        h.assertTrue(manual!=null&&manual.slots.get(0).getItem().is(Items.IRON_TRAPDOOR),"Visual Workbench's actual menu computes its persistent preview result");
         manual.removed(player);
         CompoundTag full=original.saveWithFullMetadata(h.getLevel().registryAccess());
         BlockEntity restored=BlockEntity.loadStatic(absolute,original.getBlockState(),full,h.getLevel().registryAccess());

@@ -12,10 +12,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
 
 public final class BuddingAstralBlock extends AstralMineralBlock {
-    public static final MapCodec<BuddingAstralBlock> CODEC = simpleCodec(BuddingAstralBlock::new);
     public BuddingAstralBlock(Properties properties) { super(properties); }
-    @Override public MapCodec<BuddingAstralBlock> codec() { return CODEC; }
-    @Override protected void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+    @Override public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
         if (random.nextInt(5) != 0) return;
         Direction direction = Direction.getRandom(random); BlockPos next = pos.relative(direction);
         BlockState previous = level.getBlockState(next); net.minecraft.world.level.block.Block growth = null;

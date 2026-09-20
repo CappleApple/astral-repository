@@ -27,7 +27,7 @@ public final class RuneSavedData extends SavedData {
     private List<RuneSurface> surfaceSnapshot;
     private Set<Link> linkSnapshot;
     private static ChunkKey chunk(GlobalPos pos){return new ChunkKey(pos.dimension(),ChunkPos.asLong(pos.pos()));}
-    public static RuneSavedData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(RuneSavedData::new,(tag,registries)->load(server,tag,registries)),"astral_repository_runes");}
+    public static RuneSavedData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(tag->load(server,tag,server.registryAccess()),RuneSavedData::new,"astral_repository_runes");}
     public Collection<RuneSurface> surfaces(){if(surfaceSnapshot==null)surfaceSnapshot=List.copyOf(surfaces.values());return surfaceSnapshot;}
     /** Stable immutable snapshots, rebuilt only when a surface is added or removed. */
     public List<RuneSurface> surfaces(GlobalPos position){return byPosition.getOrDefault(position,List.of());}
@@ -55,7 +55,7 @@ public final class RuneSavedData extends SavedData {
         ListTag edges=tag.getList("Links",Tag.TAG_COMPOUND);for(int i=0;i<edges.size();i++)try{CompoundTag edge=edges.getCompound(i);Link link=new Link(AnchorAddress.load(edge.getCompound("First")),AnchorAddress.load(edge.getCompound("Second")));if(result.links.add(link))result.indexLink(link,true);}catch(RuntimeException ignored){}
         return result;
     }
-    @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider registries){
+    @Override public CompoundTag save(CompoundTag tag){HolderLookup.Provider registries=null;
         ListTag runes=new ListTag();for(RuneSurface rune:surfaces.values())runes.add(rune.save(registries));tag.put("Runes",runes);
         ListTag edges=new ListTag();for(Link link:links){CompoundTag edge=new CompoundTag();edge.put("First",link.first.save());edge.put("Second",link.second.save());edges.add(edge);}tag.put("Links",edges);return tag;
     }

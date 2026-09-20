@@ -54,7 +54,7 @@ public final class BindingFeedbackClientSmoke {
             }
             BindingBeamRenderType.BEAM.setupRenderState();
             try{check(!org.lwjgl.opengl.GL11.glGetBoolean(org.lwjgl.opengl.GL11.GL_DEPTH_WRITEMASK)&&org.lwjgl.opengl.GL11.glIsEnabled(org.lwjgl.opengl.GL11.GL_DEPTH_TEST),"Beam must read world depth without writing depth between its glow and core");}finally{BindingBeamRenderType.BEAM.clearRenderState();}
-            server(()->{var face=RuneSurfaces.get(player().serverLevel(),SOURCE,Direction.SOUTH);face.clearTarget(face.layers().getFirst().id());});next(7);
+            server(()->{var face=RuneSurfaces.get(player().serverLevel(),SOURCE,Direction.SOUTH);face.clearTarget(face.layers().get(0).id());});next(7);
         }
         else if(phase==7&&ticks>20){
             var state=BindingPreviewRenderer.active();check(state.particleOrigin()!=null&&state.particleOrigin().distanceToSqr(SOURCE.getCenter())<1&&state.particleFace()==Direction.SOUTH&&BindingPreviewRenderer.emittedParticles>0,"Unbound particles do not originate at the selected rune");
@@ -62,18 +62,18 @@ public final class BindingFeedbackClientSmoke {
         }
         else if(phase==4&&ticks>10){check(BindingPreviewRenderer.active().rune()==null&&BindingPreviewRenderer.renderedSegments==0&&BindingPreviewRenderer.emittedParticles==particles,"Inactive hotbar wand kept emitting feedback");mc.player.getInventory().selected=0;mc.gameMode.tick();next(5);}
         else if(phase==5&&ticks>15){check(BindingPreviewRenderer.active().rune()!=null&&BindingPreviewRenderer.emittedParticles>particles,"Reselecting the unbound rune did not restore particles");
-            server(()->{var p=player();var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);face.toggleTarget(face.layers().getFirst().id(),GlobalPos.of(p.level().dimension(),TARGET),Direction.SOUTH);p.connection.teleport(25,-59,17,-135,12);});next(8);
+            server(()->{var p=player();var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);face.toggleTarget(face.layers().get(0).id(),GlobalPos.of(p.level().dimension(),TARGET),Direction.SOUTH);p.connection.teleport(25,-59,17,-135,12);});next(8);
         }
         else if(phase==8&&ticks>20){check(BindingPreviewRenderer.active().particleOrigin()==null,"Assigning first target did not stop particles");particles=BindingPreviewRenderer.emittedParticles;next(9);}
         else if(phase==9&&ticks>10){check(BindingPreviewRenderer.emittedParticles==particles,"Bound rune continued emitting particles");shot("binding_beams_oblique.png");
             mc.player.input.shiftKeyDown=true;mc.player.connection.send(new ServerboundPlayerCommandPacket(mc.player,ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY));mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,new BlockHitResult(CANCEL.getCenter().add(0,.5,0),Direction.UP,CANCEL,false));next(6);
         }
-        else if(phase==6&&ticks>15){check(RuneProgramming.selection(mc.player.getMainHandItem())==null&&BindingPreviewRenderer.active().rune()==null&&!mc.player.getMainHandItem().hasFoil(),"Shift-click solid block did not stop binding feedback");server(()->{var p=player();var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);RuneProgramming.link(p.getMainHandItem(),p.serverLevel(),new RuneProgramming.Selection(face.address(),face.layers().getFirst().id()),p);p.connection.teleport(25,-59,17,-55,-90);p.inventoryMenu.broadcastChanges();});next(10);}
+        else if(phase==6&&ticks>15){check(RuneProgramming.selection(mc.player.getMainHandItem())==null&&BindingPreviewRenderer.active().rune()==null&&!mc.player.getMainHandItem().hasFoil(),"Shift-click solid block did not stop binding feedback");server(()->{var p=player();var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);RuneProgramming.link(p.getMainHandItem(),p.serverLevel(),new RuneProgramming.Selection(face.address(),face.layers().get(0).id()),p);p.connection.teleport(25,-59,17,-55,-90);p.inventoryMenu.broadcastChanges();});next(10);}
         else if(phase==10&&ticks>15){check(RuneProgramming.selection(mc.player.getMainHandItem())!=null,"Air-cancel fixture did not reselect rune");mc.player.input.shiftKeyDown=true;mc.player.connection.send(new ServerboundPlayerCommandPacket(mc.player,ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY));mc.gameMode.useItem(mc.player,InteractionHand.MAIN_HAND);next(11);}
         else if(phase==11&&ticks>15){check(RuneProgramming.selection(mc.player.getMainHandItem())==null&&BindingPreviewRenderer.active().rune()==null&&mc.screen==null,"Shift-use in air failed to cancel binding or opened the library");check(!mc.mouseHandler.isMouseGrabbed(),"Mouse captured");Files.writeString(out("binding-feedback.txt"),"Crack pixel changes (gem, budding, cluster): "+differences+"; beams render without depth writes; particles originate at unbound rune, stop on assignment, resume after last target removal, and obey hotbar selection.\n");Files.writeString(out("result.txt"),"PASS: actual mining-crack rendering for gem/budding/cluster, custom-color beams with depth-write suppression, unbound-rune particles, assignment transitions and hotbar gating, and non-container/air cancellation.\n");return true;}
         return false;
     }
-    private static net.minecraft.server.level.ServerPlayer player(){return Minecraft.getInstance().getSingleplayerServer().getPlayerList().getPlayers().getFirst();}
+    private static net.minecraft.server.level.ServerPlayer player(){return Minecraft.getInstance().getSingleplayerServer().getPlayerList().getPlayers().get(0);}
     private static void server(Runnable action){Minecraft.getInstance().getSingleplayerServer().execute(()->{try{action.run();}catch(Throwable t){failure=t.toString();}});}
     private static Path out(String name){return Path.of("../build/client-smoke/"+name);}
     private static void shot(String name)throws Exception{try(var image=net.minecraft.client.Screenshot.takeScreenshot(Minecraft.getInstance().getMainRenderTarget())){image.writeToFile(out(name));}}

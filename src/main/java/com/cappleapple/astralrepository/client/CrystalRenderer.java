@@ -33,9 +33,9 @@ public final class CrystalRenderer implements BlockEntityRenderer<CrystalNodeBlo
         List<FilterRules.Entry> filters=new ArrayList<>(node.insertionFilter().entries());filters.addAll(node.extractionFilter().entries());
         for(int i=0;i<Math.min(8,filters.size());i++){
             var filter=filters.get(i);ItemStack item=filter.sample();
-            if(filter.kind()==FilterRules.Kind.ITEM_TAG){var tag=net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,net.minecraft.resources.ResourceLocation.parse(filter.id()));var candidates=BuiltInRegistries.ITEM.getTag(tag);if(candidates.isPresent()&&candidates.get().size()>0)item=new ItemStack(candidates.get().get(Math.floorMod(Math.floorDiv(ticks,30),candidates.get().size())));}
+            if(filter.kind()==FilterRules.Kind.ITEM_TAG){var tag=net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM,new net.minecraft.resources.ResourceLocation(filter.id()));var candidates=BuiltInRegistries.ITEM.getTag(tag);if(candidates.isPresent()&&candidates.get().size()>0)item=new ItemStack(candidates.get().get(Math.floorMod(Math.floorDiv(ticks,30),candidates.get().size())));}
             if(item.isEmpty())continue;
-            double angle=orbit+i*Math.TAU/Math.min(8,filters.size());pose.pushPose();pose.translate(.5+Math.cos(angle)*.55,1.05+Math.sin(bob+i)*.08,.5+Math.sin(angle)*.55);pose.scale(.25f,.25f,.25f);pose.mulPose(Axis.YP.rotationDegrees((float)(-angle*180/Math.PI)));
+            double angle=orbit+i*(Math.PI*2)/Math.min(8,filters.size());pose.pushPose();pose.translate(.5+Math.cos(angle)*.55,1.05+Math.sin(bob+i)*.08,.5+Math.sin(angle)*.55);pose.scale(.25f,.25f,.25f);pose.mulPose(Axis.YP.rotationDegrees((float)(-angle*180/Math.PI)));
             Minecraft.getInstance().getItemRenderer().renderStatic(item,ItemDisplayContext.GROUND,LightTexture.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,pose,buffers,node.getLevel(),i);pose.popPose();
         }
         pose.popPose();

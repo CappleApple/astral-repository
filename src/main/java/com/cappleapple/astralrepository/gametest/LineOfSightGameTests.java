@@ -6,7 +6,7 @@ import com.cappleapple.astralrepository.network.*;
 import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.gametest.*;
 import java.util.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)

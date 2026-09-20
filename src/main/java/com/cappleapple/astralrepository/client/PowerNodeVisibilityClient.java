@@ -7,23 +7,19 @@ import com.cappleapple.astralrepository.compat.PatchouliIntegration;
 import com.cappleapple.astralrepository.content.PowerNodeVisibility;
 import com.cappleapple.astralrepository.mixin.CreativeTabsAccessor;
 import net.minecraft.client.Minecraft;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.client.event.ClientPlayerNetworkEvent;
+import com.cappleapple.astralrepository.platform.client.event.ClientTickEvent;
 
-@EventBusSubscriber(modid=AstralRepository.MOD_ID, value=Dist.CLIENT)
 public final class PowerNodeVisibilityClient {
     private static Boolean lastEnabled;
 
-    @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {
+    public static void logout(ClientPlayerNetworkEvent.LoggingOut event) {
         PowerNodeVisibility.clearServerState();
         lastEnabled = null;
     }
 
-    @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
+    public static void tick(com.cappleapple.astralrepository.platform.client.event.ClientTickEvent.Post event) {
         boolean enabled = PowerNodeVisibility.powerEnabled();
         if (lastEnabled != null && lastEnabled == enabled) return;
         lastEnabled = enabled;

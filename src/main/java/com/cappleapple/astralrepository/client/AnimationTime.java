@@ -15,8 +15,8 @@ public final class AnimationTime {
     public static double radians(long ticks, float partialTick, double radiansPerTick) {
         // Keep partial frames out of the large product and bound the value before
         // trig functions or float transforms receive it.
-        double whole = Math.IEEEremainder(ticks * radiansPerTick, Math.TAU);
-        return Math.IEEEremainder(whole + partialTick * radiansPerTick, Math.TAU);
+        double whole = Math.IEEEremainder(ticks * radiansPerTick, (Math.PI*2));
+        return Math.IEEEremainder(whole + partialTick * radiansPerTick, (Math.PI*2));
     }
 
     private AnimationTime() {}

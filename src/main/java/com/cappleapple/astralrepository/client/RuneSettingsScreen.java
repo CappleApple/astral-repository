@@ -9,15 +9,15 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** One ordered editor session; acknowledgements update the model, never the active text widgets. */
 public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<com.cappleapple.astralrepository.menu.RuneSettingsMenu> implements GhostIngredientScreen {
     private static final ResourceLocation PANEL=texture("rune_settings.png");
     private static final ResourceLocation BUTTON=sprite("rune_button"), HOVER=sprite("rune_button_hovered"), DISABLED=sprite("rune_button_disabled"), THUMB=sprite("rune_scroll_thumb");
     private static final int TEXT=0xd9defb, MUTED=0xa5b2dd, ERROR=0xf18caf;
-    private static ResourceLocation texture(String name){return ResourceLocation.fromNamespaceAndPath("astral_repository","textures/gui/"+name);}
-    private static ResourceLocation sprite(String name){return ResourceLocation.fromNamespaceAndPath("astral_repository",name);}
+    private static ResourceLocation texture(String name){return new ResourceLocation("astral_repository","textures/gui/"+name);}
+    private static ResourceLocation sprite(String name){return new ResourceLocation("astral_repository",name);}
     private record Change(Operation operation, String rule, int index) {}
     private record Values(boolean all, boolean blacklist, boolean enabled, long minimum, long target, int priority) {
         boolean matches(RuneSettingsPackets.Page page) { return all == page.all() && blacklist == page.blacklist() && enabled == page.enabled() && minimum == page.minimum() && target == page.targetAmount() && priority == page.priority(); }
@@ -96,7 +96,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     private Button button(List<AbstractWidget> group, int x, int y, int width, int height, String text, Button.OnPress action) {
         Button widget = new Button(left+x,top+y,width,height,Component.literal(text),action,supplier -> supplier.get()) {
             @Override protected void renderWidget(GuiGraphics graphics,int mouseX,int mouseY,float partialTick) {
-                graphics.blitSprite(!active?DISABLED:isHovered()?HOVER:BUTTON,getX(),getY(),getWidth(),getHeight());
+                com.cappleapple.astralrepository.platform.ClientBackport.blitSprite(graphics,!active?DISABLED:isHovered()?HOVER:BUTTON,getX(),getY(),getWidth(),getHeight());
                 graphics.drawString(font,getMessage(),getX()+(getWidth()-font.width(getMessage()))/2,getY()+(getHeight()-8)/2,active?TEXT:MUTED,false);
             }
         };
@@ -166,7 +166,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     private int cell(double x,double y){return x>=left+7&&x<left+223&&y>=top+32&&y<top+80?(int)(x-left-7)/24+(int)(y-top-32)/24*9:-1;}
     @Override public net.minecraft.client.renderer.Rect2i ingredientArea(){return new net.minecraft.client.renderer.Rect2i(left+7,top+32,216,48);}
     @Override public boolean acceptItem(net.minecraft.world.item.ItemStack stack){return !stack.isEmpty()&&chooseFilter(RuneSettingsPackets.sampleRule(stack));}
-    @Override public boolean acceptFluid(net.neoforged.neoforge.fluids.FluidStack fluid){return !fluid.isEmpty()&&chooseFilter("fluid:"+net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getFluid()));}
+    @Override public boolean acceptFluid(com.cappleapple.astralrepository.platform.fluids.FluidStack fluid){return !fluid.isEmpty()&&chooseFilter("fluid:"+net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getFluid()));}
     @Override protected void slotClicked(net.minecraft.world.inventory.Slot slot,int id,int button,net.minecraft.world.inventory.ClickType type){
         if(type==net.minecraft.world.inventory.ClickType.QUICK_MOVE){if(slot!=null&&!slot.getItem().isEmpty()&&!closeRequested)enqueue(Operation.ADD_INVENTORY,"",id);return;}
         super.slotClicked(slot,id,button,type);
@@ -184,14 +184,14 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
         }
         return super.mouseClicked(x,y,button);
     }
-    @Override public boolean mouseScrolled(double x,double y,double dx,double dy){
+    @Override public boolean mouseScrolled(double x,double y,double dy){
         if(cadenceOpen){for(var e:cadenceFields.entrySet())if(NumericScroll.adjust(e.getValue()[0],x,y,dy,0,e.getKey().maximum(),false)||NumericScroll.adjust(e.getValue()[1],x,y,dy,e.getKey().minimumTicks(),Integer.MAX_VALUE,false))return true;return true;}
         if(!closeRequested){
             if(NumericScroll.adjust(minimum,x,y,dy,0,Long.MAX_VALUE,false)||NumericScroll.adjust(stock,x,y,dy,0,Long.MAX_VALUE,true)||NumericScroll.adjust(priority,x,y,dy,-999,999,false))return true;
             if(dy!=0&&modeButton.isMouseOver(x,y)){enqueue(Operation.SET_MODE,"",dy>0?1:-1);return true;}
-            if(dy!=0&&cell(x,y)>=0){offset=Math.clamp(offset/9+(dy>0?-1:1),0,scrollLimit())*9;return true;}
+            if(dy!=0&&cell(x,y)>=0){offset=com.cappleapple.astralrepository.platform.Backport.clamp(offset/9+(dy>0?-1:1),0,scrollLimit())*9;return true;}
         }
-        return super.mouseScrolled(x,y,dx,dy);
+        return super.mouseScrolled(x,y,dy);
     }
     @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
         AstralInterfaceRenderer.blit(g,PANEL,left,top,imageWidth,imageHeight);
@@ -206,14 +206,14 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
                 if(page.entries().get(index).contains("(exact data)"))g.drawString(font,"=",x+14,y+13,TEXT,false);
             }
         }
-        if(scrollLimit()>0)g.blitSprite(THUMB,left+224,top+32+offset/9*32/scrollLimit(),3,16);
+        if(scrollLimit()>0)com.cappleapple.astralrepository.platform.ClientBackport.blitSprite(g,THUMB,left+224,top+32+offset/9*32/scrollLimit(),3,16);
         if(minimum.visible){g.drawString(font,"Keep",left+8,top+110,MUTED,false);g.drawString(font,"Limit",left+74,top+110,MUTED,false);}
         g.drawString(font,"Priority",left+8,top+90,MUTED,false);
         g.drawString(font,playerInventoryTitle,left+34,top+173,MUTED,false);
         for(var slot:menu.slots)RuneUi.slot(g,left+slot.x-1,top+slot.y-1,18,isHovering(slot.x,slot.y,16,16,mx,my));
     }
     @Override protected void renderLabels(GuiGraphics g,int mx,int my){}
-    @Override protected void renderSlotHighlight(GuiGraphics g,net.minecraft.world.inventory.Slot slot,int mx,int my,float partial){}
+    public int getSlotColor(int slot){return 0;}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         super.render(g,cadenceOpen?-1:mx,cadenceOpen?-1:my,partial);
         if(cadenceOpen){

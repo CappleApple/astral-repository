@@ -5,7 +5,7 @@ import com.cappleapple.astralrepository.api.ItemKey;
 import com.cappleapple.astralrepository.content.*;
 import com.cappleapple.astralrepository.network.*;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.cappleapple.astralrepository.platform.CustomPacketPayload;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -72,12 +72,12 @@ public final class NexusMenu extends AbstractContainerMenu {
     }
     private ItemStack withdraw(AstralNetwork network,ItemKey key,int amount){
         if(localStorage==null)return network.extractAt(key,amount,origin);
-        for(int slot=0;slot<localStorage.getSlots();slot++)if(ItemStack.isSameItemSameComponents(localStorage.getStackInSlot(slot),key.sample())){ItemStack extracted=localStorage.extractItem(slot,amount,false);if(!extracted.isEmpty())network.providerChanged(origin);return extracted;}
+        for(int slot=0;slot<localStorage.getSlots();slot++)if(ItemStack.isSameItemSameTags(localStorage.getStackInSlot(slot),key.sample())){ItemStack extracted=localStorage.extractItem(slot,amount,false);if(!extracted.isEmpty())network.providerChanged(origin);return extracted;}
         return ItemStack.EMPTY;
     }
     private ItemStack deposit(AstralNetwork network,ItemStack stack){
         if(localStorage==null)return network.insertAt(stack,origin);
-        ItemStack rest=net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(localStorage,stack,false);
+        ItemStack rest=com.cappleapple.astralrepository.platform.items.ItemHandlerHelper.insertItem(localStorage,stack,false);
         if(rest.getCount()!=stack.getCount())network.providerChanged(origin);return rest;
     }
     private boolean payForAccess(AstralNetwork network,ServerPlayer player){return localStorage!=null||network.payForAccess(player,origin,remote);}
@@ -89,9 +89,9 @@ public final class NexusMenu extends AbstractContainerMenu {
     @Override public void slotsChanged(Container container) {
         if (!(player instanceof ServerPlayer sp)) return;
         ItemStack output = ItemStack.EMPTY;
-        var recipe = sp.server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid.asCraftInput(), sp.level());
+        var recipe = sp.server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid, sp.level());
         if (recipe.isPresent() && result.setRecipeUsed(sp.level(),sp,recipe.get())) {
-            ItemStack assembled = recipe.get().value().assemble(grid.asCraftInput(),sp.registryAccess());
+            ItemStack assembled = recipe.get().assemble(grid,sp.level().registryAccess());
             if (assembled.isItemEnabled(sp.level().enabledFeatures())) output = assembled;
         }
         result.setItem(0,output); setRemoteSlot(0,output);
@@ -113,7 +113,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(action.kind()==NetworkPackets.CLEAR_GRID){clearGrid();return;}
         if (action.kind() == NetworkPackets.CRAFT || action.kind() == NetworkPackets.CRAFT_STACK) {
             if(localStorage!=null)return;
-            ItemStack target=network.exposedProducts().stream().filter(stack->ItemStack.isSameItemSameComponents(stack,action.stack())).findFirst().orElse(ItemStack.EMPTY);
+            ItemStack target=network.exposedProducts().stream().filter(stack->ItemStack.isSameItemSameTags(stack,action.stack())).findFirst().orElse(ItemStack.EMPTY);
             if(target.isEmpty()){showError("Place a Recipe Tome for this product in a connected Chiseled Bookshelf");return;}
             int count=action.kind()==NetworkPackets.CRAFT_STACK?target.getMaxStackSize():action.amount();
             var result=network.crafting().request(sp,target,count);
@@ -136,7 +136,7 @@ public final class NexusMenu extends AbstractContainerMenu {
                 for(int i=10;i<slots.size()&&!withdrawn.isEmpty();i++) {
                     Slot slot=slots.get(i);
                     if(slot.hasItem()&&slot.getItem().getCount()<slot.getMaxStackSize(withdrawn)
-                            &&ItemStack.isSameItemSameComponents(slot.getItem(),withdrawn)) withdrawn=slot.safeInsert(withdrawn);
+                            &&ItemStack.isSameItemSameTags(slot.getItem(),withdrawn)) withdrawn=slot.safeInsert(withdrawn);
                 }
                 for(int i=10;i<slots.size()&&!withdrawn.isEmpty();i++)if(!slots.get(i).hasItem()) withdrawn=slots.get(i).safeInsert(withdrawn);
                 if(!withdrawn.isEmpty())setCarried(withdrawn);clearError();
@@ -156,7 +156,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(localStorage==null&&network.crafting().cancel(packet.job(),sp.getUUID())){clearError();sendPage();}
     }
     private List<ItemStack> copyGrid(){List<ItemStack> result=new ArrayList<>();for(int i=0;i<grid.getContainerSize();i++)result.add(grid.getItem(i).copy());return List.copyOf(result);}
-    private static boolean sameStack(ItemStack a,ItemStack b){return a.getCount()==b.getCount()&&(a.isEmpty()&&b.isEmpty()||ItemStack.isSameItemSameComponents(a,b));}
+    private static boolean sameStack(ItemStack a,ItemStack b){return a.getCount()==b.getCount()&&(a.isEmpty()&&b.isEmpty()||ItemStack.isSameItemSameTags(a,b));}
     private List<ItemStack> copySlots(){return slots.stream().map(slot->slot.getItem().copy()).toList();}
     private void commitInteraction(Runnable action){
         LogisticsTiming.playerInteraction(()->{boolean prior=committingInteraction;committingInteraction=true;try{action.run();}finally{committingInteraction=prior;}});
@@ -199,7 +199,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         for(int i=0;i<pattern.size();i++){
             ItemStack wanted=pattern.get(i);if(wanted.isEmpty())continue;
             ItemStack present=grid.getItem(i);
-            if(!present.isEmpty()&&!ItemStack.isSameItemSameComponents(present,wanted)){
+            if(!present.isEmpty()&&!ItemStack.isSameItemSameTags(present,wanted)){
                 // Vanilla's container remainder remains owned until storage actually accepts it.
                 ItemStack rest=deposit(network,present.copy());grid.setItem(i,rest);if(!rest.isEmpty())continue;present=ItemStack.EMPTY;
             }
@@ -218,7 +218,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         int room=0;
         for(int i=10;i<slots.size();i++) {
             Slot slot=slots.get(i);ItemStack existing=slot.getItem();
-            if(slot.mayPlace(stack)&&(existing.isEmpty()||ItemStack.isSameItemSameComponents(existing,stack)))
+            if(slot.mayPlace(stack)&&(existing.isEmpty()||ItemStack.isSameItemSameTags(existing,stack)))
                 room+=Math.max(0,slot.getMaxStackSize(stack)-existing.getCount());
         }
         return room;
@@ -252,7 +252,7 @@ public final class NexusMenu extends AbstractContainerMenu {
             identitiesChanged|=!keys.equals(cachedKeys);
             if(identitiesChanged){
                 sortedKeys=keys.stream().sorted(Comparator.comparing((ItemKey k)->k.sample().getHoverName().getString(),String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(k->k.id().toString()).thenComparingInt(ItemKey::hashCode).thenComparing(k->k.sample().getComponents().toString())).toList();
+                        .thenComparing(k->k.id().toString()).thenComparingInt(ItemKey::hashCode).thenComparing(k->k.sample().getOrCreateTag().toString())).toList();
                 cachedKeys=Set.copyOf(keys);
             }
             cachedCraftable=Set.copyOf(craftable);cachedVersion=version;cachedNetwork=network;
@@ -260,12 +260,12 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(identitiesChanged||!cachedQuery.equals(query)){
             filteredKeys=sortedKeys.stream().filter(key->matches(key,query)).toList();cachedQuery=query;
         }
-        totalEntries=filteredKeys.size();scrollRow=Math.clamp(scrollRow,0,Math.max(0,(int)(((long)totalEntries+8)/9)-6));
+        totalEntries=filteredKeys.size();scrollRow=com.cappleapple.astralrepository.platform.Backport.clamp(scrollRow,0,Math.max(0,(int)(((long)totalEntries+8)/9)-6));
         int start=scrollRow*9,end=Math.min(filteredKeys.size(),start+NetworkPackets.WINDOW_SIZE);
         entries=filteredKeys.subList(start,end).stream()
                 .map(k->new Entry(k.sample(),cachedItems.getOrDefault(k,0L),cachedCraftable.contains(k))).toList();
         jobs=localStorage!=null?List.of():network.crafting().visibleStatuses(player.getUUID()).stream().map(job->new NetworkPackets.Job(job.id(),job.target(),job.count(),
-                NetworkPackets.JobState.valueOf(job.state()),job.completed(),job.total(),job.active(),clipped(job.message()),job.missing().stream().limit(512).map(m->new NetworkPackets.Missing(m.alternatives().getFirst().sample(),m.tag(),m.count())).toList())).toList();
+                NetworkPackets.JobState.valueOf(job.state()),job.completed(),job.total(),job.active(),clipped(job.message()),job.missing().stream().limit(512).map(m->new NetworkPackets.Missing(m.alternatives().get(0).sample(),m.tag(),m.count())).toList())).toList();
         NetworkPackets.Page next=new NetworkPackets.Page(containerId,syncRevision+1,scrollRow,totalEntries,error,entries,jobs,acknowledgedRequest);
         CustomPacketPayload update=NetworkPackets.difference(previousPage,next,networkChanged||!sentQuery.equals(query));
         searchPending=false;
@@ -301,11 +301,11 @@ public final class NexusMenu extends AbstractContainerMenu {
         return quickMoveNow(player,slotIndex);
     }
     private ItemStack shiftCraft(Player player){
-        ItemStack first=slots.getFirst().getItem().copy();if(first.isEmpty())return ItemStack.EMPTY;
+        ItemStack first=slots.get(0).getItem().copy();if(first.isEmpty())return ItemStack.EMPTY;
         int limit=first.getMaxStackSize(),made=0;boolean any=false;
         while(made<limit){
-            ItemStack output=slots.getFirst().getItem();
-            if(output.isEmpty()||!ItemStack.isSameItemSameComponents(output,first)||output.getCount()>limit-made)break;
+            ItemStack output=slots.get(0).getItem();
+            if(output.isEmpty()||!ItemStack.isSameItemSameTags(output,first)||output.getCount()>limit-made)break;
             if(!fitsCraftBatch(output))break;
             int batch=output.getCount();if(quickMoveNow(player,0).isEmpty())break;made+=batch;any=true;
         }
@@ -315,22 +315,22 @@ public final class NexusMenu extends AbstractContainerMenu {
     private boolean fitsCraftBatch(ItemStack output){
         List<ItemStack> inventory=new ArrayList<>();for(int i=10;i<slots.size();i++)inventory.add(slots.get(i).getItem().copy());
         if(!fitInventory(inventory,output))return false;
-        var positioned=grid.asPositionedCraftInput();var input=positioned.input();
+        var input=grid;
         net.minecraft.core.NonNullList<ItemStack> remainders;
-        net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(player);
+        com.cappleapple.astralrepository.platform.common.CommonHooks.setCraftingPlayer(player);
         try{remainders=player.level().getRecipeManager().getRemainingItemsFor(RecipeType.CRAFTING,input,player.level());}
-        finally{net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(null);}
-        for(int y=0;y<input.height();y++)for(int x=0;x<input.width();x++){
-            ItemStack original=grid.getItem(x+positioned.left()+(y+positioned.top())*grid.getWidth());
-            ItemStack remainder=remainders.get(x+y*input.width());
-            if(original.getCount()>1&&!remainder.isEmpty()&&!ItemStack.isSameItemSameComponents(original,remainder)&&!fitInventory(inventory,remainder))return false;
+        finally{com.cappleapple.astralrepository.platform.common.CommonHooks.setCraftingPlayer(null);}
+        for(int y=0;y<input.getHeight();y++)for(int x=0;x<input.getWidth();x++){
+            ItemStack original=grid.getItem(x+y*grid.getWidth());
+            ItemStack remainder=remainders.get(x+y*input.getWidth());
+            if(original.getCount()>1&&!remainder.isEmpty()&&!ItemStack.isSameItemSameTags(original,remainder)&&!fitInventory(inventory,remainder))return false;
         }
         return true;
     }
     private boolean fitInventory(List<ItemStack> inventory,ItemStack incoming){
         int remaining=incoming.getCount();
         for(int i=inventory.size()-1;i>=0&&remaining>0;i--){
-            ItemStack present=inventory.get(i);if(present.isEmpty()||!ItemStack.isSameItemSameComponents(present,incoming))continue;
+            ItemStack present=inventory.get(i);if(present.isEmpty()||!ItemStack.isSameItemSameTags(present,incoming))continue;
             int accepted=Math.min(remaining,Math.max(0,slots.get(i+10).getMaxStackSize(incoming)-present.getCount()));present.grow(accepted);remaining-=accepted;
         }
         for(int i=inventory.size()-1;i>=0&&remaining>0;i--)if(inventory.get(i).isEmpty()){

@@ -5,8 +5,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
 import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.capability.IFluidHandler;
 
 public final class FluidResourceProvider implements ResourceProvider {
     private final String id;
@@ -32,11 +32,11 @@ public final class FluidResourceProvider implements ResourceProvider {
     }
     public long insert(ResourceKey key, long amount, boolean simulate) {
         if (!valid() || !(key instanceof FluidKey fluid) || amount <= 0) return 0;
-        return handler.fill(fluid.sample().copyWithAmount((int)Math.min(Integer.MAX_VALUE, amount)), action(simulate));
+        return handler.fill(new FluidStack(fluid.sample(),(int)Math.min(Integer.MAX_VALUE, amount)), action(simulate));
     }
     public long extract(ResourceKey key, long amount, boolean simulate) {
         if (!valid() || !(key instanceof FluidKey fluid) || amount <= 0) return 0;
-        return handler.drain(fluid.sample().copyWithAmount((int)Math.min(Integer.MAX_VALUE, amount)), action(simulate)).getAmount();
+        return handler.drain(new FluidStack(fluid.sample(),(int)Math.min(Integer.MAX_VALUE, amount)), action(simulate)).getAmount();
     }
     public long capacity() {
         long result = 0;

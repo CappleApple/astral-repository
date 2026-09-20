@@ -20,8 +20,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -95,12 +95,12 @@ public final class NaturalCrystalGameTests {
         silk.enchant(h.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.SILK_TOUCH), 1);
         BlockState cluster = AstralContent.ASTRAL_CLUSTER.get().defaultBlockState();
         List<ItemStack> bare = Block.getDrops(cluster, h.getLevel(), at, null, null, ItemStack.EMPTY);
-        h.assertTrue(bare.size() == 1 && bare.getFirst().is(AstralContent.ASTRAL_GEM.get()) && bare.getFirst().getCount() == 2, "Ordinary harvesting drops two Astral Gems");
+        h.assertTrue(bare.size() == 1 && bare.get(0).is(AstralContent.ASTRAL_GEM.get()) && bare.get(0).getCount() == 2, "Ordinary harvesting drops two Astral Gems");
         List<ItemStack> mined = Block.getDrops(cluster, h.getLevel(), at, null, null, pick);
-        h.assertTrue(mined.size() == 1 && mined.getFirst().is(AstralContent.ASTRAL_GEM.get()) && mined.getFirst().getCount() == 4, "A tagged harvest tool drops four Astral Gems");
+        h.assertTrue(mined.size() == 1 && mined.get(0).is(AstralContent.ASTRAL_GEM.get()) && mined.get(0).getCount() == 4, "A tagged harvest tool drops four Astral Gems");
         for (Block block : List.of(AstralContent.SMALL_ASTRAL_BUD.get(), AstralContent.MEDIUM_ASTRAL_BUD.get(), AstralContent.LARGE_ASTRAL_BUD.get(), AstralContent.ASTRAL_CLUSTER.get())) {
             List<ItemStack> drops = Block.getDrops(block.defaultBlockState(), h.getLevel(), at, null, null, silk);
-            h.assertTrue(drops.size() == 1 && drops.getFirst().is(block.asItem()), "Silk Touch preserves buds and clusters");
+            h.assertTrue(drops.size() == 1 && drops.get(0).is(block.asItem()), "Silk Touch preserves buds and clusters");
             if (block != AstralContent.ASTRAL_CLUSTER.get()) h.assertTrue(Block.getDrops(block.defaultBlockState(), h.getLevel(), at, null, null, pick).isEmpty(), "Immature buds drop nothing without Silk Touch");
         }
         h.assertTrue(Block.getDrops(AstralContent.BUDDING_ASTRAL.get().defaultBlockState(), h.getLevel(), at, null, null, silk).isEmpty(), "Budding blocks remain unobtainable even with Silk Touch");
@@ -131,7 +131,7 @@ public final class NaturalCrystalGameTests {
         var chunk = h.getLevel().getChunkAt(pos);
         chunk.removeBlockEntity(pos);
         h.assertTrue(chunk.getBlockEntity(pos, net.minecraft.world.level.chunk.LevelChunk.EntityCreationType.CHECK) == null, "Legacy fixture has a natural state but no saved renderer identity");
-        com.cappleapple.astralrepository.content.AstralMineralMigration.loaded(new net.neoforged.neoforge.event.level.ChunkEvent.Load(chunk, false));
+        com.cappleapple.astralrepository.content.AstralMineralMigration.loaded(new net.minecraftforge.event.level.ChunkEvent.Load(chunk, false));
         h.succeedWhen(() -> {
             h.assertTrue(chunk.getBlockEntity(pos) instanceof AstralMineralBlockEntity, "Chunk-load migration creates the missing identity");
             var packet = new net.minecraft.network.protocol.game.ClientboundLevelChunkPacketData(chunk);
@@ -147,8 +147,8 @@ public final class NaturalCrystalGameTests {
     public static void generatedGeodeExactlyMatchesVanillaShellAndGrowthPlacement(GameTestHelper h) {
         var level = h.getLevel();
         var registry = level.registryAccess().registryOrThrow(Registries.CONFIGURED_FEATURE);
-        var astral = registry.get(ResourceLocation.fromNamespaceAndPath("astral_repository", "astral_geode"));
-        var vanilla = registry.get(ResourceLocation.withDefaultNamespace("amethyst_geode"));
+        var astral = registry.get(new ResourceLocation("astral_repository", "astral_geode"));
+        var vanilla = registry.get(new ResourceLocation("amethyst_geode"));
         h.assertTrue(astral != null && vanilla != null, "Both configured geodes are loaded");
         BlockPos origin = h.absolutePos(new BlockPos(20, 20, 20));
         Map<BlockPos, BlockState> actual = new HashMap<>();

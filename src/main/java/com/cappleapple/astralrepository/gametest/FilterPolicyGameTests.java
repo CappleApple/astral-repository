@@ -7,7 +7,7 @@ import net.minecraft.gametest.framework.*;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.context.DirectionalPlaceContext;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.gametest.*;
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class FilterPolicyGameTests {
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
@@ -16,7 +16,7 @@ public final class FilterPolicyGameTests {
         var surface=RuneSurfaces.getOrCreate(h.getLevel(),at,Direction.SOUTH);
         var iron=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.FILTER),RuneLayer.Mode.FILTER);iron.setPriority(12);iron.filter().add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,ItemStack.EMPTY);
         var copper=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.FILTER),RuneLayer.Mode.FILTER);copper.setPriority(27);copper.filter().add(FilterRules.Kind.ITEM,"minecraft:copper_ingot",false,ItemStack.EMPTY);
-        var provider=CompatibilityRegistry.discoverStorage(h.getLevel(),at,null).getFirst();
+        var provider=CompatibilityRegistry.discoverStorage(h.getLevel(),at,null).get(0);
         h.assertTrue(provider.insert(new ItemStack(Items.GOLD_INGOT,4),true).getCount()==4&&provider.insert(new ItemStack(Items.GOLD_INGOT,4),false).getCount()==4,"Simulation and execution reject nonmatches");
         h.assertTrue(provider.insert(new ItemStack(Items.IRON_INGOT,4),false).isEmpty()&&provider.insert(new ItemStack(Items.COPPER_INGOT,3),false).isEmpty(),"Whitelist runes combine with any-match");
         h.assertTrue(ContainerRuneRules.priority(h.getLevel(),at,0)==27,"Highest enabled priority applies");
@@ -29,7 +29,7 @@ public final class FilterPolicyGameTests {
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
     public static void existingProviderObservesAddedRemovedAndReplacedSurfaces(GameTestHelper h){
         var pos=new BlockPos(3,2,3);h.setBlock(pos,Blocks.BARREL);var at=h.absolutePos(pos);var level=h.getLevel();
-        var provider=CompatibilityRegistry.discoverStorage(level,at,null).getFirst();
+        var provider=CompatibilityRegistry.discoverStorage(level,at,null).get(0);
         h.assertTrue(provider.insert(new ItemStack(Items.GOLD_INGOT),true).isEmpty(),"Provider starts without insertion restrictions");
         for(int iteration=0;iteration<2;iteration++){
             var surface=RuneSurfaces.getOrCreate(level,at,Direction.SOUTH);
@@ -69,11 +69,11 @@ public final class FilterPolicyGameTests {
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
     public static void unrestrictedIdentityFiltersPreserveBlacklistAndNumericLimits(GameTestHelper h){
         var rules=new FilterRules();var iron=new ItemStack(Items.IRON_INGOT);
-        var water=new net.neoforged.neoforge.fluids.FluidStack(net.minecraft.world.level.material.Fluids.WATER,1);
+        var water=new net.minecraftforge.fluids.FluidStack(net.minecraft.world.level.material.Fluids.WATER,1);
         for(boolean blacklist:java.util.List.of(false,true)){
             if(rules.blacklist()!=blacklist)rules.toggleBlacklist();rules.setMinimum(17);rules.setTarget(29);
             h.assertTrue(rules.unrestricted()&&rules.matches(iron)&&rules.matches(water),"Empty identity rules accept nonempty resources regardless of blacklist state");
-            h.assertTrue(!rules.matches(ItemStack.EMPTY)&&!rules.matches(net.neoforged.neoforge.fluids.FluidStack.EMPTY),"Empty resource samples remain invalid");
+            h.assertTrue(!rules.matches(ItemStack.EMPTY)&&!rules.matches(net.minecraftforge.fluids.FluidStack.EMPTY),"Empty resource samples remain invalid");
             h.assertTrue(rules.minimum()==17&&rules.target()==29,"Unrestricted identities do not erase reserve or stock limits");
         }
         rules.clearPredicates();rules.add(FilterRules.Kind.ITEM,"minecraft:gold_ingot",false,ItemStack.EMPTY);

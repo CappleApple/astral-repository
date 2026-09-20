@@ -53,7 +53,7 @@ public final class RuneLayout {
     public record Position(double u,double v) {}
     public record Frame(Cell center,double width,double height) {}
     public static Frame frame(BlockGetter level,BlockPos pos,Direction face){
-        var old=cells(level,pos,face,1);if(old.isEmpty())return null;Cell c=old.getFirst();var shape=level.getBlockState(pos).getShape(level,pos);var bounds=shape.toAabbs().stream().filter(box->Math.abs(edge(box,face)-edge(shape.bounds(),face))<.0000001).max(java.util.Comparator.comparingDouble(box->extent(box,c.right())*extent(box,c.up()))).orElse(shape.bounds());
+        var old=cells(level,pos,face,1);if(old.isEmpty())return null;Cell c=old.get(0);var shape=level.getBlockState(pos).getShape(level,pos);var bounds=shape.toAabbs().stream().filter(box->Math.abs(edge(box,face)-edge(shape.bounds(),face))<.0000001).max(java.util.Comparator.comparingDouble(box->extent(box,c.right())*extent(box,c.up()))).orElse(shape.bounds());
         double width=extent(bounds,c.right())*.94,height=extent(bounds,c.up())*.92;
         if(level.getBlockState(pos).getBlock() instanceof AbstractChestBlock<?> && !face.getAxis().isVertical())height=Math.min(height,.48);
         return new Frame(c,width,height);
@@ -71,8 +71,8 @@ public final class RuneLayout {
     private static Cell at(Frame f,Position p,double size){Cell c=f.center;return new Cell(c.center.add(c.right.scale(p.u)).add(c.up.scale(p.v)),c.right,c.up,c.normal,size);}
     public static Position nearest(Frame f,double size,Position wanted,List<Cell> occupied){
         double hx=(f.width-size)/2,hy=(f.height-size)/2;if(hx<0||hy<0)return null;
-        List<Double> xs=new ArrayList<>(List.of(Math.clamp(wanted.u,-hx,hx),-hx,hx)),ys=new ArrayList<>(List.of(Math.clamp(wanted.v,-hy,hy),-hy,hy));
-        for(Cell c:occupied){Vec3 d=c.center.subtract(f.center.center);double separation=(size+c.size)/2+.003;xs.add(Math.clamp(d.dot(c.right)-separation,-hx,hx));xs.add(Math.clamp(d.dot(c.right)+separation,-hx,hx));ys.add(Math.clamp(d.dot(c.up)-separation,-hy,hy));ys.add(Math.clamp(d.dot(c.up)+separation,-hy,hy));}
+        List<Double> xs=new ArrayList<>(List.of(com.cappleapple.astralrepository.platform.Backport.clamp(wanted.u,-hx,hx),-hx,hx)),ys=new ArrayList<>(List.of(com.cappleapple.astralrepository.platform.Backport.clamp(wanted.v,-hy,hy),-hy,hy));
+        for(Cell c:occupied){Vec3 d=c.center.subtract(f.center.center);double separation=(size+c.size)/2+.003;xs.add(com.cappleapple.astralrepository.platform.Backport.clamp(d.dot(c.right)-separation,-hx,hx));xs.add(com.cappleapple.astralrepository.platform.Backport.clamp(d.dot(c.right)+separation,-hx,hx));ys.add(com.cappleapple.astralrepository.platform.Backport.clamp(d.dot(c.up)-separation,-hy,hy));ys.add(com.cappleapple.astralrepository.platform.Backport.clamp(d.dot(c.up)+separation,-hy,hy));}
         Position best=null;double distance=Double.POSITIVE_INFINITY;
         for(double x:xs)for(double y:ys){boolean free=true;Cell candidate=at(f,new Position(x,y),size);for(Cell c:occupied){Vec3 d=candidate.center.subtract(c.center);double gap=(size+c.size)/2+.002;if(Math.abs(d.dot(c.right))<gap&&Math.abs(d.dot(c.up))<gap){free=false;break;}}double dd=(x-wanted.u)*(x-wanted.u)+(y-wanted.v)*(y-wanted.v);if(free&&dd<distance){distance=dd;best=new Position(x,y);}}
         return best;

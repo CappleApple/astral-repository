@@ -9,9 +9,9 @@ import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class RuneCadenceGameTests {
@@ -28,11 +28,11 @@ public final class RuneCadenceGameTests {
         var face=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(from),Direction.SOUTH);var rune=face.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);
         int[] amounts={3,70,90,40},intervals={5,7,11,13};RuneCadence cadence=RuneCadence.DEFAULT;
         for(var kind:RuneCadence.Kind.values())cadence=cadence.with(kind,new RuneCadence.Rate(amounts[kind.ordinal()],intervals[kind.ordinal()]));rune.setCadence(cadence);
-        var packet=new NetworkPackets.Visual(h.absolutePos(from),h.absolutePos(to),ItemStack.EMPTY,0xffffff,20,-2,List.of(h.absolutePos(from),h.absolutePos(to)),null,null,net.minecraft.resources.ResourceLocation.withDefaultNamespace("lava"));
-        var buf=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),h.getLevel().registryAccess());try{NetworkPackets.Visual.CODEC.encode(buf,packet);h.assertTrue(NetworkPackets.Visual.CODEC.decode(buf).fluid().equals(packet.fluid()),"Resource packet preserves the actual fluid instead of guessing from color");}finally{buf.release();}
+        var packet=new NetworkPackets.Visual(h.absolutePos(from),h.absolutePos(to),ItemStack.EMPTY,0xffffff,20,-2,List.of(h.absolutePos(from),h.absolutePos(to)),null,null,new net.minecraft.resources.ResourceLocation("lava"));
+        var buf=new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),h.getLevel().registryAccess());try{NetworkPackets.Visual.CODEC.encode(buf,packet);h.assertTrue(NetworkPackets.Visual.CODEC.decode(buf).fluid().equals(packet.fluid()),"Resource packet preserves the actual fluid instead of guessing from color");}finally{buf.release();}
         h.assertTrue(RuneSettingsPackets.supportedResources(face)==15,"Capability discovery retains all four types on the same host");
         h.assertTrue(face.toggleTarget(rune.id(),GlobalPos.of(h.getLevel().dimension(),h.absolutePos(to)),Direction.SOUTH).assigned(),"Combined resource host accepts a direct target");
-        var restored=RuneSurface.load(h.getLevel().getServer(),face.save(h.getLevel().registryAccess()),h.getLevel().registryAccess());h.assertTrue(restored.layers().getFirst().cadence().equals(cadence),"Placed cadence survives world save");
+        var restored=RuneSurface.load(h.getLevel().getServer(),face.save(h.getLevel().registryAccess()),h.getLevel().registryAccess());h.assertTrue(restored.layers().get(0).cadence().equals(cadence),"Placed cadence survives world save");
         var preset=new RunePreset(UUID.randomUUID(),"Four resources",rune.mode(),rune.design(),rune.filter().save(h.getLevel().registryAccess()),0,true,cadence);
         h.assertTrue(RunePresetFiles.decode(RunePresetFiles.encode(preset),h.getLevel().registryAccess()).cadence().equals(cadence),"Instance and pack JSON preserve every resource rate");
         long[] last={0,0,0,0},time={-1,-1,-1,-1};int[] batches={0,0,0,0};

@@ -18,15 +18,15 @@ import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.*;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.capabilities.*;
-import net.neoforged.neoforge.energy.EnergyStorage;
-import net.neoforged.neoforge.event.server.*;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.*;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.capabilities.*;
+import net.minecraftforge.energy.EnergyStorage;
+import net.minecraftforge.event.server.*;
+import net.minecraftforge.event.tick.ServerTickEvent;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.templates.FluidTank;
 
 /** Real server tick workload, opt-in and excluded from the distributable JAR. */
 @EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.DEDICATED_SERVER)
@@ -86,7 +86,7 @@ public final class DedicatedRuneStress {
             ALL.addAll(PRIMARY);ALL.addAll(STACKED);ALL.addAll(BLOCKED);
             check(PRIMARY.size()==1024&&STACKED.size()==192&&BLOCKED.size()==256,"Incorrect fixture population");
             expectedItems=itemTotals();observers=new RuneStressObservers(level,OBSERVERS,new BlockPos(64,66,40));ready=true;
-            net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedRuneStress::post);
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedRuneStress::post);
             advance(server);
             AstralRepository.LOGGER.info("Rune stress ready: {} containers, {} rune layers, {} compound fluid/energy/Source hosts; codec-consuming observer count "+OBSERVERS+"; visuals retain configured defaults",CONTAINERS.size(),ALL.size(),MEDIA.size());
         }catch(Throwable failure){fail(server,failure);}

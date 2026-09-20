@@ -36,7 +36,7 @@ class AnimationTimeTest {
                     double current = frame == 64 ? AnimationTime.radians(tick + 1, 0, rate)
                             : AnimationTime.radians(tick, frame / 64F, rate);
                     assertTrue(Math.abs(current) <= Math.PI);
-                    double advance = Math.IEEEremainder(current - previous, Math.TAU);
+                    double advance = Math.IEEEremainder(current - previous, (Math.PI*2));
                     assertEquals(rate / 64, advance, frame == 64 ? 0.00001 : 0.000000001);
                     previous = current;
                 }

@@ -6,7 +6,7 @@ import dev.emi.emi.api.*;
 import dev.emi.emi.api.stack.*;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.level.material.Fluid;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 @EmiEntrypoint
 public final class AstralEmiPlugin implements EmiPlugin {
@@ -27,7 +27,7 @@ public final class AstralEmiPlugin implements EmiPlugin {
     public static final class Handler<T extends Screen & GhostIngredientScreen> implements EmiDragDropHandler<T>{
         @Override public boolean dropStack(T screen,EmiIngredient ingredient,int x,int y){
             if(!screen.ingredientArea().contains(x,y)||ingredient.getEmiStacks().size()!=1)return false;
-            var stack=ingredient.getEmiStacks().getFirst();
+            var stack=ingredient.getEmiStacks().get(0);
             if(!stack.getItemStack().isEmpty())return screen.acceptItem(stack.getItemStack());
             Fluid fluid=stack.getKeyOfType(Fluid.class);return fluid!=null&&screen.acceptFluid(new FluidStack(fluid,1000));
         }

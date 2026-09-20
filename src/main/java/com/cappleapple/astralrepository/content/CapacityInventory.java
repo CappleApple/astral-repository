@@ -10,7 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 
 /** Dense virtual positions. Capacity is an exact rational sum, never rounded per individual item. */
 public final class CapacityInventory implements IItemHandler {
@@ -48,7 +48,7 @@ public final class CapacityInventory implements IItemHandler {
     @Override public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
         if (stack.isEmpty() || !isItemValid(slot, stack) || slot < 0 || slot > entries.size()) return stack;
         int existing = -1;
-        for (int i = 0; i < entries.size(); i++) if (ItemStack.isSameItemSameComponents(entries.get(i), stack)) { existing = i; break; }
+        for (int i = 0; i < entries.size(); i++) if (ItemStack.isSameItemSameTags(entries.get(i), stack)) { existing = i; break; }
         if (existing >= 0 && existing != slot || slot < entries.size() && existing != slot) return stack;
         long current = existing < 0 ? 0 : entries.get(existing).getCount();
         Fraction unit = existing < 0 ? cost(stack) : costs.get(existing);
@@ -74,7 +74,7 @@ public final class CapacityInventory implements IItemHandler {
     public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag(); ListTag items = new ListTag();
         for (ItemStack stack : entries) {
-            CompoundTag entry = new CompoundTag(); entry.put("Item", stack.copyWithCount(1).save(registries)); entry.putInt("Count", stack.getCount()); items.add(entry);
+            CompoundTag entry = new CompoundTag(); entry.put("Item", stack.copyWithCount(1).save(new net.minecraft.nbt.CompoundTag())); entry.putInt("Count", stack.getCount()); items.add(entry);
         }
         tag.put("Contents", items); return tag;
     }
@@ -82,7 +82,7 @@ public final class CapacityInventory implements IItemHandler {
         revision++; entries.clear(); costs.clear(); usedNumerator = BigInteger.ZERO; usedDenominator = BigInteger.ONE;
         ListTag items = tag.getList("Contents", Tag.TAG_COMPOUND);
         for (int i = 0; i < items.size(); i++) {
-            CompoundTag entry = items.getCompound(i); ItemStack stack = ItemStack.parseOptional(registries, entry.getCompound("Item"));
+            CompoundTag entry = items.getCompound(i); ItemStack stack = ItemStack.of(entry.getCompound("Item"));
             if (!stack.isEmpty() && entry.getInt("Count") > 0) {
                 stack.setCount(entry.getInt("Count")); entries.add(stack); Fraction unit = cost(stack); costs.add(unit); charge(unit, stack.getCount());
             }

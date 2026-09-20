@@ -51,7 +51,7 @@ public final class AstralNetwork implements NetworkAccess {
 
     AstralNetwork(NetworkManager manager,MinecraftServer server,List<NetworkAnchor> nodes){
         this.manager=manager;this.server=server;this.nodes=List.copyOf(nodes);nodeLocations=new HashSet<>();nodes.forEach(n->nodeLocations.add(n.address()));
-        origin=nodes.stream().filter(n->n.kind()==NodeKind.NEXUS).findFirst().map(NetworkManager::location).orElse(NetworkManager.location(nodes.getFirst()));
+        origin=nodes.stream().filter(n->n.kind()==NodeKind.NEXUS).findFirst().map(NetworkManager::location).orElse(NetworkManager.location(nodes.get(0)));
         nodes.forEach(n->{if(n.nearbyCoverage())scanAround(NetworkManager.location(n));else invalidate(NetworkManager.location(n));});
         power=new NetworkPower(this);crafting=new CraftingService(this);
     }
@@ -137,7 +137,7 @@ public final class AstralNetwork implements NetworkAccess {
         List<ItemStack> products=new ArrayList<>();for(int i=0;i<shelf.getContainerSize();i++){ItemStack product=RecipeTomeItem.product(shelf.getItem(i),server.registryAccess());if(!product.isEmpty())products.add(product);}
         List<ItemStack> previous=library.get(pos);
         boolean changed=previous==null||previous.size()!=products.size();
-        if(!changed)for(int i=0;i<products.size();i++)if(!ItemStack.isSameItemSameComponents(previous.get(i),products.get(i))){changed=true;break;}
+        if(!changed)for(int i=0;i<products.size();i++)if(!ItemStack.isSameItemSameTags(previous.get(i),products.get(i))){changed=true;break;}
         if(changed){library.put(pos,List.copyOf(products));libraryRevision++;revision++;}
     }
     private void removeShelf(GlobalPos pos){if(library.remove(pos)!=null){libraryRevision++;revision++;}}
@@ -175,7 +175,7 @@ public final class AstralNetwork implements NetworkAccess {
     @Override public int travelTicks(GlobalPos from,GlobalPos to){
         if(AstralConfig.instantAutomaticLogistics.get()||from.equals(to))return 0;
         if(!from.dimension().equals(to.dimension()))return 20;
-        var route=manager.route(from,to,nodes.getFirst().channel(),AstralConfig.relayRange.get());
+        var route=manager.route(from,to,nodes.get(0).channel(),AstralConfig.relayRange.get());
         if(route.size()<2)throw new IllegalStateException("No loaded route to workstation");
         return TransferVisuals.duration(route.stream().map(GlobalPos::pos).toList());
     }
@@ -184,7 +184,7 @@ public final class AstralNetwork implements NetworkAccess {
     @Override public ItemStack insertFrom(ItemStack stack,GlobalPos source){
         return insertExcept(stack,source,null,null,true);
     }
-    @Override public boolean canRoute(GlobalPos from,GlobalPos to){return !from.dimension().equals(to.dimension())||!manager.route(from,to,nodes.getFirst().channel(),AstralConfig.relayRange.get()).isEmpty();}
+    @Override public boolean canRoute(GlobalPos from,GlobalPos to){return !from.dimension().equals(to.dimension())||!manager.route(from,to,nodes.get(0).channel(),AstralConfig.relayRange.get()).isEmpty();}
     public ItemStack extractAt(ItemKey key,int amount,GlobalPos destination){return extractAt(key,amount,destination,null);}
     private ItemStack extractAt(ItemKey key,int amount,GlobalPos destination,java.util.function.BiConsumer<GlobalPos,ItemStack> receipt){return extractAt(key,amount,destination,receipt,receipt==null);}
     private ItemStack extractAt(ItemKey key,int amount,GlobalPos destination,java.util.function.BiConsumer<GlobalPos,ItemStack> receipt,boolean checkRoute){
@@ -394,10 +394,10 @@ public final class AstralNetwork implements NetworkAccess {
     private void routedVisual(GlobalPos from,GlobalPos to,ItemStack stack,int style,double range){routedVisual(from,to,stack,style,range,null);}
     private void routedVisual(GlobalPos from,GlobalPos to,ItemStack stack,int style,double range,net.minecraft.resources.ResourceLocation fluid){
         if(!movingVisualsObserved(from))return;
-        var route=manager.route(from,to,nodes.getFirst().channel(),range);
+        var route=manager.route(from,to,nodes.get(0).channel(),range);
         // Fuel and recipe inputs arrive together. A separate fuel port keeps both visible.
-        TransferVisuals.Endpoint arrival=!stack.isEmpty()&&stack.getBurnTime(net.minecraft.world.item.crafting.RecipeType.SMELTING)>0?furnacePort(to):null;
-        TransferVisuals.send(server,route,stack,color(nodes.getFirst()),style,furnacePort(from),arrival,fluid);
+        TransferVisuals.Endpoint arrival=!stack.isEmpty()&&fuelTime(stack)>0?furnacePort(to):null;
+        TransferVisuals.send(server,route,stack,color(nodes.get(0)),style,furnacePort(from),arrival,fluid);
     }
     private boolean movingVisualsObserved(GlobalPos from){
         if(AstralConfig.particleDensity.get()<=0)return false;
@@ -408,13 +408,13 @@ public final class AstralNetwork implements NetworkAccess {
         return world!=null&&world.hasChunkAt(pos.pos())&&world.getBlockEntity(pos.pos()) instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity
                 ?new TransferVisuals.Endpoint(new net.minecraft.world.phys.Vec3(0,.65,0),Direction.UP):null;
     }
-    private boolean runeReachable(GlobalPos host,GlobalPos storage){return !host.dimension().equals(storage.dimension())||!manager.route(host,storage,nodes.getFirst().channel(),com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.get()).isEmpty();}
+    private boolean runeReachable(GlobalPos host,GlobalPos storage){return !host.dimension().equals(storage.dimension())||!manager.route(host,storage,nodes.get(0).channel(),com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.get()).isEmpty();}
     private void runeVisual(GlobalPos from,GlobalPos to,ItemStack stack,int style,GlobalPos host,TransferVisuals.Endpoint endpoint){runeVisual(from,to,stack,style,host,endpoint,null);}
     private void runeVisual(GlobalPos from,GlobalPos to,ItemStack stack,int style,GlobalPos host,TransferVisuals.Endpoint endpoint,net.minecraft.resources.ResourceLocation fluid){
         if(!from.dimension().equals(to.dimension())){sendVisual(from,from,stack,20,style,fluid);sendVisual(to,to,stack,20,style,fluid);return;}
         if(!movingVisualsObserved(from))return;
-        var route=manager.route(from,to,nodes.getFirst().channel(),com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.get());
-        TransferVisuals.send(server,route,stack,color(nodes.getFirst()),style,from.equals(host)?endpoint:null,to.equals(host)?endpoint:null,fluid);
+        var route=manager.route(from,to,nodes.get(0).channel(),com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.get());
+        TransferVisuals.send(server,route,stack,color(nodes.get(0)),style,from.equals(host)?endpoint:null,to.equals(host)?endpoint:null,fluid);
     }
     @Override public void stagingVisual(GlobalPos workstation,List<ItemStack> grid,int duration){for(int i=0;i<Math.min(9,grid.size());i++)sendVisual(workstation,workstation,grid.get(i),duration,10+i);}
     @Override public void craftingVisual(GlobalPos workstation,List<ItemStack> ingredients,ItemStack output,int duration){for(int i=0;i<Math.min(9,ingredients.size());i++)if(!ingredients.get(i).isEmpty())sendVisual(workstation,workstation,ingredients.get(i),duration,i);sendVisual(workstation,workstation,output,duration,9);}
@@ -424,7 +424,7 @@ public final class AstralNetwork implements NetworkAccess {
         var path=List.of(from.pos(),to.pos());
         TransferVisualDispatcher.enqueue(level,path,slot,()->new NetworkPackets.Visual(from.pos(),to.pos(),stack.isEmpty()?ItemStack.EMPTY:stack.copyWithCount(1),color,LogisticsTiming.visualTicks(duration),slot,path,null,null,fluid));
     }
-    public static int color(NetworkAnchor node){return node.channel()<0?0x65D6CF:DyeColor.byId(node.channel()).getTextureDiffuseColor();}
+    public static int color(NetworkAnchor node){return node.channel()<0?0x65D6CF:com.cappleapple.astralrepository.platform.Backport.dyeColor(DyeColor.byId(node.channel()));}
     /** A rune sees network storage except its own physical host (including aliased double chests). */
     public StorageProvider runeItems(GlobalPos host,Set<Object> excluded,TransferVisuals.Endpoint endpoint){return new StorageProvider(){
         public String id(){return "astral_network";} public Object identity(){return AstralNetwork.this;}
@@ -554,6 +554,7 @@ public final class AstralNetwork implements NetworkAccess {
     public String status(){return nodes.size()+" crystals · "+storages.size()+" stores · "+activeJobs()+" jobs\n"+(powered?throughput+" moved": "Needs power")+(!scans.isEmpty()||!dirty.isEmpty()?" · discovering":"")+(failed.isEmpty()?"":" · "+failed.size()+" unavailable");}
     private void quarantine(String id,RuntimeException failure){if(failed.add(id))AstralRepository.LOGGER.error("Astral provider {} unavailable in {}: {}",id,origin,failure.toString(),failure);revision++;}
     public void close(){crafting.cancelAll();power.close();for(Object identity:identities.keySet())manager.unwatchProvider(identity,this);}
+    private static int fuelTime(net.minecraft.world.item.ItemStack stack){Integer ticks=net.fabricmc.fabric.api.registry.FuelRegistry.INSTANCE.get(stack.getItem());return ticks==null?0:ticks;}
 }
 
 

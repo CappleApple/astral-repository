@@ -12,8 +12,8 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.Container;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -30,7 +30,7 @@ public final class StorageCrystalMenuGameTests {
         var menu=new NexusMenu(151,player.getInventory(),GlobalPos.of(h.getLevel().dimension(),pos),false);player.containerMenu=menu;
         h.startSequence().thenWaitUntil(()->h.assertTrue(menu.network()!=null&&menu.network().snapshot().getOrDefault(new ItemKey(new ItemStack(Items.DIAMOND)),0L)==7,"Connected external chest is indexed"))
         .thenExecute(()->{
-            menu.collectUpdate();h.assertTrue(menu.entries.size()==1&&menu.entries.getFirst().stack().is(Items.OAK_LOG)&&menu.entries.getFirst().count()==3&&!menu.entries.getFirst().craftable()&&menu.jobs.isEmpty(),"Local view excludes all other network stock and crafting jobs");
+            menu.collectUpdate();h.assertTrue(menu.entries.size()==1&&menu.entries.get(0).stack().is(Items.OAK_LOG)&&menu.entries.get(0).count()==3&&!menu.entries.get(0).craftable()&&menu.jobs.isEmpty(),"Local view excludes all other network stock and crafting jobs");
             action(menu,NetworkPackets.QUICK_WITHDRAW,new ItemStack(Items.DIAMOND));h.assertTrue(player.getInventory().isEmpty()&&external.getItem(0).getCount()==7,"Forged withdrawal cannot reach remote stock");
             action(menu,NetworkPackets.PICKUP,new ItemStack(Items.OAK_LOG));h.assertTrue(menu.getCarried().getCount()==3&&count(local,Items.OAK_LOG)==0&&external.getItem(1).getCount()==20,"Pickup takes only local logs");
             action(menu,NetworkPackets.DEPOSIT,ItemStack.EMPTY);h.assertTrue(menu.getCarried().isEmpty()&&count(local,Items.OAK_LOG)==3,"Cursor deposits return to this crystal");

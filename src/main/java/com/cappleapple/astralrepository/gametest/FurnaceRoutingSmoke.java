@@ -34,7 +34,7 @@ public final class FurnaceRoutingSmoke {
         if(fuelAt>=0&&!fuelShot&&mc.level.getGameTime()-fuelAt>=7){shot("furnace_inputs.png");fuelShot=true;}
         if(outputAt>=0&&!outputShot&&mc.level.getGameTime()-outputAt>=7){shot("furnace_output.png");outputShot=true;}
         if(phase==0){phase=1;NetworkPackets.visualReceiver=p->{WorldVisuals.add(p);if(p.from().getX()>=24&&(p.stack().is(Items.RAW_IRON)||p.stack().is(Items.COAL)||p.stack().is(Items.IRON_INGOT))){flights.add(p);if(p.stack().is(Items.RAW_IRON))rawAt=mc.level.getGameTime();if(p.stack().is(Items.COAL))fuelAt=mc.level.getGameTime();if(p.stack().is(Items.IRON_INGOT))outputAt=mc.level.getGameTime();}};mc.getSingleplayerServer().execute(()->{try{
-            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var level=p.serverLevel();p.closeContainer();level.getChunkAt(NEXUS);
+            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);var level=p.serverLevel();p.closeContainer();level.getChunkAt(NEXUS);
             level.setBlockAndUpdate(NEXUS,AstralContent.STORAGE_NEXUS.get().defaultBlockState());((CrystalNodeBlockEntity)level.getBlockEntity(NEXUS)).setChannel(6);
             level.setBlockAndUpdate(FURNACE,Blocks.FURNACE.defaultBlockState());level.setBlockAndUpdate(STORE,Blocks.CHEST.defaultBlockState());level.setBlockAndUpdate(SHELF,Blocks.CHISELED_BOOKSHELF.defaultBlockState());
             var chest=(Container)level.getBlockEntity(STORE);chest.setItem(0,new ItemStack(Items.RAW_IRON));chest.setItem(1,new ItemStack(Items.COAL));
@@ -42,10 +42,10 @@ public final class FurnaceRoutingSmoke {
             p.connection.teleport(26.5,-55,20,180,35);ready=true;
         }catch(Throwable e){failure=e.toString();}});}
         else if(phase==1&&ready&&ticks>80){phase=2;ticks=0;mc.getSingleplayerServer().execute(()->{try{
-            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var n=NetworkManager.get(p.server).networkAt(GlobalPos.of(p.level().dimension(),NEXUS));check(n!=null&&n.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.RAW_IRON)),0L)==1,"Furnace fixture storage not discovered");var request=n.crafting().request(p,new ItemStack(Items.IRON_INGOT),1);check(request.accepted(),"Furnace job rejected");job=request.jobId();
+            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);var n=NetworkManager.get(p.server).networkAt(GlobalPos.of(p.level().dimension(),NEXUS));check(n!=null&&n.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.RAW_IRON)),0L)==1,"Furnace fixture storage not discovered");var request=n.crafting().request(p,new ItemStack(Items.IRON_INGOT),1);check(request.accepted(),"Furnace job rejected");job=request.jobId();
         }catch(Throwable e){failure=e.toString();}});}
         else if(phase==2){
-            if(ticks%10==0)mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var n=NetworkManager.get(p.server).networkAt(GlobalPos.of(p.level().dimension(),NEXUS));complete=n.crafting().statuses().stream().anyMatch(s->s.id().equals(job)&&s.state().equals("COMPLETE"));if(complete){var chest=(Container)p.level().getBlockEntity(STORE);int count=0;for(int i=0;i<chest.getContainerSize();i++)if(chest.getItem(i).is(Items.IRON_INGOT))count+=chest.getItem(i).getCount();if(count!=1)failure="Furnace output did not return to chest; furnace="+((Container)p.level().getBlockEntity(FURNACE)).getItem(0);}}catch(Throwable e){failure=e.toString();}});
+            if(ticks%10==0)mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);var n=NetworkManager.get(p.server).networkAt(GlobalPos.of(p.level().dimension(),NEXUS));complete=n.crafting().statuses().stream().anyMatch(s->s.id().equals(job)&&s.state().equals("COMPLETE"));if(complete){var chest=(Container)p.level().getBlockEntity(STORE);int count=0;for(int i=0;i<chest.getContainerSize();i++)if(chest.getItem(i).is(Items.IRON_INGOT))count+=chest.getItem(i).getCount();if(count!=1)failure="Furnace output did not return to chest; furnace="+((Container)p.level().getBlockEntity(FURNACE)).getItem(0);}}catch(Throwable e){failure=e.toString();}});
             if(complete){phase=3;ticks=0;}
         }
         else if(phase==3&&ticks>3&&outputShot){

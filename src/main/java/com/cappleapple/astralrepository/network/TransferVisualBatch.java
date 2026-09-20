@@ -2,9 +2,9 @@ package com.cappleapple.astralrepository.network;
 
 import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.FriendlyByteBuf;
+import com.cappleapple.astralrepository.platform.StreamCodec;
+import com.cappleapple.astralrepository.platform.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 
 /** Server entries are encoded once and shared between audiences; clients decode one bounded update. */
@@ -12,7 +12,7 @@ public final class TransferVisualBatch implements CustomPacketPayload {
     public static final int MAX_BYTES = 262144;
     public static final int MAX_ENTRIES = 1536;
     public static final int HEADER_BYTES = 4;
-    public static final Type<TransferVisualBatch> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository", "visual_batch"));
+    public static final Type<TransferVisualBatch> TYPE = new Type<>(new ResourceLocation("astral_repository", "visual_batch"));
     private final boolean resetStations;
     private final List<byte[]> encoded;
     private final List<NetworkPackets.Visual> visuals;
@@ -37,7 +37,7 @@ public final class TransferVisualBatch implements CustomPacketPayload {
     public List<NetworkPackets.Visual> visuals() { return visuals; }
     @Override public Type<TransferVisualBatch> type() { return TYPE; }
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, TransferVisualBatch> CODEC = StreamCodec.of((buffer, packet) -> {
+    public static final StreamCodec<FriendlyByteBuf, TransferVisualBatch> CODEC = StreamCodec.of((buffer, packet) -> {
         buffer.writeBoolean(packet.resetStations);
         buffer.writeVarInt(packet.encoded != null ? packet.encoded.size() : packet.visuals.size());
         if (packet.encoded != null) for (byte[] entry : packet.encoded) buffer.writeBytes(entry);

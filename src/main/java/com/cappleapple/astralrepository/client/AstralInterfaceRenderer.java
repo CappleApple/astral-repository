@@ -30,7 +30,7 @@ public final class AstralInterfaceRenderer {
     }
 
     private static void vertex(VertexConsumer vertices, Matrix4f transform, float x, float y, float u, float v) {
-        vertices.addVertex(transform, x, y, 0).setColor(255, 255, 255, 255).setUv(u, v)
-                .setOverlay(OverlayTexture.NO_OVERLAY).setLight(LightTexture.FULL_BRIGHT).setNormal(0, 0, 1);
+        vertices.vertex(transform, x, y, 0).color(255, 255, 255, 255).uv(u, v)
+                .overlayCoords(OverlayTexture.NO_OVERLAY).uv2(LightTexture.FULL_BRIGHT).normal(0, 0, 1).endVertex();
     }
 }

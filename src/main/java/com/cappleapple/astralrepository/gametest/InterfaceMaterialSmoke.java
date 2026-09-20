@@ -22,7 +22,7 @@ import org.lwjgl.opengl.*;
 /** Actual GPU panel comparisons, available only in the excluded development smoke client. */
 public final class InterfaceMaterialSmoke {
     private static final int SIZE = 384, X = 24, Y = 24, WIDTH = 318, HEIGHT = 266;
-    private static final ResourceLocation PANEL = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus.png");
+    private static final ResourceLocation PANEL = new ResourceLocation(AstralRepository.MOD_ID, "textures/gui/nexus.png");
     private InterfaceMaterialSmoke() {}
 
     public static void verify() throws Exception {

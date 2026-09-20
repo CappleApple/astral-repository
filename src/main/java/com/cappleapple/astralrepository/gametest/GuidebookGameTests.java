@@ -13,8 +13,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
@@ -50,14 +50,14 @@ public final class GuidebookGameTests {
             h.assertTrue(recipe.id().equals(GUIDE), "Book plus two gems resolves to the registered field-guide recipe");
             ItemStack craftedGuide = recipe.value().assemble(guideInput, h.getLevel().registryAccess());
             assertGuide(h, craftedGuide);
-            h.assertTrue(craftedGuide.getCount() == 1 && ItemStack.isSameItemSameComponents(craftedGuide, Installed.bookStack()), "Actual assembly returns the mod-owned item resolved by Patchouli's custom_book_item");
-            h.assertTrue(ItemStack.isSameItemSameComponents(craftedGuide, recipe.value().getResultItem(h.getLevel().registryAccess())), "The recipe preview retains the same guide identity as assembly");
+            h.assertTrue(craftedGuide.getCount() == 1 && ItemStack.isSameItemSameTags(craftedGuide, Installed.bookStack()), "Actual assembly returns the mod-owned item resolved by Patchouli's custom_book_item");
+            h.assertTrue(ItemStack.isSameItemSameTags(craftedGuide, recipe.value().getResultItem(h.getLevel().registryAccess())), "The recipe preview retains the same guide identity as assembly");
         }
         CraftingInput tomeInput = CraftingInput.of(2, 2, List.of(
                 new ItemStack(AstralContent.ASTRAL_GEM.get()), ItemStack.EMPTY,
                 new ItemStack(Items.BOOK), ItemStack.EMPTY));
         var tomeRecipe = recipes.getRecipeFor(RecipeType.CRAFTING, tomeInput, h.getLevel()).orElseThrow();
-        h.assertTrue(tomeRecipe.id().equals(ResourceLocation.fromNamespaceAndPath("astral_repository", "recipe_tome")), "The original vertical single-gem recipe always resolves to the Recipe Tome");
+        h.assertTrue(tomeRecipe.id().equals(new ResourceLocation("astral_repository", "recipe_tome")), "The original vertical single-gem recipe always resolves to the Recipe Tome");
         ItemStack craftedTome = tomeRecipe.value().assemble(tomeInput, h.getLevel().registryAccess());
         h.assertTrue(craftedTome.is(AstralContent.RECIPE_TOME.get()), "The optional guide never substitutes for Recipe Tome crafting");
         h.assertTrue(guideRecipe.isEmpty() || !guideRecipe.orElseThrow().value().matches(tomeInput, h.getLevel()), "The field guide cannot shadow Recipe Tome crafting");
@@ -89,13 +89,13 @@ public final class GuidebookGameTests {
             assertGuide(h, guide);
             ItemStack restored = ItemStack.parse(h.getLevel().registryAccess(), guide.save(h.getLevel().registryAccess())).orElseThrow();
             assertGuide(h, restored);
-            h.assertTrue(ItemStack.isSameItemSameComponents(guide, restored), "The guide preserves its own registry identity through saving and loading");
+            h.assertTrue(ItemStack.isSameItemSameTags(guide, restored), "The guide preserves its own registry identity through saving and loading");
             h.assertTrue(RecipeTomeItem.product(guide, h.getLevel().registryAccess()).isEmpty(), "A field guide cannot expose a Recipe Tome crafting-library product");
-            var component = BuiltInRegistries.DATA_COMPONENT_TYPE.get(ResourceLocation.fromNamespaceAndPath("patchouli", "book"));
+            var component = BuiltInRegistries.DATA_COMPONENT_TYPE.get(new ResourceLocation("patchouli", "book"));
             h.assertTrue(component != null && AstralContent.CREATIVE_TAB.get().getDisplayItems().stream().noneMatch(stack -> GUIDE.equals(stack.get(component))), "Patchouli does not add a duplicate generic guide_book to the creative tab");
 
-            var player = new net.neoforged.neoforge.common.util.FakePlayer(h.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "field-guide-use"));
-            var payloads = new java.util.ArrayList<net.minecraft.network.protocol.common.custom.CustomPacketPayload>();
+            var player = new net.minecraftforge.common.util.FakePlayer(h.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "field-guide-use"));
+            var payloads = new java.util.ArrayList<com.cappleapple.astralrepository.platform.CustomPacketPayload>();
             player.connection = new net.minecraft.server.network.ServerGamePacketListenerImpl(player.getServer(), player.connection.getConnection(), player,
                     net.minecraft.server.network.CommonListenerCookie.createInitial(player.getGameProfile(), false)) {
                 @Override public void send(net.minecraft.network.protocol.Packet<?> packet) {

@@ -15,10 +15,10 @@ public final class CraftMissingScreen extends Screen {
     private List<NetworkPackets.Missing> entries(){return menu.jobs.stream().filter(j->j.id().equals(id)).findFirst().map(NetworkPackets.Job::missing).orElse(List.of());}
     @Override public boolean isPauseScreen(){return false;}
     @Override public void onClose(){parent.closeMissingDetails();}
-    @Override public boolean mouseScrolled(double x,double y,double dx,double dy){if(dy==0)return false;row=Math.clamp(row+(dy<0?1:-1),0,Math.max(0,(entries().size()+7)/8-5));return true;}
+    @Override public boolean mouseScrolled(double x,double y,double dy){if(dy==0)return false;row=com.cappleapple.astralrepository.platform.Backport.clamp(row+(dy<0?1:-1),0,Math.max(0,(entries().size()+7)/8-5));return true;}
     @Override public void render(GuiGraphics g,int mx,int my,float partial){
         int left=(width-280)/2,top=(height-212)/2;var entries=entries();row=Math.min(row,Math.max(0,(entries.size()+7)/8-5));
-        AstralInterfaceRenderer.blit(g,ResourceLocation.fromNamespaceAndPath("astral_repository","textures/gui/rune_settings.png"),left,top,280,212);
+        AstralInterfaceRenderer.blit(g,new ResourceLocation("astral_repository","textures/gui/rune_settings.png"),left,top,280,212);
         g.drawString(font,title,left+12,top+10,0xD9DEFB,false);
         if(entries.isEmpty()){
             boolean calculating=menu.jobs.stream().anyMatch(j->j.id().equals(id)&&j.state()==NetworkPackets.JobState.CALCULATING);

@@ -13,12 +13,12 @@ import net.minecraft.world.Container;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.block.Blocks;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.*;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.server.ServerStartedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.*;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.tick.ServerTickEvent;
 
 /** Separate actual aggregate-provider workload; never loaded in the production JAR. */
 @EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.DEDICATED_SERVER)
@@ -45,7 +45,7 @@ public final class DedicatedNetworkRuneStress {
             for(int group=0;group<8;group++)fixture(level,group);
             denseFixture(level);
             expectedTotal=total();observers=new RuneStressObservers(level,Integer.getInteger("astral_repository.runeStressObservers",0),new BlockPos(72,70,32));
-            ready=true;NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedNetworkRuneStress::finishTick);selectPhase();
+            ready=true;MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedNetworkRuneStress::finishTick);selectPhase();
             AstralRepository.LOGGER.info("Network rune stress: 128 host barrels, 256 independent Push/Pull layers, {} relay/Nexus networks and {} native storage crystals",DENSE?1:8,STORES.size());
         }catch(Throwable error){fail(server,error);}
     }
@@ -114,9 +114,9 @@ public final class DedicatedNetworkRuneStress {
                 for(int i=0;i<8;i++){
                     var network=manager.networkAt(RELAYS.get(i).address());check(network!=null&&network==manager.networkAt(NEXUSES.get(i).address()),"Relay and Nexus did not auto-connect");
                     check(network.storageCount()==(DENSE?128:4),"Expected "+(DENSE?128:4)+" native stores, no discovered host barrels; got "+network.storageCount());
-                    if(DENSE)check(network==manager.networkAt(RELAYS.getFirst().address()),"Dense network did not join every relay/Nexus");
+                    if(DENSE)check(network==manager.networkAt(RELAYS.get(0).address()),"Dense network did not join every relay/Nexus");
                 }
-                var route=manager.route(WORK.getFirst().rune.surface().address().position(),NEXUSES.getFirst().address().position(),0,8);
+                var route=manager.route(WORK.get(0).rune.surface().address().position(),NEXUSES.get(0).address().position(),0,8);
                 check(route.size()>=3,"The distant Nexus binding did not traverse a relay");start=System.nanoTime();
             }
             if(ticks%20==0)check(total()==expectedTotal,"Network inventory conservation failed");

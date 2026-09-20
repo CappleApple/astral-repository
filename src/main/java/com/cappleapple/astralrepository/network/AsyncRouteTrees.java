@@ -54,7 +54,7 @@ final class AsyncRouteTrees<T> implements AutoCloseable {
         var future=new FutureTask<>(()->new Computed<>(ShortestPath.tree(Map.of(root,0.0),node->{
             if(Thread.currentThread().isInterrupted())throw new CancellationException();
             return snapshot.getOrDefault(node,Map.of()).keySet();
-        },(a,b)->snapshot.getOrDefault(a,Map.of()).getOrDefault(b,Double.POSITIVE_INFINITY)),Thread.currentThread().threadId()));
+        },(a,b)->snapshot.getOrDefault(a,Map.of()).getOrDefault(b,Double.POSITIVE_INFINITY)),Thread.currentThread().getId()));
         task=new Pending<>(revision,future);pending.put(root,task);
         try{workers.execute(future);submitted++;}catch(RejectedExecutionException full){pending.remove(root);future.cancel(false);}
         return null;

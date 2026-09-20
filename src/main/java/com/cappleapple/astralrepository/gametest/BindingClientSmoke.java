@@ -24,10 +24,10 @@ public final class BindingClientSmoke {
     public static boolean tick()throws Exception{
         var mc=Minecraft.getInstance();if(failure!=null)throw new AssertionError(failure);if(++ticks>400)throw new AssertionError("Binding timeout phase "+phase);
         if(phase==0){phase=1;mc.getSingleplayerServer().execute(()->{try{
-            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var world=p.serverLevel();
+            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);var world=p.serverLevel();
             world.setBlockAndUpdate(SOURCE,Blocks.BARREL.defaultBlockState());world.setBlockAndUpdate(TARGET,Blocks.BARREL.defaultBlockState());world.setBlockAndUpdate(RELAY,AstralContent.RELAY_CRYSTAL.get().defaultBlockState());
             var face=RuneSurfaces.getOrCreate(world,SOURCE,Direction.SOUTH);var layer=face.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);rune=layer.id();
-            sourceHit=new BlockHitResult(RuneLayout.placed(face).getFirst().center(),Direction.SOUTH,SOURCE,false);
+            sourceHit=new BlockHitResult(RuneLayout.placed(face).get(0).center(),Direction.SOUTH,SOURCE,false);
             var preset=RunePreset.initial(RuneLayer.Mode.PUSH);RuneLibraryData.get(p.getServer()).library(p.getUUID()).put(preset.id(),preset);
             var wand=new ItemStack(AstralContent.ATTUNEMENT_WAND.get());WandPackets.selection(wand,preset.id(),true);p.getInventory().selected=0;p.setItemInHand(InteractionHand.MAIN_HAND,wand);p.teleportTo(4.5,-59,10);p.inventoryMenu.broadcastChanges();ready=true;
         }catch(Throwable e){failure=e.toString();}});}
@@ -61,7 +61,7 @@ public final class BindingClientSmoke {
             }finally{com.cappleapple.astralrepository.AstralClientConfig.astralOverlayOpacity.set(opacity);}
             mc.setScreen(null);ready=false;next(13);
             mc.getSingleplayerServer().execute(()->{try{
-                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+                var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);
                 RuneProgramming.cancel(p.getMainHandItem());RuneSurfaces.remove(p.serverLevel(),SOURCE,Direction.SOUTH);
                 var face=RuneSurfaces.getOrCreate(p.serverLevel(),SOURCE,Direction.SOUTH);
                 rune=face.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH).id();
@@ -106,7 +106,7 @@ public final class BindingClientSmoke {
     }
     private static void verifyReverse(UUID id,boolean expected){
         var mc=Minecraft.getInstance();mc.getSingleplayerServer().execute(()->{try{
-            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();
+            var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);
             var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);
             check(face.layers().size()==2,"Reverse binding placed an extra rune");
             check(face.get(id).targets().contains(new RuneLayer.Target(GlobalPos.of(p.level().dimension(),TARGET),Direction.SOUTH))==expected,"Reverse binding target did not synchronize");
@@ -117,8 +117,8 @@ public final class BindingClientSmoke {
         mc.player.connection.send(new ServerboundPlayerCommandPacket(mc.player,shift?ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY:ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY));
         check(mc.gameMode.useItemOn(mc.player,InteractionHand.MAIN_HAND,hit).consumesAction(),"Client block click passed through");
     }
-    private static void verifyTarget(boolean expected){var mc=Minecraft.getInstance();mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);check(!face.get(rune).targets().isEmpty()==expected,"Target state did not reach server in phase "+phase+"; selection="+RuneProgramming.selection(p.getMainHandItem()));check(face.layers().size()==1,"Binding placed an extra rune");}catch(Throwable e){failure=e.toString();}});}
-    private static void verifyRelay(boolean expected){var mc=Minecraft.getInstance();mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().getFirst();var layer=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH).get(rune);check(layer.targets().contains(new RuneLayer.Target(GlobalPos.of(p.level().dimension(),RELAY),null))==expected,"Relay whole-network assignment failed; targets="+layer.targets());}catch(Throwable e){failure=e.toString();}});}
+    private static void verifyTarget(boolean expected){var mc=Minecraft.getInstance();mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);var face=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH);check(!face.get(rune).targets().isEmpty()==expected,"Target state did not reach server in phase "+phase+"; selection="+RuneProgramming.selection(p.getMainHandItem()));check(face.layers().size()==1,"Binding placed an extra rune");}catch(Throwable e){failure=e.toString();}});}
+    private static void verifyRelay(boolean expected){var mc=Minecraft.getInstance();mc.getSingleplayerServer().execute(()->{try{var p=mc.getSingleplayerServer().getPlayerList().getPlayers().get(0);var layer=RuneSurfaces.get(p.serverLevel(),SOURCE,Direction.SOUTH).get(rune);check(layer.targets().contains(new RuneLayer.Target(GlobalPos.of(p.level().dimension(),RELAY),null))==expected,"Relay whole-network assignment failed; targets="+layer.targets());}catch(Throwable e){failure=e.toString();}});}
     private static void check(boolean value,String message){if(!value)throw new AssertionError(message);}
     private static void next(int value){phase=value;ticks=0;}
 }

@@ -1,6 +1,6 @@
 package com.cappleapple.astralrepository;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import io.github.fabricators_of_create.porting_lib.config.ModConfigSpec;
 
 /** World settings are synchronized by NeoForge to every connected client. */
 public final class AstralServerConfig {

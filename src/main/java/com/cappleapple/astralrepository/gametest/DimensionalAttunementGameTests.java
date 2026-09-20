@@ -17,7 +17,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class DimensionalAttunementGameTests {
@@ -73,7 +73,7 @@ public final class DimensionalAttunementGameTests {
     public static void legacyIdsLoadAsOneItemAndTooltipsContainOnlyState(GameTestHelper h){
         var item=AstralContent.DIMENSIONAL_ATTUNEMENT.get();
         for(String old:java.util.List.of("bridge_attunement","remote_attunement")){
-            var id=ResourceLocation.fromNamespaceAndPath("astral_repository",old);
+            var id=new ResourceLocation("astral_repository",old);
             h.assertTrue(BuiltInRegistries.ITEM.get(id)==item,"Old registry ID resolves to the canonical item: "+old);
             var saved=new CompoundTag();saved.putString("id",id.toString());saved.putInt("count",3);
             var restored=ItemStack.parseOptional(h.getLevel().registryAccess(),saved);
@@ -81,7 +81,7 @@ public final class DimensionalAttunementGameTests {
             h.assertTrue(AstralContent.ITEMS.getEntries().stream().noneMatch(entry->entry.getId().equals(id)),"Legacy aliases do not register duplicate creative or recipe-viewer entries");
             h.assertTrue(h.getLevel().getRecipeManager().byKey(id).isEmpty(),"Obsolete duplicate recipe is removed");
         }
-        h.assertTrue(h.getLevel().getRecipeManager().byKey(ResourceLocation.fromNamespaceAndPath("astral_repository","dimensional_attunement")).isPresent(),"One canonical dimensional recipe is available");
+        h.assertTrue(h.getLevel().getRecipeManager().byKey(new ResourceLocation("astral_repository","dimensional_attunement")).isPresent(),"One canonical dimensional recipe is available");
         for(var entry:AstralContent.ITEMS.getEntries())if(entry.get() instanceof AstralToolItem){
             var lines=new ArrayList<Component>();entry.get().appendHoverText(new ItemStack(entry.get()),Item.TooltipContext.of(h.getLevel()),lines,TooltipFlag.NORMAL);
             h.assertTrue(lines.isEmpty(),"Unprogrammed tool has no instructional tooltip: "+entry.getId());

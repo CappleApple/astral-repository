@@ -7,12 +7,13 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class AstralToolItem extends Item {
+
     public AstralToolItem(Properties properties, String hint) { super(properties); }
     @Override public net.minecraft.world.InteractionResultHolder<ItemStack> use(net.minecraft.world.level.Level level,net.minecraft.world.entity.player.Player player,net.minecraft.world.InteractionHand hand) {
         ItemStack stack=player.getItemInHand(hand);
         if(stack.is(AstralContent.ATTUNEMENT_WAND.get())) {
             if(player.isShiftKeyDown()){
-                var picked=player.pick(player.blockInteractionRange(),1,false);
+                var picked=player.pick(com.cappleapple.astralrepository.platform.FabricReach.range(player),1,false);
                 if(picked instanceof BlockHitResult hit&&picked.getType()==net.minecraft.world.phys.HitResult.Type.BLOCK
                         &&RuneProgramming.use(stack,level,hit.getBlockPos(),player,hand,hit))return net.minecraft.world.InteractionResultHolder.sidedSuccess(stack,level.isClientSide);
                 if(RuneProgramming.selection(stack)!=null){

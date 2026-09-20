@@ -177,7 +177,7 @@ public final class DirectRuneTransfers {
         // A live identity is enough when no aggregate stock/reserve count is needed.
         // Unsupported, rejected or incomplete hints fall back to the normal bounded snapshot.
         if(source.items.size()==1&&layer.filter().minimum()==0&&layer.filter().target()==Long.MAX_VALUE){
-            ItemView from=source.items.getFirst();ItemKey candidate=from.provider.candidate(layer.filter()::matches);
+            ItemView from=source.items.get(0);ItemKey candidate=from.provider.candidate(layer.filter()::matches);
             if(candidate!=null&&(layer.filter().unrestricted()||layer.filter().matches(candidate.sample())))for(ItemView to:destination.items){
                 if(from.provider.identity().equals(to.provider.identity()))continue;
                 int result=moveItem(layer,source,destination,from,to,candidate,itemBudget);
@@ -297,7 +297,7 @@ public final class DirectRuneTransfers {
         if(source.target.face()==null||destination.target.face()==null)return; // Aggregate providers emit their actual storage path.
         var from=source.target.position();var to=destination.target.position();
         // The transaction already validated this route. Pull traverses the same undirected graph in reverse.
-        var route=from.equals(layer.surface().address().position())?activeRoute:activeRoute.reversed();
+        var route=from.equals(layer.surface().address().position())?activeRoute:com.cappleapple.astralrepository.platform.Backport.reverse(activeRoute);
         java.util.function.Supplier<TransferVisuals.Endpoint> endpoint=()->TransferVisuals.rune(layer);
         TransferVisuals.sendWithEndpoints(server,route,sample,AstralNetwork.color(layer.surface()),style,from.equals(layer.surface().address().position())?endpoint:null,to.equals(layer.surface().address().position())?endpoint:null,fluid);
     }

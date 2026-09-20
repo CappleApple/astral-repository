@@ -14,8 +14,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.AbstractFurnaceBlock;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.*;
 
 @GameTestHolder("astral_repository")
@@ -86,7 +86,7 @@ public final class CraftingGameTests {
             @Override public void visual(GlobalPos a,GlobalPos b,ItemStack stack,int ticks){from.add(a);to.add(b);}
             @Override public ItemStack insertFrom(ItemStack stack,GlobalPos source){from.add(source);to.add(at(chestPos));return insert(stack);}
         };
-        var player=new net.neoforged.neoforge.common.util.FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"craft-route"));var service=new CraftingService(access);
+        var player=new net.minecraftforge.common.util.FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"craft-route"));var service=new CraftingService(access);
         h.assertTrue(service.request(player,new ItemStack(Items.IRON_TRAPDOOR),1).accepted(),"Recipe accepted");h.assertTrue(from.isEmpty(),"Reservation has no pretend flight into the Nexus");
         awaitPlanning(service);for(int i=0;i<90;i++)service.tick();
         h.assertTrue(service.activeJobs()==0&&access.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.IRON_TRAPDOOR)),0L)==1,"Actual table produces exactly one output");
@@ -99,12 +99,12 @@ public final class CraftingGameTests {
         var access=new Fixture(h,chestPos,chest,List.of(table),target){
             @Override public Map<ItemKey,Long> snapshot(){h.assertTrue(h.getLevel().getServer().isSameThread(),"Worker never polls a live inventory");return super.snapshot();}
         };
-        var player=new net.neoforged.neoforge.common.util.FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"async-craft"));var service=new CraftingService(access);
-        var request=service.request(player,target,1);h.assertTrue(request.accepted()&&service.visibleStatuses(player.getUUID()).getFirst().state().equals("CALCULATING"),"Accepted job is immediately visible as calculating");
+        var player=new net.minecraftforge.common.util.FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"async-craft"));var service=new CraftingService(access);
+        var request=service.request(player,target,1);h.assertTrue(request.accepted()&&service.visibleStatuses(player.getUUID()).get(0).state().equals("CALCULATING"),"Accepted job is immediately visible as calculating");
         h.onEachTick(service::tick);
         h.startSequence().thenWaitUntil(()->h.assertTrue(service.statuses().stream().anyMatch(j->j.state().equals("MISSING")),"Worker returned a shortage"))
             .thenExecute(()->{
-                var job=service.visibleStatuses(player.getUUID()).getFirst();h.assertTrue(job.id().equals(request.jobId())&&job.missing().size()==1&&job.missing().getFirst().tag().equals("minecraft:planks")&&job.missing().getFirst().count()==8,"Shortage keeps the recipe's any-plank tag and amount: "+job.missing());
+                var job=service.visibleStatuses(player.getUUID()).get(0);h.assertTrue(job.id().equals(request.jobId())&&job.missing().size()==1&&job.missing().get(0).tag().equals("minecraft:planks")&&job.missing().get(0).count()==8,"Shortage keeps the recipe's any-plank tag and amount: "+job.missing());
                 chest.setItem(0,new ItemStack(Items.BIRCH_PLANKS,8));
             }).thenWaitUntil(()->h.assertTrue(service.activeJobs()==0,"New stock resumes the same job"))
             .thenExecute(()->h.assertTrue(access.snapshot().getOrDefault(new ItemKey(target),0L)==1&&!access.snapshot().containsKey(new ItemKey(new ItemStack(Items.BIRCH_PLANKS))),"Actual table accepts the alternate tag member exactly once")).thenSucceed();
@@ -145,7 +145,7 @@ public final class CraftingGameTests {
             @Override public void stagingVisual(GlobalPos at,List<ItemStack> grid,int duration){populations.add((int)grid.stream().filter(stack->!stack.isEmpty()).count());}
             @Override public void craftingVisual(GlobalPos at,List<ItemStack> grid,ItemStack output,int duration){crafting[0]++;}
         };
-        var service=new CraftingService(access);var player=new net.neoforged.neoforge.common.util.FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"craft-arrivals"));
+        var service=new CraftingService(access);var player=new net.minecraftforge.common.util.FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"craft-arrivals"));
         var request=service.request(player,new ItemStack(Items.IRON_TRAPDOOR),1);h.assertTrue(request.accepted(),"Arrival job accepted");awaitPlanning(service);service.tick();
         for(int i=0;i<9;i++)service.tick();h.assertTrue(populations.isEmpty()&&crafting[0]==0,"Nothing populates or starts before the first arrival");
         service.tick();h.assertTrue(populations.equals(List.of(2))&&crafting[0]==0,"Two near ingredients populate while farther ingredients are still travelling");
@@ -192,7 +192,7 @@ public final class CraftingGameTests {
             ItemStack remainder = input.copy();
             for (int i = 0; i < chest.getContainerSize() && !remainder.isEmpty(); i++) {
                 ItemStack present = chest.getItem(i);
-                if (!present.isEmpty() && !ItemStack.isSameItemSameComponents(present, remainder)) continue;
+                if (!present.isEmpty() && !ItemStack.isSameItemSameTags(present, remainder)) continue;
                 int amount = Math.min(remainder.getCount(), remainder.getMaxStackSize() - present.getCount());
                 if (present.isEmpty()) chest.setItem(i, remainder.copyWithCount(amount)); else present.grow(amount);
                 remainder.shrink(amount);

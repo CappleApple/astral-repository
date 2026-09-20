@@ -10,8 +10,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.*;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.gametest.*;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.gametest.*;
 
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class BindingFeedbackGameTests {
@@ -28,12 +28,12 @@ public final class BindingFeedbackGameTests {
         var eye=h.absolutePos(aimed).getCenter().add(0,0,3);player.setPos(eye.x,eye.y-player.getEyeHeight(),eye.z);player.setYRot(180);player.setXRot(0);
         var preview=BindingPreviewPackets.snapshot(player);h.assertTrue(preview.paths().size()==2&&preview.color()==0x7f007f,"Shows assigned path plus aimed-container preview");
         h.assertTrue(rune.targets().size()==1,"Aimed preview never assigns a target");
-        var buffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),level.registryAccess());
-        try{BindingPreviewPackets.Preview.CODEC.encode(buffer,preview);var decoded=BindingPreviewPackets.Preview.CODEC.decode(buffer);h.assertTrue(decoded.paths().size()==2&&decoded.rune().equals(rune.id())&&decoded.paths().getFirst().departure()!=null,"Bounded preview codec retains routes and rune departure");}finally{buffer.release();}
+        var buffer=new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),level.registryAccess());
+        try{BindingPreviewPackets.Preview.CODEC.encode(buffer,preview);var decoded=BindingPreviewPackets.Preview.CODEC.decode(buffer);h.assertTrue(decoded.paths().size()==2&&decoded.rune().equals(rune.id())&&decoded.paths().get(0).departure()!=null,"Bounded preview codec retains routes and rune departure");}finally{buffer.release();}
         h.assertTrue(preview.particleOrigin()==null,"Assigned rune never emits unbound particles");
         face.clearTarget(rune.id());var unbound=BindingPreviewPackets.snapshot(player);
-        h.assertTrue(unbound.paths().size()==1&&unbound.particleOrigin().distanceToSqr(RuneLayout.placed(face).getFirst().center())<1e-10&&unbound.particleFace()==Direction.SOUTH,"Unassigned rune emits at its own glyph even while showing an aimed preview");
-        var particleBuffer=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),level.registryAccess());
+        h.assertTrue(unbound.paths().size()==1&&unbound.particleOrigin().distanceToSqr(RuneLayout.placed(face).get(0).center())<1e-10&&unbound.particleFace()==Direction.SOUTH,"Unassigned rune emits at its own glyph even while showing an aimed preview");
+        var particleBuffer=new net.minecraft.network.FriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),level.registryAccess());
         try{BindingPreviewPackets.Preview.CODEC.encode(particleBuffer,unbound);var decoded=BindingPreviewPackets.Preview.CODEC.decode(particleBuffer);h.assertTrue(decoded.particleOrigin().equals(unbound.particleOrigin())&&decoded.particleFace()==Direction.SOUTH,"Particle source survives packet encoding");}finally{particleBuffer.release();}
         face.toggleTarget(rune.id(),GlobalPos.of(level.dimension(),h.absolutePos(target)),Direction.SOUTH);
         h.setBlock(target,Blocks.AIR);h.assertTrue(BindingPreviewPackets.snapshot(player).particleOrigin()==null,"A missing target is still an assignment, not an unbound rune");
@@ -60,8 +60,8 @@ public final class BindingFeedbackGameTests {
             .thenExecute(()->{
                 double prior=com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.get();
                 try{com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.set(3.0);var preview=BindingPreviewPackets.snapshot(player);
-                    h.assertTrue(preview.paths().size()==1&&preview.paths().getFirst().path().equals(List.of(h.absolutePos(source),h.absolutePos(relay),h.absolutePos(target))),"Preview retains the actual shortest relay route");
-                    h.assertTrue(preview.paths().getFirst().departure().face()==Direction.SOUTH,"Preview leaves the rune's actual face");
+                    h.assertTrue(preview.paths().size()==1&&preview.paths().get(0).path().equals(List.of(h.absolutePos(source),h.absolutePos(relay),h.absolutePos(target))),"Preview retains the actual shortest relay route");
+                    h.assertTrue(preview.paths().get(0).departure().face()==Direction.SOUTH,"Preview leaves the rune's actual face");
                 }finally{com.cappleapple.astralrepository.AstralServerConfig.wandBindingRange.set(prior);}
             }).thenSucceed();
     }

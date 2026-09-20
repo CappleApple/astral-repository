@@ -18,10 +18,10 @@ class TransferVisualProjectionTest {
         var projected = TransferVisuals.projectedPath(route);
         var backing = projected.getClass().getDeclaredField("route"); backing.setAccessible(true);
         assertSame(route, backing.get(projected));
-        assertSame(route.getFirst().pos(), projected.getFirst());
+        assertSame(route.get(0).pos(), projected.get(0));
         var expected = List.of(route.get(0).pos(), route.get(1).pos(), route.get(2).pos());
         assertEquals(expected, projected); assertEquals(projected, expected); assertEquals(expected.hashCode(), projected.hashCode());
-        assertEquals(expected.reversed(), TransferVisuals.projectedPath(route.reversed()));
+        assertEquals(com.cappleapple.astralrepository.platform.Backport.reverse(expected), TransferVisuals.projectedPath(com.cappleapple.astralrepository.platform.Backport.reverse(route)));
         assertThrows(UnsupportedOperationException.class, () -> projected.set(0, BlockPos.ZERO));
         assertThrows(UnsupportedOperationException.class, () -> projected.add(BlockPos.ZERO));
         assertThrows(UnsupportedOperationException.class, () -> projected.remove(0));
@@ -40,15 +40,15 @@ class TransferVisualProjectionTest {
 
     @Test void acceptedPacketsKeepIndependentOrderedPathSnapshotsForBothDirections() {
         var source = new ArrayList<>(List.of(at(1, 2, 3), at(8, 4, 5), at(16, 2, 7)));
-        for (var route : List.of(source, source.reversed())) {
+        for (var route : List.of(source, com.cappleapple.astralrepository.platform.Backport.reverse(source))) {
             var view = TransferVisuals.projectedPath(route);
-            var packet = new NetworkPackets.Visual(view.getFirst(), view.getLast(), ItemStack.EMPTY, 0xffffff,
+            var packet = new NetworkPackets.Visual(view.get(0), view.get(view.size()-1), ItemStack.EMPTY, 0xffffff,
                     TransferVisuals.duration(view), -2, view);
             assertEquals(view, packet.path()); assertNotSame(view, packet.path());
-            assertEquals(packet.from(), packet.path().getFirst()); assertEquals(packet.to(), packet.path().getLast());
+            assertEquals(packet.from(), packet.path().get(0)); assertEquals(packet.to(), packet.path().get(packet.path().size()-1));
             assertThrows(UnsupportedOperationException.class, () -> packet.path().set(0, BlockPos.ZERO));
         }
-        var reversed = TransferVisuals.projectedPath(source.reversed()); var expected = List.copyOf(reversed);
+        var reversed = TransferVisuals.projectedPath(com.cappleapple.astralrepository.platform.Backport.reverse(source)); var expected = List.copyOf(reversed);
         source.clear(); assertEquals(expected, reversed);
     }
 }

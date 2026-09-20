@@ -8,7 +8,7 @@ final class ResourceDeparture {
 
     static float opacity(NetworkPackets.Visual packet, double ageTicks) {
         if (packet.departure() == null || packet.slot() < -4 || packet.slot() > -2) return 1;
-        double progress = Math.clamp(ageTicks / FADE_TICKS, 0, 1);
+        double progress = com.cappleapple.astralrepository.platform.Backport.clamp(ageTicks / FADE_TICKS, 0, 1);
         return (float) (progress * progress * (3 - 2 * progress));
     }
 

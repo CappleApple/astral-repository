@@ -17,11 +17,11 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.storage.LevelResource;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.server.*;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
+import net.minecraftforge.event.server.*;
+import net.minecraftforge.event.tick.ServerTickEvent;
 
 /** Opt-in, excluded from the distributable JAR. Two independent JVMs exercise real world persistence. */
 @EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.DEDICATED_SERVER)
@@ -31,7 +31,7 @@ public final class DedicatedPersistenceSmoke {
     private static final String MANIFEST="astral-persistence-fixture-v3.txt";
     private static final String VERSION="astral_repository:independent-rune-persistence-v3";
     private static final BlockPos FIRST=new BlockPos(4,64,4),SECOND=new BlockPos(12,64,4),STORE=new BlockPos(8,64,8),CHEST=new BlockPos(10,64,8),PUSH_TARGET=new BlockPos(4,64,14),PULL_TARGET=new BlockPos(12,64,14);
-    private static final List<ResourceLocation> GLYPHS=List.of(ResourceLocation.parse("astral_repository:push_rune"),ResourceLocation.parse("astral_repository:pull_rune"),ResourceLocation.parse("astral_repository:push_rune"),ResourceLocation.parse("astral_repository:pull_rune"));
+    private static final List<ResourceLocation> GLYPHS=List.of(new ResourceLocation("astral_repository:push_rune"),new ResourceLocation("astral_repository:pull_rune"),new ResourceLocation("astral_repository:push_rune"),new ResourceLocation("astral_repository:pull_rune"));
     private static List<String> expectedLayerIds=List.of();
     private static boolean initialized,done;
     private static int ticks;
@@ -45,7 +45,7 @@ public final class DedicatedPersistenceSmoke {
             check(server.isDedicatedServer(),"Persistence fixture requires a dedicated server");world=server.getWorldPath(LevelResource.ROOT);
             Files.createDirectories(OUT);
             if(MODE.equals("create"))check(!Files.exists(world.resolve(MANIFEST)),"Refusing to recreate an existing persistence fixture");
-            else {List<String> lines=Files.readAllLines(world.resolve(MANIFEST));check(lines.size()==5&&lines.getFirst().equals(VERSION),"Existing world lacks the completed first-run fixture marker");expectedLayerIds=List.copyOf(lines.subList(1,5));}
+            else {List<String> lines=Files.readAllLines(world.resolve(MANIFEST));check(lines.size()==5&&lines.get(0).equals(VERSION),"Existing world lacks the completed first-run fixture marker");expectedLayerIds=List.copyOf(lines.subList(1,5));}
             ServerLevel level=server.overworld();
             // The dev fixture deliberately loads its one known chunk; production network discovery never does so.
             level.getChunkAt(FIRST);
@@ -106,7 +106,7 @@ public final class DedicatedPersistenceSmoke {
         check(!pull.filter().all()&&pull.filter().entries().size()==3&&pull.filter().matches(namedIron())&&pull.filter().matches(new ItemStack(Items.IRON_INGOT))&&!pull.filter().matches(new ItemStack(Items.GOLD_INGOT)),"Pull component/include/exclude filter changed");
         for(int i=2;i<4;i++)check(rune.layers().get(i).target()==null&&rune.layers().get(i).filter().entries().isEmpty()&&rune.layers().get(i).enabled(),"Unassigned sibling inherited another layer's settings");
         check(((ChestBlockEntity)level.getBlockEntity(PUSH_TARGET)).getItem(0).is(Items.DIAMOND)&&((ChestBlockEntity)level.getBlockEntity(PUSH_TARGET)).getItem(0).getCount()==3,"Bare Push target contents changed while layer paused");
-        ItemStack pullContents=((ChestBlockEntity)level.getBlockEntity(PULL_TARGET)).getItem(0);check(ItemStack.isSameItemSameComponents(pullContents,namedIron())&&pullContents.getCount()==13,"Bare Pull target contents changed while layer paused");
+        ItemStack pullContents=((ChestBlockEntity)level.getBlockEntity(PULL_TARGET)).getItem(0);check(ItemStack.isSameItemSameTags(pullContents,namedIron())&&pullContents.getCount()==13,"Bare Pull target contents changed while layer paused");
         var data=RuneSavedData.get(level.getServer());var a=AnchorAddress.crystal(level,FIRST);var b=AnchorAddress.crystal(level,SECOND);var storage=AnchorAddress.crystal(level,STORE);
         check(data.links(a).equals(Set.of(b,storage,rune.address())),"First Nexus explicit links changed");
         check(data.links(b).equals(Set.of(a,rune.address()))&&data.links(rune.address()).equals(Set.of(a,b))&&data.links(storage).equals(Set.of(a)),"Reciprocal multi-links changed");

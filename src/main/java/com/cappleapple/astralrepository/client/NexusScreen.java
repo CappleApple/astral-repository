@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.Slot;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +41,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
         imageWidth = 318; imageHeight = 266;
         inventoryLabelX = 8; inventoryLabelY = 168; titleLabelX = 10; titleLabelY = 9;
     }
-    private static ResourceLocation texture(String name) { return ResourceLocation.fromNamespaceAndPath("astral_repository", "textures/gui/" + name); }
+    private static ResourceLocation texture(String name) { return new ResourceLocation("astral_repository", "textures/gui/" + name); }
     @Override protected void init() {
         super.init();
         search = new EditBox(font, leftPos + 14, topPos + 32, 166, 12, Component.literal("Search storage"));
@@ -93,7 +93,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
             lastJobs = menu.jobs;
             visibleJobs = menu.jobs.stream().filter(job -> !job.state().terminal() && !job.target().isEmpty()).toList();
         }
-        jobOffset = Math.clamp(jobOffset, 0, Math.max(0, visibleJobs.size() - 3));
+        jobOffset = com.cappleapple.astralrepository.platform.Backport.clamp(jobOffset, 0, Math.max(0, visibleJobs.size() - 3));
     }
     public void update(NetworkPackets.Page packet) {
         if (packet.menu() != menu.containerId) return;
@@ -115,21 +115,21 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
         return ry / 18 * COLUMNS + rx / 20;
     }
     private void scrollTo(int value) {
-        value = Math.clamp(value, 0, maxScrollRow());
+        value = com.cappleapple.astralrepository.platform.Backport.clamp(value, 0, maxScrollRow());
         if (value != row) { row = value; query(); }
     }
     private static int thumbHeight(int trackHeight, int visible, int total) {
-        return Math.clamp((int)Math.round(trackHeight * (double)visible / Math.max(visible, total)), 16, trackHeight);
+        return com.cappleapple.astralrepository.platform.Backport.clamp((int)Math.round(trackHeight * (double)visible / Math.max(visible, total)), 16, trackHeight);
     }
     public int storageThumbHeight() { return thumbHeight(108, ROWS, (int)((menu.totalEntries + (long)COLUMNS - 1) / COLUMNS)); }
     /** Thumb top relative to this panel, including the storage grid's vertical offset. */
     public int storageThumbTop() {
         int maximum = maxScrollRow();
-        return GRID_Y + (maximum == 0 ? 0 : (int)Math.round((108 - storageThumbHeight()) * (double)Math.clamp(row, 0, maximum) / maximum));
+        return GRID_Y + (maximum == 0 ? 0 : (int)Math.round((108 - storageThumbHeight()) * (double)com.cappleapple.astralrepository.platform.Backport.clamp(row, 0, maximum) / maximum));
     }
     public int storageRowAt(double mouseY, double grabOffset) {
         int travel = 108 - storageThumbHeight(), maximum = maxScrollRow();
-        return travel <= 0 ? 0 : Math.clamp((int)Math.round((mouseY - topPos - GRID_Y - grabOffset) / travel * maximum), 0, maximum);
+        return travel <= 0 ? 0 : com.cappleapple.astralrepository.platform.Backport.clamp((int)Math.round((mouseY - topPos - GRID_Y - grabOffset) / travel * maximum), 0, maximum);
     }
     private void dragStorage(double y) { if (maxScrollRow() > 0) scrollTo(storageRowAt(y, storageDragOffset)); }
     private int jobThumbHeight() { return thumbHeight(70, 3, visibleJobs.size()); }
@@ -139,7 +139,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
     }
     private void dragJobs(double y) {
         int travel = 70 - jobThumbHeight(), maximum = Math.max(0, visibleJobs.size() - 3);
-        jobOffset = travel <= 0 ? 0 : Math.clamp((int)Math.round((y - topPos - JOB_Y - jobDragOffset) / travel * maximum), 0, maximum);
+        jobOffset = travel <= 0 ? 0 : com.cappleapple.astralrepository.platform.Backport.clamp((int)Math.round((y - topPos - JOB_Y - jobDragOffset) / travel * maximum), 0, maximum);
     }
     @Override public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if(missingDetails!=null){closeMissingDetails();return true;}
@@ -157,7 +157,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
             int thumbTop = topPos + storageThumbTop();
             boolean grabbedThumb = mouseY >= thumbTop && mouseY < thumbTop + storageThumbHeight();
             storageDragOffset = grabbedThumb
-                    ? mouseY - topPos - GRID_Y - (108 - storageThumbHeight()) * (double)Math.clamp(row, 0, maxScrollRow()) / maxScrollRow()
+                    ? mouseY - topPos - GRID_Y - (108 - storageThumbHeight()) * (double)com.cappleapple.astralrepository.platform.Backport.clamp(row, 0, maxScrollRow()) / maxScrollRow()
                     : storageThumbHeight() / 2.0;
             draggingStorage = true;
             if (!grabbedThumb) dragStorage(mouseY);
@@ -210,13 +210,13 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
         if (draggingJobs) { dragJobs(y); return true; }
         return super.mouseDragged(x, y, button, dx, dy);
     }
-    @Override public boolean mouseScrolled(double x, double y, double dx, double dy) {
-        if(missingDetails!=null)return missingDetails.mouseScrolled(x,y,dx,dy);
-        if (dy == 0) return super.mouseScrolled(x, y, dx, dy);
+    @Override public boolean mouseScrolled(double x,double y,double dy) {
+        if(missingDetails!=null)return missingDetails.mouseScrolled(x,y,dy);
+        if (dy == 0) return super.mouseScrolled(x,y,dy);
         if (NumericScroll.adjust(quantity,x,y,dy,1,4096,false)) { updateControls(); return true; }
         if (within(x, y, GRID_X, GRID_Y, 190, 108)) { scrollTo(row + (dy < 0 ? 1 : -1)); return true; }
-        if (visibleJobs.size() > 3 && within(x, y, 207, JOB_Y, 108, 70)) { jobOffset = Math.clamp(jobOffset + (dy < 0 ? 1 : -1), 0, visibleJobs.size() - 3); return true; }
-        return super.mouseScrolled(x, y, dx, dy);
+        if (visibleJobs.size() > 3 && within(x, y, 207, JOB_Y, 108, 70)) { jobOffset = com.cappleapple.astralrepository.platform.Backport.clamp(jobOffset + (dy < 0 ? 1 : -1), 0, visibleJobs.size() - 3); return true; }
+        return super.mouseScrolled(x,y,dy);
     }
     @Override public boolean keyPressed(int key, int scan, int modifiers) {
         if(missingDetails!=null){if(key==256)closeMissingDetails();return true;}
@@ -261,7 +261,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
             }
             if (i < menu.entries.size()) {
                 var entry = menu.entries.get(i);
-                if (!selected.isEmpty() && ItemStack.isSameItemSameComponents(selected, entry.stack())) translucentSprite(g, x, y, 18, 0, 18, 18);
+                if (!selected.isEmpty() && ItemStack.isSameItemSameTags(selected, entry.stack())) translucentSprite(g, x, y, 18, 0, 18, 18);
                 g.renderItem(entry.stack(), x + 1, y + 1);
                 g.pose().pushPose(); g.pose().translate(0, 0, 200);
                 if (entry.craftable()) sprite(g, x + 10, y + 1, 112, 72, 8, 8);
@@ -294,7 +294,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
             String amount = shortCount(job.count());
             g.drawString(font, amount, x + 80 - font.width(amount), y + 4, 0xD9DEFB, false);
             sprite(g, x + 24, y + 16, 0, 64, 70, 4);
-            int progress = job.total() == 0 ? 0 : Math.clamp((int)(70L * job.completed() / job.total()), 0, 70);
+            int progress = job.total() == 0 ? 0 : com.cappleapple.astralrepository.platform.Backport.clamp((int)(70L * job.completed() / job.total()), 0, 70);
             if (progress > 0) sprite(g, x + 24, y + 16, 0, 70, progress, 4);
             }
             if (within(mouseX, mouseY, 291, JOB_Y + i * 24 + 2, 12, 12)) {
@@ -327,9 +327,7 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
         if (n >= 10_000) return n / 1_000 + "k";
         return Long.toString(n);
     }
-    @Override protected void renderSlotHighlight(GuiGraphics g, Slot slot, int mouseX, int mouseY, float partial) {
-        // Native crafting/inventory slots receive the same tint in renderBg, before their items.
-    }
+    public int getSlotColor(int slot){return 0;}
     @Override protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
         g.drawString(font, title, titleLabelX, titleLabelY, 0xD9DEFB, false);
         g.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0xD9DEFB, false);

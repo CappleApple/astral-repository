@@ -6,18 +6,18 @@ import io.netty.buffer.Unpooled;
 import java.util.List;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.gametest.GameTestHolder;
-import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.gametest.GameTestHolder;
+import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
 public final class NexusRequestGameTests {
     @GameTest(templateNamespace="astral_repository", template="empty_workshop")
     public static void identicalWindowsStillAcknowledgeTheLatestRequestThroughTheWire(GameTestHelper helper) {
-        var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
+        var buffer = new FriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
         try {
             var request = new NetworkPackets.Action(91, NetworkPackets.SEARCH, ItemStack.EMPTY, 0, 3, "iron", 3);
             NetworkPackets.Action.CODEC.encode(buffer, request);
@@ -38,7 +38,7 @@ public final class NexusRequestGameTests {
             NetworkPackets.Delta.CODEC.encode(buffer, delta);
             var decodedDelta = NetworkPackets.Delta.CODEC.decode(buffer);
             var acknowledged = NetworkPackets.reconstruct(baseline, decodedDelta);
-            helper.assertTrue(acknowledged != null && acknowledged.request() == 3 && acknowledged.revision() == 2 && acknowledged.entries().getFirst().count() == 12, "Delta reconstruction advances request identity without changing the resource");
+            helper.assertTrue(acknowledged != null && acknowledged.request() == 3 && acknowledged.revision() == 2 && acknowledged.entries().get(0).count() == 12, "Delta reconstruction advances request identity without changing the resource");
             helper.assertTrue(NetworkPackets.difference(acknowledged, new NetworkPackets.Page(91, 3, 0, 1, "", rows, List.of(), 3), false) == null, "After the acknowledgement, idle broadcasts send nothing");
             helper.succeed();
         } finally { buffer.release(); }
