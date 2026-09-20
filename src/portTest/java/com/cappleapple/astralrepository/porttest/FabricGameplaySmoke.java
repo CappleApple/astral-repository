@@ -84,22 +84,28 @@ public final class FabricGameplaySmoke implements net.fabricmc.api.ClientModInit
                 server(p->{
                     var level=p.serverLevel();var tome=p.getMainHandItem().copy();check(RecipeTomeItem.product(tome,level.registryAccess()).is(Items.OAK_PLANKS),"Server inscription output");p.closeContainer();
                     var table=new BlockPos(0,-60,-2);var shelf=new BlockPos(1,-60,-2);level.setBlockAndUpdate(table,Blocks.CRAFTING_TABLE.defaultBlockState());level.setBlockAndUpdate(shelf,Blocks.CHISELED_BOOKSHELF.defaultBlockState());((Container)level.getBlockEntity(shelf)).setItem(0,tome);
-                    ((Container)level.getBlockEntity(CHEST)).setItem(1,new ItemStack(Items.OAK_LOG,4));NetworkManager.changed(level,table);NetworkManager.changed(level,shelf);NetworkManager.changed(level,CHEST);
+                    addToEmptySlot((Container)level.getBlockEntity(CHEST),new ItemStack(Items.OAK_LOG,4));NetworkManager.changed(level,table);NetworkManager.changed(level,shelf);NetworkManager.changed(level,CHEST);
                     p.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
                 });next(14);
             }else if(phase==14&&ticks>60){server(p->NetworkManager.open(p,GlobalPos.of(p.level().dimension(),NEXUS)));next(15);
             }else if(phase==15&&mc.screen instanceof NexusScreen screen&&screen.getMenu().entries.stream().anyMatch(e->e.stack().is(Items.OAK_PLANKS)&&e.craftable())){
                 com.cappleapple.astralrepository.platform.network.PacketDistributor.sendToServer(new NetworkPackets.Action(mc.player.containerMenu.containerId,NetworkPackets.CRAFT,new ItemStack(Items.OAK_PLANKS),8,0,""));next(16);
             }else if(phase==16&&mc.screen instanceof NexusScreen screen&&screen.getMenu().entries.stream().anyMatch(e->e.stack().is(Items.OAK_PLANKS)&&e.count()==8)){
-                server(p->{var menu=(NexusMenu)p.containerMenu;check(menu.network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.OAK_PLANKS)),0L)==8,"Autocraft output inserted in real storage");check(menu.network().crafting().statuses().stream().anyMatch(j->j.state().equals("COMPLETE")),"Autocraft finished a real job");});capture("nexus-autocraft.png");next(17);
+                server(p->{var menu=(NexusMenu)p.containerMenu;check(menu.network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.OAK_PLANKS)),0L)==8,"Autocraft output inserted in real storage");check(menu.network().crafting().statuses().stream().anyMatch(j->j.state().equals("COMPLETE")),"Autocraft finished a real job");check(menu.network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.IRON_INGOT)),0L)==64,"Autocraft setup and completion must conserve all 64 deposited iron ingots");LogUtils.getLogger().info("FABRIC_GAMEPLAY_IRON_CONSERVED 64");});capture("nexus-autocraft.png");next(17);
             }else if(phase==17&&Boolean.getBoolean("astral_repository.integrationGameplay")){
                 check(com.cappleapple.astralrepository.compat.AstralEmiPlugin.registered,"EMI integration registered");server(p->{p.closeContainer();p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(AstralContent.FIELD_GUIDE.orElseThrow().get()));AstralContent.FIELD_GUIDE.orElseThrow().get().use(p.level(),p,InteractionHand.MAIN_HAND);});next(18);
             }else if(phase==18&&mc.screen!=null&&mc.screen.getClass().getName().equals("vazkii.patchouli.client.book.gui.GuiBookLanding")&&ticks>20){capture("field-guide.png");next(19);
             }else if(phase==19||phase==17){
-                check(!mc.mouseHandler.isMouseGrabbed(),"Client captured mouse");Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: 60 survival block placements across all six faces; stateful storage break/re-place; real rune transfer with stock cap; placed world render; all item localization/tooltips; synchronized linked Nexus menu; client-to-server withdrawal/deposit packets and vanilla menu-click crafting; actual Recipe Tome catalogue and inscription; bookshelf discovery and complete eight-plank autocraft.\n");LogUtils.getLogger().info("FABRIC_GAMEPLAY_OK");done=true;mc.stop();
+                check(!mc.mouseHandler.isMouseGrabbed(),"Client captured mouse");Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: 60 survival block placements across all six faces; stateful storage break/re-place; real rune transfer with stock cap; placed world render; all item localization/tooltips; synchronized linked Nexus menu; client-to-server withdrawal/deposit packets and vanilla menu-click crafting; actual Recipe Tome catalogue and inscription; bookshelf discovery and complete eight-plank autocraft; all 64 deposited iron ingots conserved through final completion.\n");LogUtils.getLogger().info("FABRIC_GAMEPLAY_OK");done=true;mc.stop();
 
             }
         }catch(Throwable failure){done=true;LogUtils.getLogger().error("Fabric gameplay regression failed",failure);try{Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"FAIL: "+failure+"\n");}catch(Exception ignored){}mc.stop();}
+    }
+    private static void addToEmptySlot(Container container,ItemStack stack){
+        for(int slot=0;slot<container.getContainerSize();slot++)if(container.getItem(slot).isEmpty()){
+            container.setItem(slot,stack);container.setChanged();return;
+        }
+        throw new AssertionError("No empty chest slot for autocraft inputs");
     }
     private static void workshop(ServerPlayer p){
         FabricGameplayAssertions.prepare(p);
