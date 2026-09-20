@@ -1,0 +1,13 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="CC-BY-NC-SA-4.0"
+[[mods]]
+modId="astral_port_test"
+version="1"
+displayName="Astral Repository packaged validation fixture"
+[[dependencies.astral_port_test]]
+modId="astral_repository"
+mandatory=true
+versionRange="[${version}]"
+ordering="AFTER"
+side="BOTH"

@@ -10,7 +10,7 @@ description='''A crystal network that discovers workshop storage, moves resource
 [[dependencies.astral_repository]]
 modId="forge"
 mandatory=true
-versionRange="[47.4.23,)"
+versionRange="[47.4.10,)"
 ordering="NONE"
 side="BOTH"
 [[dependencies.astral_repository]]
