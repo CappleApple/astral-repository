@@ -20,7 +20,7 @@ dependencies {
     implementation include('maven.modrinth:forge-config-api-port:c1wkPZ5n')
     implementation include('teamreborn:energy:5.0.0')
     compileOnly 'dev.emi:emi-neoforge:1.1.24+1.21.1:api'
-    compileOnly 'mezz.jei:jei-26.3-fabric-api:31.0.0.11'
+    compileOnly 'mezz.jei:jei-26.3-fabric-api:31.1.0.12'
     compileOnly 'maven.modrinth:jade:26.3.1+fabric'
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -93,3 +93,7 @@ if (project.hasProperty('clientSmoke')) {
     }
 }
 
+
+ext.gameplayJeiVersion = 'xF7ChAdJ'
+ext.gameplayJadeVersion = 'lt43vWtF'
+apply from: 'tools/fabric-production-validation.gradle'

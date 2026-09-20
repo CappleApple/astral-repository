@@ -1,0 +1,57 @@
+// Run the packaged mod with the normal Fabric game launcher and a separate development fixture.
+// First build gameplayFixtureJar with -PclientSmoke, then run productionGameplay without that flag.
+configurations {
+    gameplayFabricApi { transitive = false }
+    gameplayOptionalMods { transitive = false }
+}
+dependencies {
+    gameplayFabricApi "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    gameplayOptionalMods "maven.modrinth:jei:${gameplayJeiVersion}"
+    gameplayOptionalMods "maven.modrinth:jade:${gameplayJadeVersion}"
+    if (minecraft_version == "26.3") gameplayOptionalMods "maven.modrinth:mezzconfig:ZaJjEdMS"
+}
+def fixtureMetadata = layout.buildDirectory.dir('gameplay-fixture-metadata')
+tasks.register('gameplayFixtureMetadata') {
+    outputs.dir(fixtureMetadata)
+    doLast {
+        def directory = fixtureMetadata.get().asFile
+        directory.mkdirs()
+        new File(directory, 'fabric.mod.json').text = groovy.json.JsonOutput.toJson([
+            schemaVersion: 1, id: 'astral_repository_gameplay', version: '1.0', environment: 'client',
+            entrypoints: [client: ['com.cappleapple.astralrepository.smoke.ModernClientSmoke']],
+            depends: [astral_repository: '*', 'fabric-api': '*']
+        ])
+    }
+}
+tasks.register('gameplayFixtureJar', Jar) {
+    dependsOn tasks.named('classes'), tasks.named('gameplayFixtureMetadata')
+    archiveFileName = 'astral-repository-gameplay-fixture.jar'
+    destinationDirectory = layout.buildDirectory.dir('gameplay-fixture')
+    from(sourceSets.main.output) { include 'com/cappleapple/astralrepository/smoke/**' }
+    from(fixtureMetadata)
+    doFirst {
+        if (!project.hasProperty('clientSmoke')) throw new GradleException('Build the fixture with -PclientSmoke first.')
+    }
+}
+tasks.register('productionGameplay', project.plugins.findPlugin('fabric-loom').class.classLoader.loadClass('net.fabricmc.loom.task.prod.ClientProductionRunTask')) {
+    dependsOn tasks.named('jar')
+    mods.setFrom(tasks.named('jar').flatMap { it.archiveFile }, configurations.gameplayFabricApi,
+        layout.buildDirectory.file('gameplay-fixture/astral-repository-gameplay-fixture.jar'))
+    if (project.hasProperty('optionalRuntime')) mods.from(configurations.gameplayOptionalMods)
+    runDir = layout.buildDirectory.dir(project.hasProperty('optionalRuntime') ? 'production-gameplay-optional' : 'production-gameplay')
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    // Match the game's development/launcher JVM settings; shader compilation needs the larger shadow stack on Windows.
+    jvmArgs.addAll('-Xmx3G', '-XX:StackShadowPages=32', '--sun-misc-unsafe-memory-access=allow', '--enable-native-access=ALL-UNNAMED', '--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED')
+    jvmArgs.addAll('-Dastral_repository.testClient=true', '-Dastral_repository.modernClientSmoke=true', '-Dastral_repository.productionGameplay=true')
+    doFirst {
+        if (project.hasProperty('clientSmoke')) throw new GradleException('Run productionGameplay without -PclientSmoke so the release JAR stays clean.')
+        def directory = runDir.get().asFile
+        directory.mkdirs()
+        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:3\nmaxAnisotropyBit:1\ntextureFiltering:1\n'
+        new File(directory, 'captures/result.txt').delete()
+    }
+    doLast {
+        def result = new File(runDir.get().asFile, 'captures/result.txt')
+        if (!result.exists() || !result.text.startsWith('PASS:')) throw new GradleException('Packaged gameplay failed: ' + (result.exists() ? result.text : 'no result file'))
+    }
+}
