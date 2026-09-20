@@ -426,7 +426,7 @@ public final class AstralNetwork implements NetworkAccess {
     }
     public static int color(NetworkAnchor node){return node.channel()<0?0x65D6CF:DyeColor.byId(node.channel()).getTextureDiffuseColor();}
     /** A rune sees network storage except its own physical host (including aliased double chests). */
-    public StorageProvider runeItems(GlobalPos host,Set<Object> excluded,TransferVisuals.Endpoint endpoint){return new StorageProvider(){
+    public StorageProvider runeItems(GlobalPos host,Set<Object> excluded,TransferVisuals.Endpoint endpoint){return new RuneRouting.Items(){
         public String id(){return "astral_network";} public Object identity(){return AstralNetwork.this;}
         public boolean valid(){return manager.networkAt(origin)==AstralNetwork.this;}
         public long capacity(){return AstralNetwork.this.capacity();}
@@ -454,6 +454,24 @@ public final class AstralNetwork implements NetworkAccess {
             }
             return Map.copyOf(result);
         }
+        public List<RuneRouting.ItemEndpoint> sources(ItemKey key){
+            if(!powered)return List.of();var result=new ArrayList<RuneRouting.ItemEndpoint>();
+            for(String id:index.locations(key)){
+                var bound=storages.get(id);if(bound==null||!allowed(id,bound))continue;
+                var filter=bound.owner.networkExtractionFilter();
+                if(filter.matches(key.sample())&&index.provider(id).getOrDefault(key,0L)>filter.minimum())result.add(runeItemEndpoint(bound));
+            }
+            return result;
+        }
+        public List<RuneRouting.ItemEndpoint> destinations(ItemKey key){
+            if(!powered)return List.of();var result=new ArrayList<RuneRouting.ItemEndpoint>();
+            var order=new ArrayList<>(storages.entrySet());order.sort(destinationOrder(host,key));
+            for(var entry:order){var bound=entry.getValue();if(!allowed(entry.getKey(),bound))continue;
+                var filter=bound.owner.networkInsertionFilter();
+                if(filter.matches(key.sample())&&index.provider(entry.getKey()).getOrDefault(key,0L)<filter.target())result.add(runeItemEndpoint(bound));
+            }
+            return result;
+        }
         public ItemStack extract(ItemKey key,int amount,boolean simulate){
             if(!powered||amount<=0)return ItemStack.EMPTY;ItemStack result=key.sample().copyWithCount(0);
             for(String id:index.locations(key)){var bound=storages.get(id);if(bound==null||!allowed(id,bound)||!bound.owner.networkExtractionFilter().unrestricted()&&!bound.owner.networkExtractionFilter().matches(key.sample()))continue;
@@ -471,7 +489,7 @@ public final class AstralNetwork implements NetworkAccess {
         }
     };}
     public ResourceProvider runeFluids(GlobalPos host,Set<Object> excluded,TransferVisuals.Endpoint endpoint){return runeResources(host,excluded,endpoint,ResourceKinds.FLUID);}
-    public ResourceProvider runeResources(GlobalPos host,Set<Object> excluded,TransferVisuals.Endpoint endpoint,net.minecraft.resources.Identifier kind){return new ResourceProvider(){
+    public ResourceProvider runeResources(GlobalPos host,Set<Object> excluded,TransferVisuals.Endpoint endpoint,net.minecraft.resources.Identifier kind){return new RuneRouting.Resources(){
         public String id(){return "astral_network_"+kind.getPath();}public Object identity(){return AstralNetwork.this;}public net.minecraft.resources.Identifier resourceType(){return kind;}public boolean valid(){return manager.networkAt(origin)==AstralNetwork.this;}public long capacity(){return -1;}
         private int candidateTick;
         private List<Map.Entry<String,BoundResource>> candidates,insertionOrder;
@@ -509,6 +527,17 @@ public final class AstralNetwork implements NetworkAccess {
                 for(var value:bound.provider.snapshot().entrySet())if(matches(bound.owner.networkExtractionFilter(),value.getKey()))result.merge(value.getKey(),Math.max(0,value.getValue()-bound.owner.networkExtractionFilter().minimum()),NetworkInventoryIndex::saturatingAdd);
             }return Map.copyOf(result);
         }
+        public List<RuneRouting.ResourceEndpoint> sources(ResourceKey key){return endpoints(key,false);}
+        public List<RuneRouting.ResourceEndpoint> destinations(ResourceKey key){return endpoints(key,true);}
+        private List<RuneRouting.ResourceEndpoint> endpoints(ResourceKey key,boolean insert){
+            if(!powered||!key.type().equals(kind))return List.of();var result=new ArrayList<RuneRouting.ResourceEndpoint>();
+            Set<Object> seen=new HashSet<>();
+            for(var entry:ordered(insert)){var bound=entry.getValue();if(!available(entry)||!seen.add(bound.provider.identity()))continue;
+                var filter=insert?bound.owner.networkInsertionFilter():bound.owner.networkExtractionFilter();
+                if(matches(filter,key))result.add(runeResourceEndpoint(bound));
+            }
+            return result;
+        }
         public long extract(ResourceKey key,long amount,boolean simulate){return move(key,amount,simulate,false);}
         public long insert(ResourceKey key,long amount,boolean simulate){return move(key,amount,simulate,true);}
         private long move(ResourceKey key,long amount,boolean simulate,boolean insert){
@@ -531,6 +560,114 @@ public final class AstralNetwork implements NetworkAccess {
             }finally{if(!simulate){candidates=null;insertionOrder=null;aliases=Map.of();}}
         }
     };}
+    /** Restore saved flights before the incremental inventory index has caught up. */
+    StorageProvider restoreRuneItems(GlobalPos pos,Direction side,String providerId){
+        if(!loaded(pos))return null;
+        NetworkAnchor owner=owner(pos);if(owner==null||runePhysicalNetwork(pos,owner,providerId)!=this)return null;
+        ServerLevel level=server.getLevel(pos.dimension());
+        for(StorageProvider provider:CompatibilityRegistry.discoverStorage(level,pos.pos(),side))
+            if(provider.id().equals(providerId)&&provider.valid())return runeItemEndpoint(new BoundStorage(pos,owner,provider)).provider();
+        return null;
+    }
+    ResourceProvider restoreRuneResource(GlobalPos pos,Direction side,String providerId,ResourceKey key){
+        if(!loaded(pos))return null;
+        NetworkAnchor owner=owner(pos);if(owner==null||runePhysicalNetwork(pos,owner,providerId)!=this)return null;
+        ServerLevel level=server.getLevel(pos.dimension());
+        for(ResourceProvider provider:CompatibilityRegistry.discoverResources(level,pos.pos(),side))
+            if(provider.id().equals(providerId)&&provider.resourceType().equals(key.type())&&provider.valid())
+                return runeResourceEndpoint(new BoundResource(pos,owner,provider)).provider();
+        return null;
+    }
+    /** A flight retains its physical provider, while component policy and power follow rebuilds. */
+    private AstralNetwork runePhysicalNetwork(GlobalPos pos,NetworkAnchor owner,String provider){
+        if(!loaded(pos)||owner.isRemoved()||!owner.enabled()||CraftingService.isProcessorReserved(pos))return null;
+        var network=manager.networkAt(owner.address());
+        return network==null||network.failed.contains(NetworkManager.id(pos)+"/"+provider)?null:network;
+    }
+    private void runePhysicalItemsChanged(GlobalPos pos,StorageProvider provider,ItemKey key,long delta){
+        String id=identities.get(provider.identity());
+        if(id!=null)adjustCount(id,key,delta);
+        else{invalidate(pos);manager.providerIdentitiesChanged(Set.of(provider.identity()));}
+        ServerLevel level=server.getLevel(pos.dimension());if(level!=null)NetworkManager.providerChanged(level,pos.pos());
+    }
+    private RuneRouting.ItemEndpoint runeItemEndpoint(BoundStorage bound){
+        StorageProvider delegate=bound.provider;
+        StorageProvider routed=new RuneRouting.ItemPolicy(){
+            public AnchorAddress policyAnchor(){return bound.owner.address();}
+            public long insertionLimit(ItemKey key){
+                if(current()==null)return 0;
+                var filter=bound.owner.networkInsertionFilter();if(!filter.matches(key.sample()))return 0;
+                return filter.target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,filter.target()-delegate.snapshot().getOrDefault(key,0L));
+            }
+            private AstralNetwork current(){return delegate.valid()?runePhysicalNetwork(bound.pos,bound.owner,delegate.id()):null;}
+            public String id(){return delegate.id();}public Object identity(){return delegate.identity();}
+            public boolean valid(){return current()!=null;}public long capacity(){return delegate.capacity();}
+            public long version(){return delegate.version();}
+            public Map<ItemKey,Long> snapshot(){return valid()?delegate.snapshot():Map.of();}
+            public Optional<Map<ItemKey,Long>> poll(int budget){return valid()?delegate.poll(budget):Optional.of(Map.of());}
+            public ItemKey candidate(java.util.function.Predicate<ItemStack> matches){return valid()?delegate.candidate(matches):null;}
+            public ItemStack extract(ItemKey key,int amount,boolean simulate){
+                var network=current();if(network==null||!network.powered||amount<=0)return ItemStack.EMPTY;
+                var filter=bound.owner.networkExtractionFilter();if(!filter.matches(key.sample()))return ItemStack.EMPTY;
+                int offer=amount;
+                if(filter.minimum()>0)offer=(int)Math.min(offer,Math.max(0,delegate.snapshot().getOrDefault(key,0L)-filter.minimum()));
+                if(offer<=0||!simulate&&!network.power.operation(AstralConfig.transferCost.get()+offer*AstralConfig.itemCost.get()))return ItemStack.EMPTY;
+                ItemStack result=delegate.extract(key,offer,simulate);
+                if(result.getCount()<0||result.getCount()>offer||!result.isEmpty()&&!key.matches(result))throw new IllegalStateException("Invalid network extraction");
+                if(!simulate&&!result.isEmpty())network.runePhysicalItemsChanged(bound.pos,delegate,key,-result.getCount());
+                return result;
+            }
+            public ItemStack insert(ItemStack stack,boolean simulate){
+                var network=current();if(network==null||!network.powered||stack.isEmpty())return stack.copy();
+                var filter=bound.owner.networkInsertionFilter();if(!filter.matches(stack))return stack.copy();
+                ItemKey key=new ItemKey(stack);int offer=stack.getCount();
+                if(filter.target()!=Long.MAX_VALUE)offer=(int)Math.min(offer,Math.max(0,filter.target()-delegate.snapshot().getOrDefault(key,0L)));
+                if(offer<=0||!simulate&&!network.power.operation(AstralConfig.transferCost.get()+offer*AstralConfig.itemCost.get()))return stack.copy();
+                ItemStack remainder=delegate.insert(stack.copyWithCount(offer),simulate);
+                if(remainder.getCount()<0||remainder.getCount()>offer||!remainder.isEmpty()&&!key.matches(remainder))throw new IllegalStateException("Invalid network insertion");
+                int accepted=offer-remainder.getCount();
+                if(!simulate&&accepted>0)network.runePhysicalItemsChanged(bound.pos,delegate,key,accepted);
+                return stack.copyWithCount(stack.getCount()-accepted);
+            }
+        };
+        return new RuneRouting.ItemEndpoint(bound.pos,bound.owner.attachedTo(bound.pos)?bound.owner.providerSide():null,routed);
+    }
+    private RuneRouting.ResourceEndpoint runeResourceEndpoint(BoundResource bound){
+        ResourceProvider delegate=bound.provider;
+        ResourceProvider routed=new RuneRouting.ResourcePolicy(){
+            public AnchorAddress policyAnchor(){return bound.owner.address();}
+            public long insertionLimit(ResourceKey key){
+                if(current()==null||!key.type().equals(delegate.resourceType()))return 0;
+                var filter=bound.owner.networkInsertionFilter();if(!matches(filter,key))return 0;
+                return filter.target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,filter.target()-delegate.snapshot().getOrDefault(key,0L));
+            }
+            private AstralNetwork current(){return delegate.valid()?runePhysicalNetwork(bound.pos,bound.owner,delegate.id()):null;}
+            public String id(){return delegate.id();}public Object identity(){return delegate.identity();}
+            public net.minecraft.resources.Identifier resourceType(){return delegate.resourceType();}
+            public boolean valid(){return current()!=null;}public long capacity(){return delegate.capacity();}
+            public long version(){return delegate.version();}public String unit(){return delegate.unit();}
+            public net.minecraft.resources.Identifier visualization(){return delegate.visualization();}
+            public Map<ResourceKey,Long> snapshot(){return valid()?delegate.snapshot():Map.of();}
+            public long extract(ResourceKey key,long amount,boolean simulate){return move(key,amount,simulate,false);}
+            public long insert(ResourceKey key,long amount,boolean simulate){return move(key,amount,simulate,true);}
+            private long move(ResourceKey key,long amount,boolean simulate,boolean insert){
+                var network=current();if(network==null||!network.powered||amount<=0||!key.type().equals(resourceType()))return 0;
+                var filter=insert?bound.owner.networkInsertionFilter():bound.owner.networkExtractionFilter();if(!matches(filter,key))return 0;
+                long offer=amount;
+                if(insert&&filter.target()!=Long.MAX_VALUE||!insert&&filter.minimum()>0){
+                    long stored=delegate.snapshot().getOrDefault(key,0L);
+                    offer=Math.min(offer,Math.max(0,insert?filter.target()-stored:stored-filter.minimum()));
+                }
+                double cost=key.type().equals(ResourceKinds.FLUID)?AstralConfig.fluidCost.get():key.type().equals(ResourceKinds.SOURCE)?AstralConfig.sourceCost.get():AstralConfig.energyCost.get();
+                if(offer<=0||!simulate&&!network.power.operation(AstralConfig.transferCost.get()+offer*cost))return 0;
+                long result=insert?delegate.insert(key,offer,simulate):delegate.extract(key,offer,simulate);
+                if(result<0||result>offer)throw new IllegalStateException("Invalid network resource transfer");
+                if(!simulate&&result>0){network.invalidate(bound.pos);ServerLevel level=server.getLevel(bound.pos.dimension());if(level!=null)NetworkManager.providerChanged(level,bound.pos.pos());}
+                return result;
+            }
+        };
+        return new RuneRouting.ResourceEndpoint(bound.pos,bound.owner.attachedTo(bound.pos)?bound.owner.providerSide():null,routed);
+    }
     /** Return confirmed remainders to a network endpoint, which need not expose its own tank. */
     long recoverRuneResource(GlobalPos source,ResourceKey key,long amount){
         if(key instanceof ItemKey item){int offer=(int)Math.min(64,amount);return offer-insertAt(item.sample().copyWithCount(offer),source).getCount();}

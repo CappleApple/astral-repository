@@ -8,10 +8,10 @@ import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.feature.*;
 import net.fabricmc.fabric.api.client.rendering.v1.SubmitRenderPhases;
-import net.fabricmc.fabric.api.client.rendering.v1.FabricOrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.feature.submit.BatchableSubmit;
 import net.minecraft.client.renderer.rendertype.*;
 import com.cappleapple.astralrepository.platform.client.event.RegisterFeatureRenderersEvent;
+import net.fabricmc.fabric.api.client.rendering.v1.FabricOrderedSubmitNodeCollector;
 
 /** Keeps material state attached to its geometry throughout deferred rendering. */
 public final class AstralMaterialFeatureRenderer implements FeatureRenderer<AstralMaterialFeatureRenderer.Submit> {
@@ -20,11 +20,11 @@ public final class AstralMaterialFeatureRenderer implements FeatureRenderer<Astr
         @Override public FeatureRendererType<Submit> featureType(){return TYPE;}
         @Override public Object batchKey(){return renderType;}
     }
-    private record Draw(PreparedRenderType material,StagedVertexBuffer.Draw vertices,AstralPlaneRenderType.Snapshot snapshot) {}
+    private record Draw(PreparedRenderType material,StagedVertexBuffer.Draw vertices,AstralPlaneRenderType.Snapshot snapshot,boolean transfer,PreparedRenderType depth) {}
     private final List<List<Draw>> groups=new ArrayList<>();
     public static void register(RegisterFeatureRenderersEvent event){event.register(TYPE,new AstralMaterialFeatureRenderer());}
     public static void submit(PoseStack pose,SubmitNodeCollector collector,RenderType type,SubmitNodeCollector.CustomGeometryRenderer geometry,AstralPlaneRenderType.Snapshot snapshot){
-        if(snapshot==null){collector.submitCustomGeometry(pose,type,geometry);return;}
+        if(snapshot==null&&!TransferRenderPass.isTransfer(type)){collector.submitCustomGeometry(pose,type,geometry);return;}
         ((FabricOrderedSubmitNodeCollector)collector.order(0)).submitCustom(type.hasBlending()?SubmitRenderPhases.TRANSLUCENT_CUSTOM_GEOMETRY:SubmitRenderPhases.SOLID,new Submit(pose.last().copy(),type,geometry,snapshot));
     }
     @Override public void prepareGroup(FeatureFrameContext context,List<Submit> submits,boolean ordered){
@@ -32,7 +32,7 @@ public final class AstralMaterialFeatureRenderer implements FeatureRenderer<Astr
         for(var submit:submits){
             var type=submit.renderType();
             var draw=context.stagedVertexBuffer().appendDraw(type.format(),type.primitiveTopology(),type.sortOnUpload()?RenderSystem.getProjectionType().vertexSorting():null);
-            draws.add(new Draw(type.prepare(),draw,submit.snapshot().withBobMatrices()));
+            draws.add(new Draw(type.prepare(),draw,submit.snapshot()==null?null:submit.snapshot().withBobMatrices(),TransferRenderPass.isTransfer(type),type==BindingBeamRenderType.BEAM?BindingBeamRenderType.DEPTH.prepare():null));
             submit.geometry().render(submit.pose(),context.stagedVertexBuffer().getVertexBuilder(draw));
         }
         groups.add(draws);
@@ -41,9 +41,12 @@ public final class AstralMaterialFeatureRenderer implements FeatureRenderer<Astr
         for(var draw:groups.get(groupIndex)){
             var info=context.stagedVertexBuffer().getExecuteInfo(draw.vertices());
             if(info==null)continue;
+            if(draw.transfer()){
+                TransferRenderPass.draw(draw.material(),draw.depth(),info);continue;
+            }
             var previous=AstralPlaneRenderType.useSnapshot(draw.snapshot());
             try{draw.material().drawFromBuffer(info);}finally{AstralPlaneRenderType.useSnapshot(previous);}
         }
     }
-    @Override public void finishExecute(FeatureFrameContext context){groups.clear();}
+    @Override public void finishExecute(FeatureFrameContext context){groups.clear();TransferRenderPass.clear();}
 }

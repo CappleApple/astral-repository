@@ -37,6 +37,10 @@ def generator = tasks.register('generateMinecraft263Sources', Sync) {
             line = line.replace('InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), key)', 'InputConstants.isKeyDown(key)')
             line = line.replace('com.mojang.blaze3d.platform.Window window,int key', 'int key')
             line = line.replace('executeGroup(FeatureFrameContext context,int groupIndex', 'executeGroup(FeatureFrameContext context,net.minecraft.client.renderer.oit.OitStage stage,com.mojang.renderpearl.api.commands.RenderPass renderPass,int groupIndex')
+            line = line.replace('.setOutputTarget(TransferRenderPass.TARGET)', '')
+            line = line.replace('RenderSetup.builder(', 'com.cappleapple.astralrepository.client.OitMaterials.setup(')
+            line = line.replace('event.registerPipeline(BindingBeamRenderType.DEPTH_PIPELINE);registered=true;', 'event.registerPipeline(BindingBeamRenderType.DEPTH_PIPELINE);com.cappleapple.astralrepository.client.OitMaterials.register(event::registerPipeline);registered=true;')
+            line = line.replace('TransferRenderPass.draw(draw.material(),draw.depth(),info);', 'TransferRenderPass.draw(draw.material(),draw.depth(),info,stage,renderPass);')
             line = line.replace('draw.material().drawFromBuffer(info);', 'if(stage==null)draw.material().drawFromBuffer(info,renderPass);else draw.material().drawFromBufferOit(info,stage,renderPass);')
             if(line.contains('submit.geometry().render(')) line += '\n            context.stagedVertexBuffer().requestIndexCount(draw);'
             line = line.replace('player.drop(live,false)', 'player.drop(live,false,net.minecraft.util.Prediction.SERVER_ONLY)')
@@ -46,6 +50,11 @@ def generator = tasks.register('generateMinecraft263Sources', Sync) {
             line = line.replace('resolution,resolution,true,GpuFormat.RGBA8_UNORM', 'resolution,resolution,GpuFormat.RGBA8_UNORM,GpuFormat.D32_FLOAT')
             line = line.replace('swing(InteractionHand.MAIN_HAND)', 'swing(InteractionHand.MAIN_HAND,net.minecraft.world.item.component.SwingAnimation.DEFAULT,false)')
             line = line.replace('RenderTypes.entityGlint()', 'RenderTypes.patternedShieldGlint()')
+            // Vanilla glint is a depth-equal solid overlay; CustomGeometry would incorrectly place it in OIT.
+            if(line.contains('draws.add') && line.contains('RenderTypes.patternedShieldGlint()')) {
+                line = '        draws.add((pose,collector)->((net.minecraft.client.renderer.SubmitNodeCollection)collector.order(1)).solid.submit(new net.minecraft.client.renderer.feature.CustomFeatureRenderer.Submit(pose.last().copy(),net.minecraft.client.renderer.rendertype.RenderTypes.patternedShieldGlint(),(transform,target)->{for(var vertex:immutable)vertex.emit(transform,target);})));'
+            }
+
             line = line.replace('name.startsWith("armor_trim")?Sheets.ARMOR_TRIMS_SHEET:TextureAtlas.LOCATION_BLOCKS', 'TextureAtlas.LOCATION_BLOCKS')
             line = line.replace('model.usesBlockLight()&&info.shade()?faceShade(quad):1', 'model.usesBlockLight()?faceShade(quad):1')
             line = line.replace('switch(quad.direction())', 'switch(quad.materialInfo().shadeDirectionOverride()!=null?quad.materialInfo().shadeDirectionOverride():quad.direction())')

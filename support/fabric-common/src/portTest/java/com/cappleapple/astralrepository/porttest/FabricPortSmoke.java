@@ -2,7 +2,7 @@ package com.cappleapple.astralrepository.porttest;
 import net.fabricmc.api.ModInitializer;import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;import net.fabricmc.fabric.api.transfer.v1.item.*;import net.fabricmc.fabric.api.transfer.v1.fluid.*;import net.fabricmc.fabric.api.transfer.v1.transaction.Transaction;import net.minecraft.core.BlockPos;import net.minecraft.world.item.Items;import com.cappleapple.astralrepository.content.*;
 public final class FabricPortSmoke implements ModInitializer {
  public void onInitialize(){if(!Boolean.getBoolean("astral_repository.portSmoke"))return;ServerLifecycleEvents.SERVER_STARTED.register(server->{try{
-  FabricFluidTransferTest.run();check(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse("astral_repository:bridge_attunement"))==AstralContent.DIMENSIONAL_ATTUNEMENT.get(),"legacy item alias");
+  FabricFluidTransferTest.run();TransitTestWorld.run(server.overworld());check(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.parse("astral_repository:bridge_attunement"))==AstralContent.DIMENSIONAL_ATTUNEMENT.get(),"legacy item alias");
   var world=server.overworld();var pos=new BlockPos(0,90,0);world.getChunkAt(pos);
   var persistenceMarker=java.nio.file.Path.of("gameplay-persistence.marker");
   if(java.nio.file.Files.exists(persistenceMarker)){
