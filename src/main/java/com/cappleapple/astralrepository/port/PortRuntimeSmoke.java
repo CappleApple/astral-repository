@@ -81,6 +81,7 @@ public final class PortRuntimeSmoke {
             layer.setCadence(RuneCadence.DEFAULT.with(RuneCadence.Kind.ITEMS,new RuneCadence.Rate(3,7)));
             check(surface.toggleTarget(layer.id(),net.minecraft.core.GlobalPos.of(level.dimension(),targetPos),Direction.SOUTH).assigned(),"persisted rune target setup");
             check(NetworkManager.get(server).toggleLink(node.address(),surface.address()).success(),"persisted explicit link setup");
+            com.cappleapple.astralrepository.smoke.RuneTransitSmoke.run(server);
             server.saveEverything(true,true,true);java.nio.file.Files.writeString(marker,"Saved runtime fixture for real process restart.\n");
             AstralRepository.LOGGER.info("ASTRAL_PORT_SMOKE_PASS: registry, all 13 mod recipes, native cluster/bud loot, capabilities, transactional rollback, and block entity persistence");
         }catch(Throwable failure){AstralRepository.LOGGER.error("ASTRAL_PORT_SMOKE_FAIL",failure);}

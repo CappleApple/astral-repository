@@ -2,7 +2,7 @@
 
 A magical storage and automation network: place crystals around a workshop, teach a bookshelf the products you want, and let the network find storage, route resources, and coordinate ordinary workstations.
 
-This branch builds Astral Repository **1.11.9** for **Minecraft 26.2**, **NeoForge 26.2.0.88 or newer within Minecraft 26.2**, and **Java 25**. Install the matching JAR on both the client and server. No additional mod is required.
+This branch builds Astral Repository **1.11.11** for **Minecraft 26.2**, **NeoForge 26.2.0.88 or newer within Minecraft 26.2**, and **Java 25**. Install the matching JAR on both the client and server. No additional mod is required.
 
 ## Building
 
@@ -14,7 +14,7 @@ Use Java 25 to run the included Gradle wrapper:
 
 On Linux or macOS, use `./gradlew test build`.
 
-The installable JAR is `build/libs/astral_repository-26.2-neoforge-1.11.9.jar`.
+The installable JAR is `build/libs/astral_repository-26.2-neoforge-1.11.11.jar`.
 
 ## Source and validation
 
@@ -34,11 +34,13 @@ Set-Content build/smoke-client/config/fml.toml 'earlyWindowControl = false'
 
 The client fixture hides the game window, mutes audio, and releases the mouse. The two server commands run separate JVMs; the second verifies saved inventory components, fluids, energy, rune settings, targets, and links before resetting the fixture. The fixture classes are excluded from the release JAR.
 
+The dedicated-server gate also checks 12 automatic-rune scenarios covering all four resource types, instant and delayed transfers, one-tick pipelines, stock limits, failed deliveries, saved flights, and network-bound storage paths. The client gate checks actual resource sprites, fallback item icons, and binding beams in classic and improved transparency.
+
 See the [port validation record on main](https://github.com/CappleApple/astral-repository/blob/main/ports/VALIDATION.md) for the completed checks and their limits. Both the development runtime and packaged JAR passed block placement and localized-name checks, Nexus packet transactions, manual crafting and exact ingredient refill, Recipe Tome/table autocrafting, filtered rune transfers, client rendering, and dedicated-server save/restart checks. The [main branch](https://github.com/CappleApple/astral-repository) retains the original Minecraft 1.21.1 NeoForge implementation and usage documentation.
 
 ## Optional integrations
 
-The packaged JAR passed the gameplay and rendering checks with JEI 30.29.0.201, Jade 26.2.10, and Curios 16.0.0+26.2 installed. These are publisher-designated stable releases. The Curios check equipped Resonance Goggles in the actual head slot and verified server detection, client synchronization, and rendering.
+The packaged JAR passed the gameplay and rendering checks with JEI 30.29.0.201, Jade 26.2.10, and Curios 16.0.0+26.2 installed. These are publisher-designated stable releases. The Curios check equipped Astral Goggles in the actual head slot and verified server detection, client synchronization, and rendering.
 
 Other integration hooks remain optional and were not exercised in a complete third-party modpack. No matching public Patchouli or EMI release was available during validation, so those hooks remain inactive without a matching release. The Field Guide requires Patchouli.
 

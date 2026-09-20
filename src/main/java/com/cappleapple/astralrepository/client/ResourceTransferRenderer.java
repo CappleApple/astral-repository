@@ -26,7 +26,7 @@ final class ResourceTransferRenderer  {
         .withFragmentShader(Identifier.fromNamespaceAndPath("astral_repository","core/resource_transfer"))
         .withBindGroupLayout(BindGroupLayouts.SAMPLER0)
         .withVertexBinding(0,DefaultVertexFormat.ENTITY).withPrimitiveTopology(PrimitiveTopology.QUADS)
-        .withCull(false).withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false))
+        .withCull(false).withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,true))
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT)).build();
     static final RenderPipeline ITEM_PIPELINE=RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
         .withLocation(Identifier.fromNamespaceAndPath("astral_repository","pipeline/item_transfer"))
@@ -34,17 +34,18 @@ final class ResourceTransferRenderer  {
         .withShaderDefine("EMISSIVE").withShaderDefine("NO_OVERLAY").withShaderDefine("NO_CARDINAL_LIGHTING")
         .withBindGroupLayout(BindGroupLayouts.SAMPLER0).withVertexBinding(0,DefaultVertexFormat.ENTITY)
         .withPrimitiveTopology(PrimitiveTopology.QUADS).withCull(false)
-        .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false))
+        .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,true))
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT)).build();
     private static final Map<Identifier,RenderType> ITEM_MATERIALS=new HashMap<>();
-    static RenderType itemMaterial(Identifier atlas){return ITEM_MATERIALS.computeIfAbsent(atlas,key->RenderType.create("astral_repository:item_transfer/"+key,RenderSetup.builder(ITEM_PIPELINE).withTexture("Sampler0",key).sortOnUpload().createRenderSetup()));}
+    static RenderType itemMaterial(Identifier atlas){return ITEM_MATERIALS.computeIfAbsent(atlas,key->RenderType.create("astral_repository:item_transfer/"+key,RenderSetup.builder(ITEM_PIPELINE).setOutputTarget(TransferRenderPass.TARGET).withTexture("Sampler0",key).sortOnUpload().createRenderSetup()));}
     private static final Identifier ENERGY=Identifier.withDefaultNamespace("textures/particle/glow.png");
     private static final RenderType ATLAS=material(TextureAtlas.LOCATION_BLOCKS), POWER=material(ENERGY);
     static void clearCache(){FLUIDS.clear();source=null;}
+    static boolean transferMaterial(RenderType type){return type==ATLAS||type==POWER||ITEM_MATERIALS.containsValue(type);}
     static boolean ready(){return AstralPlaneRenderType.ready();}
     private static RenderType material(Identifier texture){
         return RenderType.create("astral_repository:resource_transfer/"+texture,
-            RenderSetup.builder(PIPELINE).withTexture("Sampler0",texture).sortOnUpload().createRenderSetup());
+            RenderSetup.builder(PIPELINE).setOutputTarget(TransferRenderPass.TARGET).withTexture("Sampler0",texture).sortOnUpload().createRenderSetup());
     }
     static void flush(AstralBufferSource buffers,boolean energy){buffers.endBatch(energy?POWER:ATLAS);}
     static void render(NetworkPackets.Visual packet,Vec3 position,PoseStack pose,AstralBufferSource buffers,org.joml.Quaternionf camera){render(packet,position,pose,buffers,camera,.16F,1);}
