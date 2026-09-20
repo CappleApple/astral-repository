@@ -1,9 +1,0 @@
-{
-  "replace": false,
-  "values": [
-    "astral_repository:storage_nexus",
-    "astral_repository:relay_crystal",
-    "astral_repository:power_node",
-    "astral_repository:seed_storage_crystal"
-  ]
-}

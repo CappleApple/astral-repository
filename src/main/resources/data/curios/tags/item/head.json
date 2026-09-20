@@ -1,4 +1,6 @@
 {
   "replace": false,
-  "values": ["astral_repository:resonance_goggles"]
+  "values": [
+    "astral_repository:resonance_goggles"
+  ]
 }

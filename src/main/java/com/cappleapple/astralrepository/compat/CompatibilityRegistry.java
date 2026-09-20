@@ -42,10 +42,10 @@ public final class CompatibilityRegistry {
         if (!level.hasChunkAt(pos) || VisualWorkbenchCompatibility.isPersistentTable(level,pos)) return List.of();
         List<StorageProvider> result=new ArrayList<>();
         attempt(level,pos,"items",() -> {
-            var tracked=track(Capabilities.ItemHandler.BLOCK,level,pos,side);
+            var tracked=track(Capabilities.Item.BLOCK,level,pos,side);
             var handler=tracked.handler;
             if (handler != null) result.add(ProviderGuard.storage(new ItemHandlerStorageProvider(
-                    location("items",level,pos,side),physicalIdentity(level,pos),handler,tracked::valid)));
+                    location("items",level,pos,side),physicalIdentity(level,pos),com.cappleapple.astralrepository.port.storage.IItemHandler.of(handler),tracked::valid)));
             return null;
         });
         if (loaded("ae2",CompatConfig.appliedEnergistics2.get())) attempt(level,pos,"ae2",() -> {
@@ -79,17 +79,17 @@ public final class CompatibilityRegistry {
         if (!level.hasChunkAt(pos)) return List.of();
         List<ResourceProvider> result=new ArrayList<>();
         attempt(level,pos,"fluids",() -> {
-            var tracked=track(Capabilities.FluidHandler.BLOCK,level,pos,side);
+            var tracked=track(Capabilities.Fluid.BLOCK,level,pos,side);
             var handler=tracked.handler;
             if (handler != null) result.add(ProviderGuard.resource(new FluidResourceProvider(
-                    location("fluids",level,pos,side),physicalIdentity(level,pos),handler,tracked::valid)));
+                    location("fluids",level,pos,side),physicalIdentity(level,pos),com.cappleapple.astralrepository.port.storage.IFluidHandler.of(handler),tracked::valid)));
             return null;
         });
         attempt(level,pos,"energy",() -> {
-            var tracked=track(Capabilities.EnergyStorage.BLOCK,level,pos,side);
+            var tracked=track(Capabilities.Energy.BLOCK,level,pos,side);
             var handler=tracked.handler;
             if (handler != null) result.add(ProviderGuard.resource(new EnergyResourceProvider(
-                    location("energy",level,pos,side),physicalIdentity(level,pos),handler,tracked::valid)));
+                    location("energy",level,pos,side),physicalIdentity(level,pos),com.cappleapple.astralrepository.port.storage.IEnergyStorage.of(handler),tracked::valid)));
             return null;
         });
         if (loaded("ars_nouveau",CompatConfig.arsNouveau.get())) attempt(level,pos,"ars_nouveau",() -> {
@@ -146,7 +146,7 @@ public final class CompatibilityRegistry {
         return new NetworkPowerProvider() {
             public String id() { return backend.id(); }
             public Object identity() { return backend.identity(); }
-            public net.minecraft.resources.ResourceLocation resourceType() { return backend.resourceType(); }
+            public net.minecraft.resources.Identifier resourceType() { return backend.resourceType(); }
             public Mode mode() { return backend.mode(); }
             public boolean valid() { return guard.read(backend::valid,false); }
             public double available() { return guard.read(backend::available,0D); }
@@ -179,12 +179,12 @@ public final class CompatibilityRegistry {
         try { T result=work.get(); failures.remove(key); return result; }
         catch (RuntimeException | LinkageError failure) {
             failures.put(key,now+1200);
-            LogUtils.getLogger().error("Astral Repository adapter {} failed at {} {}; retry after 1200 ticks",adapter,level.dimension().location(),pos,failure);
+            LogUtils.getLogger().error("Astral Repository adapter {} failed at {} {}; retry after 1200 ticks",adapter,level.dimension().identifier(),pos,failure);
             return null;
         }
     }
     static String location(String kind,ServerLevel level,BlockPos pos,Direction side) {
-        return kind+":"+level.dimension().location()+":"+pos.asLong()+":"+(side==null?"all":side.getName());
+        return kind+":"+level.dimension().identifier()+":"+pos.asLong()+":"+(side==null?"all":side.getName());
     }
     static BooleanSupplier validity(ServerLevel level,BlockPos pos) {
         BlockPos immutable=pos.immutable();
@@ -215,7 +215,7 @@ public final class CompatibilityRegistry {
             BlockPos other=pos.relative(ChestBlock.getConnectedDirection(state));
             if (level.hasChunkAt(other)) second=other.asLong();
         }
-        return new PhysicalIdentity(level.dimension().location().toString(),Math.min(first,second),Math.max(first,second));
+        return new PhysicalIdentity(level.dimension().identifier().toString(),Math.min(first,second),Math.max(first,second));
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static Object capability(ServerLevel level,BlockPos pos,Object capability,Direction side) {

@@ -30,7 +30,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -145,10 +145,10 @@ public final class NodeModelSmoke {
             }
             report.append(id).append(" item_faces=").append(itemFaces).append(" world_faces=").append(worldFaces).append(" facing_states=6\n");
         }
-        for(int i=4;i<VARIANTS;i++){var id=ResourceLocation.fromNamespaceAndPath("astral_repository",name(i));int faces=inspect(mc.getModelManager().getModel(CrystalModelRenderer.modelLocation(name(i))),null,id);report.append(id).append(" standalone_upgrade_faces=").append(faces).append('\n');}
+        for(int i=4;i<VARIANTS;i++){var id=Identifier.fromNamespaceAndPath("astral_repository",name(i));int faces=inspect(mc.getModelManager().getModel(CrystalModelRenderer.modelLocation(name(i))),null,id);report.append(id).append(" standalone_upgrade_faces=").append(faces).append('\n');}
         Files.writeString(OUT.resolve("geometry.txt"), report); AstralRepository.LOGGER.info("Node model geometry:\n{}", report);
     }
-    private static int inspect(BakedModel model, BlockState state, ResourceLocation id) {
+    private static int inspect(BakedModel model, BlockState state, Identifier id) {
         check(model != Minecraft.getInstance().getModelManager().getMissingModel(), id + " uses the missing model");
         List<BakedQuad> quads = new ArrayList<>(); var random = RandomSource.create(42);
         for (Direction direction : Direction.values()) { random.setSeed(42); quads.addAll(model.getQuads(state, direction, random, ModelData.EMPTY, null)); }

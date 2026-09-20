@@ -8,7 +8,7 @@ import java.util.List;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -19,7 +19,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
 public final class GuidebookGameTests {
-    private static final ResourceLocation GUIDE = PatchouliIntegration.BOOK;
+    private static final Identifier GUIDE = PatchouliIntegration.BOOK;
 
     @GameTest(templateNamespace="astral_repository", template="empty_workshop")
     public static void fieldGuideRegistrationCreativeEntryAndUseFollowOptionalPatchouli(GameTestHelper h) {
@@ -57,7 +57,7 @@ public final class GuidebookGameTests {
                 new ItemStack(AstralContent.ASTRAL_GEM.get()), ItemStack.EMPTY,
                 new ItemStack(Items.BOOK), ItemStack.EMPTY));
         var tomeRecipe = recipes.getRecipeFor(RecipeType.CRAFTING, tomeInput, h.getLevel()).orElseThrow();
-        h.assertTrue(tomeRecipe.id().equals(ResourceLocation.fromNamespaceAndPath("astral_repository", "recipe_tome")), "The original vertical single-gem recipe always resolves to the Recipe Tome");
+        h.assertTrue(tomeRecipe.id().equals(Identifier.fromNamespaceAndPath("astral_repository", "recipe_tome")), "The original vertical single-gem recipe always resolves to the Recipe Tome");
         ItemStack craftedTome = tomeRecipe.value().assemble(tomeInput, h.getLevel().registryAccess());
         h.assertTrue(craftedTome.is(AstralContent.RECIPE_TOME.get()), "The optional guide never substitutes for Recipe Tome crafting");
         h.assertTrue(guideRecipe.isEmpty() || !guideRecipe.orElseThrow().value().matches(tomeInput, h.getLevel()), "The field guide cannot shadow Recipe Tome crafting");
@@ -91,7 +91,7 @@ public final class GuidebookGameTests {
             assertGuide(h, restored);
             h.assertTrue(ItemStack.isSameItemSameComponents(guide, restored), "The guide preserves its own registry identity through saving and loading");
             h.assertTrue(RecipeTomeItem.product(guide, h.getLevel().registryAccess()).isEmpty(), "A field guide cannot expose a Recipe Tome crafting-library product");
-            var component = BuiltInRegistries.DATA_COMPONENT_TYPE.get(ResourceLocation.fromNamespaceAndPath("patchouli", "book"));
+            var component = BuiltInRegistries.DATA_COMPONENT_TYPE.get(Identifier.fromNamespaceAndPath("patchouli", "book"));
             h.assertTrue(component != null && AstralContent.CREATIVE_TAB.get().getDisplayItems().stream().noneMatch(stack -> GUIDE.equals(stack.get(component))), "Patchouli does not add a duplicate generic guide_book to the creative tab");
 
             var player = new net.neoforged.neoforge.common.util.FakePlayer(h.getLevel(), new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "field-guide-use"));

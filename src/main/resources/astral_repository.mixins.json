@@ -1,7 +1,7 @@
 {
   "required": true,
   "package": "com.cappleapple.astralrepository.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "StorageDirtyMixin",
     "RouteOcclusionMixin",
@@ -20,6 +20,14 @@
     "TestWindowMixin",
     "AstralArmorTrimMixin",
     "AstralTrimItemMixin",
-    "AstralViewBobbingMixin"
+    "AstralViewBobbingMixin",
+    "AstralPreparedMaterialMixin",
+    "AstralGuiMaterialMixin",
+    "AstralUniformLifecycleMixin",
+    "ItemRenderStateAccessor",
+    "ItemLayerStateAccessor",
+    "AstralRenderTypeMixin",
+    "RuneCompositeGuiMixin",
+    "AstralTrimSelectionMixin"
   ]
 }

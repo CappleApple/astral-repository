@@ -1,25 +1,27 @@
 package com.cappleapple.astralrepository.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 /** Shared textured slots; tint is drawn before item/fluid contents. */
 public final class RuneUi {
-    private static final ResourceLocation SLOT=ResourceLocation.fromNamespaceAndPath("astral_repository","rune_button");
-    public static void slot(GuiGraphics g,int x,int y,int size,boolean hovered){g.blitSprite(SLOT,x,y,size,size);if(hovered)g.fill(x+2,y+2,x+size-2,y+size-2,0x447e9eff);}
-    public static void dropArea(GuiGraphics g,int x,int y,int width,int height){com.mojang.blaze3d.systems.RenderSystem.enableBlend();com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();g.blitSprite(ResourceLocation.fromNamespaceAndPath("astral_repository","rune_drop_area"),x,y,width,height);com.mojang.blaze3d.systems.RenderSystem.disableBlend();}
-    public static void icon(GuiGraphics g,RuneFilterSearch.Option option,int x,int y){
+    private static final Identifier SLOT=Identifier.fromNamespaceAndPath("astral_repository","rune_button");
+    public static void slot(GuiGraphicsExtractor g,int x,int y,int size,boolean hovered){g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,SLOT,x,y,size,size);if(hovered)g.fill(x+2,y+2,x+size-2,y+size-2,0x447e9eff);}
+    public static void dropArea(GuiGraphicsExtractor g,int x,int y,int width,int height){g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,Identifier.fromNamespaceAndPath("astral_repository","rune_drop_area"),x,y,width,height);}
+    public static void icon(GuiGraphicsExtractor g,RuneFilterSearch.Option option,int x,int y){
         String rule=option.rule();
         if(rule.startsWith("fluid:")&&!rule.startsWith("fluid:#")){
-            var fluid=BuiltInRegistries.FLUID.get(ResourceLocation.parse(rule.substring(6)));var stack=new FluidStack(fluid,1000);var ext=IClientFluidTypeExtensions.of(fluid);var texture=ext.getStillTexture(stack);
-            if(texture!=null){var sprite=Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(texture);int tint=ext.getTintColor(stack);g.blit(x,y,0,16,16,sprite,(tint>>16&255)/255f,(tint>>8&255)/255f,(tint&255)/255f,(tint>>>24)/255f);return;}
+            var fluid=BuiltInRegistries.FLUID.getValue(Identifier.parse(rule.substring(6)));
+            var model=Minecraft.getInstance().getModelManager().getFluidStateModelSet().get(fluid.defaultFluidState());
+            var sprite=model.stillMaterial().sprite(); var tintSource=model.fluidTintSource(); int tint=tintSource==null?-1:tintSource.color(fluid.defaultFluidState());
+            g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,sprite,x,y,16,16,tint);return;
         }
-        g.renderItem(option.icon(),x,y);
+        g.item(option.icon(),x,y);
     }
     private RuneUi(){}
 }

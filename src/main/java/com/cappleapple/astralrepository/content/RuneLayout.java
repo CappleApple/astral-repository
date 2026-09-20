@@ -15,7 +15,7 @@ public final class RuneLayout {
     public static List<Cell> cells(BlockGetter level,BlockPos pos,Direction face,int count){
         if(count<=0)return List.of();count=Math.min(count,RuneSurface.MAX_LAYERS);
         var state=level.getBlockState(pos);var shape=state.getShape(level,pos);if(shape.isEmpty())return List.of();
-        Vec3 normal=Vec3.atLowerCornerOf(face.getNormal());
+        Vec3 normal=Vec3.atLowerCornerOf(face.getUnitVec3i());
         Vec3 up=face.getAxis().isVertical()?new Vec3(0,0,-1):new Vec3(0,1,0),right=up.cross(normal).normalize();
         double plane=edge(shape.bounds(),face),best=-1;AABB bounds=null;
         // Only boxes reaching the outermost plane are candidates. A union's bounding rectangle

@@ -1,1 +1,0 @@
-package com.cappleapple.astralrepository.platform.event.level; public record BlockEvent(net.minecraft.world.level.Level level,net.minecraft.core.BlockPos pos){public net.minecraft.world.level.Level getLevel(){return level;}public net.minecraft.core.BlockPos getPos(){return pos;}}

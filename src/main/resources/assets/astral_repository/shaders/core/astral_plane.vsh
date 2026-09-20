@@ -1,33 +1,35 @@
-#version 150
+#version 330
+#extension GL_ARB_separate_shader_objects : require
 
-#moj_import <fog.glsl>
+#include <minecraft:dynamictransforms.glsl>
+#include <minecraft:projection.glsl>
+#include <astral_repository:astral_parameters.glsl>
+#ifndef ASTRAL_INTERFACE
+#include <minecraft:fog.glsl>
+#endif
 
-in vec3 Position;
-in vec4 Color;
-in vec2 UV0;
-in ivec2 UV1;
-in ivec2 UV2;
-in vec3 Normal;
+layout(location = 0) in vec3 Position;
+layout(location = 1) in vec4 Color;
+layout(location = 2) in vec2 UV0;
 
-uniform mat4 ModelViewMat;
-uniform mat4 ProjMat;
+#ifndef ASTRAL_INTERFACE
+layout(location = 3) in ivec2 UV1;
+layout(location = 4) in ivec2 UV2;
+layout(location = 5) in vec3 Normal;
+
 uniform sampler2D Sampler1;
 uniform sampler2D Sampler2;
-uniform int FogShape;
-uniform float AstralInterfaceMode;
-uniform mat4 AstralViewToWorld;
-uniform mat4 AstralParallaxViewCorrection;
-uniform mat4 AstralWorldProjectionBob;
-uniform vec3 AstralCameraPosition;
+#endif
 
-out vec2 crystalUV;
-out vec3 viewPosition;
-out vec3 astralWorldPosition;
-out vec3 astralWorldRay;
-out vec4 surfaceColor;
-out vec4 overlayColor;
-out vec4 lightColor;
-out float vertexDistance;
+layout(location = 0) out vec2 crystalUV;
+layout(location = 1) out vec3 viewPosition;
+layout(location = 2) out vec3 astralWorldPosition;
+layout(location = 3) out vec3 astralWorldRay;
+layout(location = 4) out vec4 surfaceColor;
+layout(location = 5) out vec4 overlayColor;
+layout(location = 6) out vec4 lightColor;
+layout(location = 7) out float vertexDistance;
+layout(location = 8) out float vertexCylindricalDistance;
 
 void main() {
     vec4 view = ModelViewMat * vec4(Position, 1.0);
@@ -42,14 +44,16 @@ void main() {
     astralWorldRay = (AstralViewToWorld * AstralWorldProjectionBob * view).xyz;
     crystalUV = UV0;
     surfaceColor = Color;
-    if (AstralInterfaceMode > 0.5) {
+    #ifdef ASTRAL_INTERFACE
         // GUI panels do not bind world lightmaps or damage overlays.
         overlayColor = vec4(0.0);
         lightColor = vec4(1.0);
         vertexDistance = 0.0;
-    } else {
+        vertexCylindricalDistance = 0.0;
+    #else
         overlayColor = texelFetch(Sampler1, UV1, 0);
         lightColor = texelFetch(Sampler2, UV2 / 16, 0);
-        vertexDistance = fog_distance(Position, FogShape);
-    }
+        vertexDistance = fog_spherical_distance(Position);
+        vertexCylindricalDistance = fog_cylindrical_distance(Position);
+    #endif
 }

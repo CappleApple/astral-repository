@@ -11,7 +11,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.*;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -114,8 +114,8 @@ public final class ClientNexusSmoke {
                 server(9,p->{p.getInventory().selected=7;AstralContent.RECIPE_TOME.get().use(p.level(),p,InteractionHand.MAIN_HAND);});
             } else if(phase==9&&mc.screen instanceof RecipeTomeScreen screen&&ticks>10){screen.acceptItem(new ItemStack(Items.IRON_TRAPDOOR));next(10);
             } else if(phase==10&&mc.screen instanceof RecipeTomeScreen screen&&ticks>12){
-                if(screen.visibleRecipes().stream().noneMatch(e->e.recipe().equals(ResourceLocation.withDefaultNamespace("iron_trapdoor"))))return;
-                screenshot("tome_catalogue.png");check(screen.selectRecipe(ResourceLocation.withDefaultNamespace("iron_trapdoor")),"Recipe selection failed");next(11);
+                if(screen.visibleRecipes().stream().noneMatch(e->e.recipe().equals(Identifier.withDefaultNamespace("iron_trapdoor"))))return;
+                screenshot("tome_catalogue.png");check(screen.selectRecipe(Identifier.withDefaultNamespace("iron_trapdoor")),"Recipe selection failed");next(11);
             } else if(phase==11&&mc.screen instanceof RecipeTomeScreen screen&&ticks>10){screenshot("tome_recipe.png");screen.inscribeSelection();next(12);
             } else if(phase==12&&ticks>20&&!pending){
                 screenshot("tome_inscribed.png");

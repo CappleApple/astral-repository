@@ -4,31 +4,27 @@ import com.cappleapple.astralrepository.client.AstralPlaneRenderType;
 import com.cappleapple.astralrepository.content.AstralTrims;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.model.Model;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.renderer.texture.TextureAtlas;
-import net.minecraft.core.Holder;
-import net.minecraft.world.item.ArmorMaterial;
-import net.minecraft.world.item.armortrim.ArmorTrim;
-import org.spongepowered.asm.mixin.Final;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.resources.model.EquipmentClientInfo;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.equipment.EquipmentAsset;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(HumanoidArmorLayer.class)
+@Mixin(EquipmentLayerRenderer.class)
 public abstract class AstralArmorTrimMixin {
-    @Shadow @Final private TextureAtlas armorTrimAtlas;
-
-    @Inject(method="renderTrim(Lnet/minecraft/core/Holder;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;ILnet/minecraft/world/item/armortrim/ArmorTrim;Lnet/minecraft/client/model/Model;Z)V", at=@At("HEAD"), cancellable=true)
-    private void astral$renderTrim(Holder<ArmorMaterial> armor, PoseStack poses, MultiBufferSource buffers,
-            int light, ArmorTrim trim, Model model, boolean leggings, CallbackInfo ci) {
-        if (!AstralTrims.isAstral(trim) || !AstralPlaneRenderType.ready()) return;
-        var sprite = armorTrimAtlas.getSprite(leggings ? trim.innerTexture(armor) : trim.outerTexture(armor));
-        var material = AstralPlaneRenderType.armorTrim(trim.pattern().value().decal());
-        model.renderToBuffer(poses, sprite.wrap(buffers.getBuffer(material)), light, OverlayTexture.NO_OVERLAY);
-        ci.cancel();
+    @Redirect(method="renderLayers(Lnet/minecraft/client/resources/model/EquipmentClientInfo$LayerType;Lnet/minecraft/resources/ResourceKey;Lnet/minecraft/client/model/Model;Ljava/lang/Object;Lnet/minecraft/world/item/ItemStack;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;ILnet/minecraft/resources/Identifier;II)V",
+        at=@At(value="INVOKE",target="Lnet/minecraft/client/renderer/Sheets;armorTrimsSheet(Z)Lnet/minecraft/client/renderer/rendertype/RenderType;"))
+    private RenderType astral$trimMaterial(boolean decal, EquipmentClientInfo.LayerType layerType,
+            ResourceKey<EquipmentAsset> equipment, Model<?> model, Object state, ItemStack stack,
+            PoseStack pose, SubmitNodeCollector collector, int light, Identifier texture, int outline, int order) {
+        return AstralTrims.isAstral(stack.get(DataComponents.TRIM)) ? AstralPlaneRenderType.armorTrim(decal) : Sheets.armorTrimsSheet(decal);
     }
 }

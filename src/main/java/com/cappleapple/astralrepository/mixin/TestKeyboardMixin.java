@@ -10,8 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(InputConstants.class)
 public abstract class TestKeyboardMixin {
     @Inject(method="isKeyDown",at=@At("HEAD"),cancellable=true)
-    private static void astral$testModifier(long window,int key,CallbackInfoReturnable<Boolean> callback) {
-        if((key==341||key==345)&&Boolean.getBoolean("astral_repository.clientSmoke")&&Boolean.getBoolean("astral_repository.testControl"))callback.setReturnValue(true);
-        if((key==340||key==344)&&Boolean.getBoolean("astral_repository.clientSmoke")&&Boolean.getBoolean("astral_repository.testShift"))callback.setReturnValue(true);
+    private static void astral$testModifier(com.mojang.blaze3d.platform.Window window,int key,CallbackInfoReturnable<Boolean> callback) {
+        if((key==InputConstants.KEY_LCONTROL||key==InputConstants.KEY_RCONTROL)&&Boolean.getBoolean("astral_repository.clientSmoke")&&Boolean.getBoolean("astral_repository.testControl"))callback.setReturnValue(true);
+        if((key==InputConstants.KEY_LSHIFT||key==InputConstants.KEY_RSHIFT)&&Boolean.getBoolean("astral_repository.clientSmoke")&&Boolean.getBoolean("astral_repository.testShift"))callback.setReturnValue(true);
     }
 }

@@ -12,7 +12,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
@@ -41,7 +41,7 @@ public final class RecipeTomeGameTests {
         h.assertTrue(result.getResult().consumesAction() && player.containerMenu instanceof RecipeTomeMenu, "Right-click opens the real tome menu");
         RecipeTomeMenu menu = (RecipeTomeMenu) player.containerMenu;
         var page = menu.browse("minecraft:iron_trapdoor", 0);
-        var recipe = page.entries().stream().filter(entry -> entry.recipe().equals(ResourceLocation.withDefaultNamespace("iron_trapdoor"))).findFirst().orElseThrow();
+        var recipe = page.entries().stream().filter(entry -> entry.recipe().equals(Identifier.withDefaultNamespace("iron_trapdoor"))).findFirst().orElseThrow();
         h.assertTrue(recipe.output().is(Items.IRON_TRAPDOOR), "The catalogue uses the actual server result");
         h.assertTrue(recipe.ingredients().stream().filter(stack -> stack.is(Items.IRON_INGOT)).count() == 4, "The book previews actual crafting ingredients");
         menu.action(new RecipeTomePackets.Action(menu.containerId, 1, "", 0, recipe.recipe().toString()));
@@ -68,13 +68,13 @@ public final class RecipeTomeGameTests {
         ItemStack tome = new ItemStack(AstralContent.RECIPE_TOME.get()); player.setItemInHand(InteractionHand.OFF_HAND, tome);
         RecipeTomeMenu menu = new RecipeTomeMenu(80, player.getInventory(), InteractionHand.OFF_HAND);
         h.assertTrue(menu.stillValid(player), "Offhand tome sessions are supported");
-        h.assertTrue(!menu.inscribe(ResourceLocation.fromNamespaceAndPath("astral_repository", "missing_recipe")), "Unknown recipe identifiers are rejected");
+        h.assertTrue(!menu.inscribe(Identifier.fromNamespaceAndPath("astral_repository", "missing_recipe")), "Unknown recipe identifiers are rejected");
         h.assertTrue(RecipeTomeItem.product(tome, h.getLevel().registryAccess()).isEmpty(), "Invalid requests do not invent a product");
         menu.action(new RecipeTomePackets.Action(81, 1, "", 0, "minecraft:iron_trapdoor"));
         h.assertTrue(RecipeTomeItem.product(tome, h.getLevel().registryAccess()).isEmpty(), "Actions for another menu cannot teach the book");
         ItemStack replacement = tome.copy(); player.setItemInHand(InteractionHand.OFF_HAND, replacement);
         h.assertTrue(!menu.stillValid(player), "Replacing the held book invalidates its original editing session");
-        h.assertTrue(!menu.inscribe(ResourceLocation.withDefaultNamespace("iron_trapdoor")), "A stale session cannot edit the replacement");
+        h.assertTrue(!menu.inscribe(Identifier.withDefaultNamespace("iron_trapdoor")), "A stale session cannot edit the replacement");
         h.assertTrue(RecipeTomeItem.product(replacement, h.getLevel().registryAccess()).isEmpty(), "The replacement book stays unchanged");
         h.succeed();
     }

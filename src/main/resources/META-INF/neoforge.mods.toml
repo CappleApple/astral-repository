@@ -1,5 +1,5 @@
 modLoader="javafml"
-loaderVersion="[4,)"
+loaderVersion="[3,)"
 license="CC-BY-NC-SA-4.0"
 [[mods]]
 modId="astral_repository"
@@ -10,13 +10,13 @@ description='''A crystal network that discovers workshop storage, moves resource
 [[dependencies.astral_repository]]
 modId="neoforge"
 type="required"
-versionRange="[21.1.244,)"
+versionRange="[${neo_version},)"
 ordering="NONE"
 side="BOTH"
 [[dependencies.astral_repository]]
 modId="minecraft"
 type="required"
-versionRange="[1.21.1]"
+versionRange="[${minecraft_version}]"
 ordering="NONE"
 side="BOTH"
 
@@ -34,6 +34,8 @@ config="astral_repository.mixins.json"
 [[dependencies.astral_repository]]
 modId="curios"
 type="optional"
-versionRange="[9.5.1,)"
+versionRange="[16,)"
 ordering="AFTER"
 side="BOTH"
+
+

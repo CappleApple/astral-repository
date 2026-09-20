@@ -4,20 +4,20 @@ import com.cappleapple.astralrepository.network.RuneSettingsPackets;
 import com.cappleapple.astralrepository.network.RuneSettingsPackets.Operation;
 import java.util.*;
 import com.cappleapple.astralrepository.content.RuneCadence;
-import net.minecraft.Util;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.util.Util;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.*;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /** One ordered editor session; acknowledgements update the model, never the active text widgets. */
 public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<com.cappleapple.astralrepository.menu.RuneSettingsMenu> implements GhostIngredientScreen {
-    private static final ResourceLocation PANEL=texture("rune_settings.png");
-    private static final ResourceLocation BUTTON=sprite("rune_button"), HOVER=sprite("rune_button_hovered"), DISABLED=sprite("rune_button_disabled"), THUMB=sprite("rune_scroll_thumb");
+    private static final Identifier PANEL=texture("rune_settings.png");
+    private static final Identifier BUTTON=sprite("rune_button"), HOVER=sprite("rune_button_hovered"), DISABLED=sprite("rune_button_disabled"), THUMB=sprite("rune_scroll_thumb");
     private static final int TEXT=0xd9defb, MUTED=0xa5b2dd, ERROR=0xf18caf;
-    private static ResourceLocation texture(String name){return ResourceLocation.fromNamespaceAndPath("astral_repository","textures/gui/"+name);}
-    private static ResourceLocation sprite(String name){return ResourceLocation.fromNamespaceAndPath("astral_repository",name);}
+    private static Identifier texture(String name){return Identifier.fromNamespaceAndPath("astral_repository","textures/gui/"+name);}
+    private static Identifier sprite(String name){return Identifier.fromNamespaceAndPath("astral_repository",name);}
     private record Change(Operation operation, String rule, int index) {}
     private record Values(boolean all, boolean blacklist, boolean enabled, long minimum, long target, int priority) {
         boolean matches(RuneSettingsPackets.Page page) { return all == page.all() && blacklist == page.blacklist() && enabled == page.enabled() && minimum == page.minimum() && target == page.targetAmount() && priority == page.priority(); }
@@ -39,7 +39,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     private String error = "";
 
     public RuneSettingsScreen(com.cappleapple.astralrepository.menu.RuneSettingsMenu menu,net.minecraft.world.entity.player.Inventory inventory,Component title) {
-        super(menu,inventory,title);imageWidth=230;imageHeight=268;
+        super(menu, inventory, title, 230, 268);
         page=new RuneSettingsPackets.Page(new UUID(0,0),"Rune","","",List.of(),false,false,true,0,Long.MAX_VALUE,0,false);
         enabled=true;
     }
@@ -90,14 +90,14 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     }
     private EditBox edit(int x,int y,int width,String name,int length,String value){
         EditBox field=new AstralEditBox(font,left+x,top+y,width,20,Component.literal(name));
-        field.setBordered(false);field.setTextColor(TEXT);field.setMaxLength(length);field.setValue(value);
+        field.setBordered(false);field.setTextColor(GuiText.opaque(TEXT));field.setMaxLength(length);field.setValue(value);
         settings.add(field);return addRenderableWidget(field);
     }
     private Button button(List<AbstractWidget> group, int x, int y, int width, int height, String text, Button.OnPress action) {
         Button widget = new Button(left+x,top+y,width,height,Component.literal(text),action,supplier -> supplier.get()) {
-            @Override protected void renderWidget(GuiGraphics graphics,int mouseX,int mouseY,float partialTick) {
-                graphics.blitSprite(!active?DISABLED:isHovered()?HOVER:BUTTON,getX(),getY(),getWidth(),getHeight());
-                graphics.drawString(font,getMessage(),getX()+(getWidth()-font.width(getMessage()))/2,getY()+(getHeight()-8)/2,active?TEXT:MUTED,false);
+            @Override protected void extractContents(GuiGraphicsExtractor graphics,int mouseX,int mouseY,float partialTick) {
+                graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,!active?DISABLED:isHovered()?HOVER:BUTTON,getX(),getY(),getWidth(),getHeight());
+                graphics.text(font,getMessage(),getX()+(getWidth()-font.width(getMessage()))/2,getY()+(getHeight()-8)/2,active?TEXT:MUTED,false);
             }
         };
         group.add(widget); return addRenderableWidget(widget);
@@ -130,10 +130,10 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     private void cadenceChanged(RuneCadence.Kind kind){dirtyCadences.add(kind);cadenceDebounce=Util.getMillis()+200;}
     private void flushCadences(boolean force){
         if(!force&&Util.getMillis()<cadenceDebounce)return;
-        for(var kind:List.copyOf(dirtyCadences))try{var fields=cadenceFields.get(kind);int amount=Integer.parseInt(fields[0].getValue()),ticks=Integer.parseInt(fields[1].getValue());fields[0].setTextColor(amount<0||amount>kind.maximum()?ERROR:TEXT);fields[1].setTextColor(ticks<kind.minimumTicks()?ERROR:TEXT);if(amount<0||amount>kind.maximum()||ticks<kind.minimumTicks())continue;dirtyCadences.remove(kind);enqueue(Operation.SET_CADENCE,kind.name()+":"+amount+":"+ticks,-1);}catch(NumberFormatException ignored){}
+        for(var kind:List.copyOf(dirtyCadences))try{var fields=cadenceFields.get(kind);int amount=Integer.parseInt(fields[0].getValue()),ticks=Integer.parseInt(fields[1].getValue());fields[0].setTextColor(GuiText.opaque(amount<0||amount>kind.maximum()?ERROR:TEXT));fields[1].setTextColor(GuiText.opaque(ticks<kind.minimumTicks()?ERROR:TEXT));if(amount<0||amount>kind.maximum()||ticks<kind.minimumTicks())continue;dirtyCadences.remove(kind);enqueue(Operation.SET_CADENCE,kind.name()+":"+amount+":"+ticks,-1);}catch(NumberFormatException ignored){}
     }
     private void closeCadence(){flushCadences(true);dirtyCadences.clear();cadenceOpen=false;for(var widget:cadenceWidgets)removeWidget(widget);cadenceWidgets.clear();cadenceFields.clear();setFocused(null);refreshControls();}
-    @Override public boolean keyPressed(int key,int scan,int modifiers){if(cadenceOpen){if(key==256){closeCadence();return true;}return getFocused()!=null&&getFocused().keyPressed(key,scan,modifiers);}return super.keyPressed(key,scan,modifiers);}
+    @Override public boolean keyPressed(net.minecraft.client.input.KeyEvent event){int key=event.key(), scan=event.scancode(), modifiers=event.modifiers();if(cadenceOpen){if(key==com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE){closeCadence();return true;}return getFocused()!=null&&getFocused().keyPressed(new net.minecraft.client.input.KeyEvent(key,scan,modifiers));}return super.keyPressed(new net.minecraft.client.input.KeyEvent(key,scan,modifiers));}
     private void changed(boolean immediate) {
         if (closed || closeRequested) return;
         revision++; debounceUntil = Util.getMillis() + 200; error = ""; refreshControls(); if (immediate) pump(true);
@@ -151,7 +151,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
         Values values = values(immediate || closeRequested || !changes.isEmpty()); if (values == null) return;
         Change change = changes.isEmpty() ? new Change(closeRequested ? Operation.SAVE : Operation.AUTOSAVE, "", -1) : changes.removeFirst();
         inFlight = true; sentRevision = revision; sentValues = values; refreshControls();
-        PacketDistributor.sendToServer(new RuneSettingsPackets.Action(page.session(), change.operation(), values.all(), values.blacklist(), values.enabled(), values.minimum(), values.target(), values.priority(), change.rule(), change.index()));
+        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new RuneSettingsPackets.Action(page.session(), change.operation(), values.all(), values.blacklist(), values.enabled(), values.minimum(), values.target(), values.priority(), change.rule(), change.index()));
     }
     private Values values(boolean keepValidFields) {
         long keep = page.minimum(), target = page.targetAmount(); int order = page.priority(); boolean invalid = false;
@@ -167,12 +167,12 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
     @Override public net.minecraft.client.renderer.Rect2i ingredientArea(){return new net.minecraft.client.renderer.Rect2i(left+7,top+32,216,48);}
     @Override public boolean acceptItem(net.minecraft.world.item.ItemStack stack){return !stack.isEmpty()&&chooseFilter(RuneSettingsPackets.sampleRule(stack));}
     @Override public boolean acceptFluid(net.neoforged.neoforge.fluids.FluidStack fluid){return !fluid.isEmpty()&&chooseFilter("fluid:"+net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getFluid()));}
-    @Override protected void slotClicked(net.minecraft.world.inventory.Slot slot,int id,int button,net.minecraft.world.inventory.ClickType type){
-        if(type==net.minecraft.world.inventory.ClickType.QUICK_MOVE){if(slot!=null&&!slot.getItem().isEmpty()&&!closeRequested)enqueue(Operation.ADD_INVENTORY,"",id);return;}
+    @Override protected void slotClicked(net.minecraft.world.inventory.Slot slot,int id,int button,net.minecraft.world.inventory.ContainerInput type){
+        if(type==net.minecraft.world.inventory.ContainerInput.QUICK_MOVE){if(slot!=null&&!slot.getItem().isEmpty()&&!closeRequested)enqueue(Operation.ADD_INVENTORY,"",id);return;}
         super.slotClicked(slot,id,button,type);
     }
-    @Override public boolean mouseClicked(double x,double y,int button){
-        if(cadenceOpen){for(var widget:cadenceWidgets)if(widget.mouseClicked(x,y,button)){setFocused(widget);setDragging(true);break;}return true;}
+    @Override public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick){double x=event.x(), y=event.y(); int button=event.button();
+        if(cadenceOpen){for(var widget:cadenceWidgets)if(widget.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x,y,new net.minecraft.client.input.MouseButtonInfo(button,AstralInput.modifiers())), false)){setFocused(widget);setDragging(true);break;}return true;}
         if(!closeRequested&&button==1&&modeButton.isMouseOver(x,y)){enqueue(Operation.SET_MODE,"",-1);return true;}
         int cell=cell(x,y);
         if(cell>=0){
@@ -182,7 +182,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
             else if(index==page.entries().size()){setFocused(null);if(!menu.getCarried().isEmpty())acceptItem(menu.getCarried());}
             return true;
         }
-        return super.mouseClicked(x,y,button);
+        return super.mouseClicked(new net.minecraft.client.input.MouseButtonEvent(x,y,new net.minecraft.client.input.MouseButtonInfo(button,AstralInput.modifiers())), false);
     }
     @Override public boolean mouseScrolled(double x,double y,double dx,double dy){
         if(cadenceOpen){for(var e:cadenceFields.entrySet())if(NumericScroll.adjust(e.getValue()[0],x,y,dy,0,e.getKey().maximum(),false)||NumericScroll.adjust(e.getValue()[1],x,y,dy,e.getKey().minimumTicks(),Integer.MAX_VALUE,false))return true;return true;}
@@ -193,7 +193,7 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
         }
         return super.mouseScrolled(x,y,dx,dy);
     }
-    @Override protected void renderBg(GuiGraphics g,float partial,int mx,int my){
+    @Override public void extractBackground(GuiGraphicsExtractor g,int mx,int my,float partial){
         AstralInterfaceRenderer.blit(g,PANEL,left,top,imageWidth,imageHeight);
         RuneUi.dropArea(g,left+7,top+32,216,48);
         int hover=cell(mx,my);
@@ -203,29 +203,29 @@ public final class RuneSettingsScreen extends net.minecraft.client.gui.screens.i
             {
                 var option=index<page.rules().size()?catalogue.option(page.rules().get(index)):null;
                 if(option!=null)RuneUi.icon(g,option,x+3,y+3);
-                if(page.entries().get(index).contains("(exact data)"))g.drawString(font,"=",x+14,y+13,TEXT,false);
+                if(page.entries().get(index).contains("(exact data)"))GuiText.text(g,font,"=",x+14,y+13,TEXT,false);
             }
         }
-        if(scrollLimit()>0)g.blitSprite(THUMB,left+224,top+32+offset/9*32/scrollLimit(),3,16);
-        if(minimum.visible){g.drawString(font,"Keep",left+8,top+110,MUTED,false);g.drawString(font,"Limit",left+74,top+110,MUTED,false);}
-        g.drawString(font,"Priority",left+8,top+90,MUTED,false);
-        g.drawString(font,playerInventoryTitle,left+34,top+173,MUTED,false);
+        if(scrollLimit()>0)g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,THUMB,left+224,top+32+offset/9*32/scrollLimit(),3,16);
+        if(minimum.visible){GuiText.text(g,font,"Keep",left+8,top+110,MUTED,false);GuiText.text(g,font,"Limit",left+74,top+110,MUTED,false);}
+        GuiText.text(g,font,"Priority",left+8,top+90,MUTED,false);
+        GuiText.text(g,font,playerInventoryTitle,left+34,top+173,MUTED,false);
         for(var slot:menu.slots)RuneUi.slot(g,left+slot.x-1,top+slot.y-1,18,isHovering(slot.x,slot.y,16,16,mx,my));
     }
-    @Override protected void renderLabels(GuiGraphics g,int mx,int my){}
-    @Override protected void renderSlotHighlight(GuiGraphics g,net.minecraft.world.inventory.Slot slot,int mx,int my,float partial){}
-    @Override public void render(GuiGraphics g,int mx,int my,float partial){
-        super.render(g,cadenceOpen?-1:mx,cadenceOpen?-1:my,partial);
+    @Override protected void extractLabels(GuiGraphicsExtractor g,int mx,int my){}
+    
+    @Override public void extractRenderState(GuiGraphicsExtractor g,int mx,int my,float partial){
+        super.extractRenderState(g,cadenceOpen?-1:mx,cadenceOpen?-1:my,partial);
         if(cadenceOpen){
-            g.pose().pushPose();g.pose().translate(0,0,500);g.fill(0,0,width,height,0x99000000);
+            g.pose().pushMatrix();g.nextStratum();g.fill(0,0,width,height,0x99000000);
             AstralInterfaceRenderer.blit(g,PANEL,left,cadenceTop,230,cadenceHeight);
-            g.drawCenteredString(font,"Cadence",left+115,cadenceTop+10,TEXT);
-            int row=0;for(var kind:cadenceFields.keySet()){int y=cadenceTop+31+row++*42;g.drawString(font,kind.title,left+10,y,MUTED,false);g.drawString(font,"every",left+88,y+16,MUTED,false);g.drawString(font,"ticks",left+187,y+16,MUTED,false);}
-            for(var w:cadenceWidgets)w.render(g,mx,my,partial);g.pose().popPose();return;
+            GuiText.centeredText(g,font,"Cadence",left+115,cadenceTop+10,TEXT);
+            int row=0;for(var kind:cadenceFields.keySet()){int y=cadenceTop+31+row++*42;GuiText.text(g,font,kind.title,left+10,y,MUTED,false);GuiText.text(g,font,"every",left+88,y+16,MUTED,false);GuiText.text(g,font,"ticks",left+187,y+16,MUTED,false);}
+            for(var w:cadenceWidgets)w.extractRenderState(g,mx,my,partial);g.pose().popMatrix();return;
         }
-        renderTooltip(g,mx,my);
-        if(!error.isEmpty())g.drawString(font,font.plainSubstrByWidth(error,230),left,top+imageHeight+3,ERROR,false);
+        extractTooltip(g,mx,my);
+        if(!error.isEmpty())GuiText.text(g,font,font.plainSubstrByWidth(error,230),left,top+imageHeight+3,ERROR,false);
         int hovered=cell(mx,my);
-        if(hovered>=0&&offset+hovered<page.entries().size())g.renderTooltip(font,Component.literal(page.entries().get(offset+hovered)),mx,my);
+        if(hovered>=0&&offset+hovered<page.entries().size())g.setTooltipForNextFrame(font,Component.literal(page.entries().get(offset+hovered)),mx,my);
     }
 }

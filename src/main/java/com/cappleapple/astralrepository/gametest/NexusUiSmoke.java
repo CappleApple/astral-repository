@@ -12,7 +12,7 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.DyeColor;
@@ -186,7 +186,7 @@ public final class NexusUiSmoke {
         for(int i=0;i<4;i++){var pos=new BlockPos(i,-59,-1);level.setBlockAndUpdate(pos,Blocks.BARREL.defaultBlockState());barrels[i]=(Container)level.getBlockEntity(pos);barrels[i].setItem(25,new ItemStack(Items.OAK_LOG,64));}
         int index=0;
         for(String kind:List.of("wool","terracotta","concrete","stained_glass","concrete_powder"))for(DyeColor color:DyeColor.values()){
-            var item=BuiltInRegistries.ITEM.get(ResourceLocation.withDefaultNamespace(color.getName()+"_"+kind));
+            var item=BuiltInRegistries.ITEM.get(Identifier.withDefaultNamespace(color.getName()+"_"+kind));
             barrels[index/25].setItem(index%25,new ItemStack(item,32));index++;
         }
         barrels[0].setItem(26,new ItemStack(Items.OAK_PLANKS,7));

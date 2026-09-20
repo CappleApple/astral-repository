@@ -26,12 +26,12 @@ public final class RuneSavedData extends SavedData {
     private final Map<AnchorAddress,Set<AnchorAddress>> adjacent=new HashMap<>();
     private List<RuneSurface> surfaceSnapshot;
     private Set<Link> linkSnapshot;
-    private static ChunkKey chunk(GlobalPos pos){return new ChunkKey(pos.dimension(),ChunkPos.asLong(pos.pos()));}
-    public static RuneSavedData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(RuneSavedData::new,(tag,registries)->load(server,tag,registries)),"astral_repository_runes");}
+    private static ChunkKey chunk(GlobalPos pos){return new ChunkKey(pos.dimension(),ChunkPos.pack(pos.pos()));}
+    public static RuneSavedData get(MinecraftServer server){return server.overworld().getDataStorage().computeIfAbsent(com.cappleapple.astralrepository.port.NbtCodecs.savedType("astral_repository_runes",RuneSavedData::new,server.registryAccess(),(tag,registries)->load(server,tag,registries),(data,registries)->data.save(new CompoundTag(),registries)));}
     public Collection<RuneSurface> surfaces(){if(surfaceSnapshot==null)surfaceSnapshot=List.copyOf(surfaces.values());return surfaceSnapshot;}
     /** Stable immutable snapshots, rebuilt only when a surface is added or removed. */
     public List<RuneSurface> surfaces(GlobalPos position){return byPosition.getOrDefault(position,List.of());}
-    public List<RuneSurface> surfaces(ResourceKey<Level> dimension,ChunkPos chunk){return byChunk.getOrDefault(new ChunkKey(dimension,chunk.toLong()),List.of());}
+    public List<RuneSurface> surfaces(ResourceKey<Level> dimension,ChunkPos chunk){return byChunk.getOrDefault(new ChunkKey(dimension,chunk.pack()),List.of());}
     public RuneSurface surface(AnchorAddress address){return surfaces.get(address);}
     private void storeSurface(RuneSurface rune){
         RuneSurface old=surfaces.put(rune.address(),rune);if(old!=null)unindex(old);
@@ -50,12 +50,12 @@ public final class RuneSavedData extends SavedData {
     public boolean toggle(AnchorAddress first,AnchorAddress second){Link link=new Link(first,second);boolean added=!links.remove(link);if(added)links.add(link);indexLink(link,added);setDirty();return added;}
     public void removeLinks(AnchorAddress address){var neighbors=links(address);if(neighbors.isEmpty())return;for(var other:neighbors){Link link=new Link(address,other);links.remove(link);indexLink(link,false);}setDirty();}
     public static RuneSavedData load(MinecraftServer server,CompoundTag tag,HolderLookup.Provider registries){
-        RuneSavedData result=new RuneSavedData();ListTag runes=tag.getList("Runes",Tag.TAG_COMPOUND);
-        for(int i=0;i<runes.size();i++)try{RuneSurface rune=RuneSurface.load(server,runes.getCompound(i),registries);result.storeSurface(rune);if(runes.getCompound(i).getInt("LayerVersion")<2)result.setDirty();}catch(RuntimeException ignored){}
-        ListTag edges=tag.getList("Links",Tag.TAG_COMPOUND);for(int i=0;i<edges.size();i++)try{CompoundTag edge=edges.getCompound(i);Link link=new Link(AnchorAddress.load(edge.getCompound("First")),AnchorAddress.load(edge.getCompound("Second")));if(result.links.add(link))result.indexLink(link,true);}catch(RuntimeException ignored){}
+        RuneSavedData result=new RuneSavedData();ListTag runes=tag.getListOrEmpty("Runes");
+        for(int i=0;i<runes.size();i++)try{RuneSurface rune=RuneSurface.load(server,runes.getCompoundOrEmpty(i),registries);result.storeSurface(rune);if(runes.getCompoundOrEmpty(i).getIntOr("LayerVersion",0)<2)result.setDirty();}catch(RuntimeException ignored){}
+        ListTag edges=tag.getListOrEmpty("Links");for(int i=0;i<edges.size();i++)try{CompoundTag edge=edges.getCompoundOrEmpty(i);Link link=new Link(AnchorAddress.load(edge.getCompoundOrEmpty("First")),AnchorAddress.load(edge.getCompoundOrEmpty("Second")));if(result.links.add(link))result.indexLink(link,true);}catch(RuntimeException ignored){}
         return result;
     }
-    @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider registries){
+    public CompoundTag save(CompoundTag tag,HolderLookup.Provider registries){
         ListTag runes=new ListTag();for(RuneSurface rune:surfaces.values())runes.add(rune.save(registries));tag.put("Runes",runes);
         ListTag edges=new ListTag();for(Link link:links){CompoundTag edge=new CompoundTag();edge.put("First",link.first.save());edge.put("Second",link.second.save());edges.add(edge);}tag.put("Links",edges);return tag;
     }

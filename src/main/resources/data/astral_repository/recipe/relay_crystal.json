@@ -6,12 +6,8 @@
     " I "
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    }
+    "S": "astral_repository:astral_gem",
+    "I": "minecraft:iron_ingot"
   },
   "result": {
     "id": "astral_repository:relay_crystal",

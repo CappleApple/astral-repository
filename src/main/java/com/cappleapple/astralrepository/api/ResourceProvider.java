@@ -1,13 +1,13 @@
 package com.cappleapple.astralrepository.api;
 
 import java.util.Map;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /** Server-thread resource storage/transfer adapter. All amounts are non-negative native resource units. */
 public interface ResourceProvider {
     String id();
     Object identity();
-    ResourceLocation resourceType();
+    Identifier resourceType();
     Map<ResourceKey, Long> snapshot();
     /** Returns the amount accepted, never more than requested. Simulation does not mutate. */
     long insert(ResourceKey key, long amount, boolean simulate);
@@ -18,5 +18,5 @@ public interface ResourceProvider {
     default long version() { return -1; }
     default String unit() { return "units"; }
     /** The client may map this ID to an installed visual adapter. */
-    default ResourceLocation visualization() { return resourceType(); }
+    default Identifier visualization() { return resourceType(); }
 }

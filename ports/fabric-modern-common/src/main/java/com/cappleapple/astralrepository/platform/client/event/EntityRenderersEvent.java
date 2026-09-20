@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform.client.event;
-public final class EntityRenderersEvent {public static class RegisterRenderers {public <T extends net.minecraft.world.level.block.entity.BlockEntity,S extends net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState> void registerBlockEntityRenderer(net.minecraft.world.level.block.entity.BlockEntityType<T> type,net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider<T,S> provider){net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry.register(type,provider);}}}

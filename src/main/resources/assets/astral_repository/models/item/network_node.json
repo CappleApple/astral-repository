@@ -1,5 +1,4 @@
 {
-  "parent": "minecraft:builtin/entity",
   "gui_light": "side",
   "textures": {
     "particle": "astral_repository:block/node_crystal"

@@ -1,6 +1,7 @@
 {
   "parent": "minecraft:block/cross",
   "textures": {
-    "cross": "astral_repository:block/astral_cluster"
+    "cross": "astral_repository:block/astral_cluster",
+    "particle": "#cross"
   }
 }

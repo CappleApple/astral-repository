@@ -3,11 +3,11 @@ package com.cappleapple.astralrepository.client;
 import com.cappleapple.astralrepository.content.RecipeTomeItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.CustomData;
 
@@ -18,15 +18,15 @@ public final class TomeOutputTooltip implements ClientTooltipComponent {
         var level=Minecraft.getInstance().level;
         ItemStack sample=level==null?ItemStack.EMPTY:RecipeTomeItem.product(data.tome(),level.registryAccess());
         if(sample.isEmpty()){
-            var id=ResourceLocation.tryParse(data.tome().getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag().getString("OutputId"));
-            if(id!=null&&BuiltInRegistries.ITEM.containsKey(id))sample=new ItemStack(BuiltInRegistries.ITEM.get(id));
+            var id=Identifier.tryParse(data.tome().getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag().getStringOr("OutputId",""));
+            if(id!=null&&BuiltInRegistries.ITEM.containsKey(id))sample=new ItemStack(BuiltInRegistries.ITEM.getValue(id));
         }
         output=sample;
     }
-    @Override public int getHeight(){return output.isEmpty()?0:20;}
+    @Override public int getHeight(Font font){return output.isEmpty()?0:20;}
     @Override public int getWidth(Font font){return output.isEmpty()?0:22+font.width(output.getHoverName());}
-    @Override public void renderImage(Font font,int x,int y,GuiGraphics g){
+    @Override public void extractImage(Font font,int x,int y,int width,int height,GuiGraphicsExtractor g){
         if(output.isEmpty())return;
-        g.renderItem(output,x,y);g.drawString(font,output.getHoverName(),x+22,y+4,0xffffff);
+        g.item(output,x,y);GuiText.text(g,font,output.getHoverName(),x+22,y+4,0xffffff);
     }
 }

@@ -9,7 +9,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 
 /** Optional API references remain behind a bridge that is loaded only with Curios installed. */
-@EventBusSubscriber(modid=AstralRepository.MOD_ID, bus=EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid=AstralRepository.MOD_ID)
 public final class CuriosCompatibility {
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {

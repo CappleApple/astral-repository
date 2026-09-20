@@ -2,8 +2,8 @@ package com.cappleapple.astralrepository.compat;
 
 import com.cappleapple.astralrepository.client.RuneRenderer;
 import java.util.List;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.Vec2;
 import snownee.jade.api.*;
@@ -18,7 +18,7 @@ public final class AstralJadePlugin implements IWailaPlugin {
     @Override public void registerClient(IWailaClientRegistration registration){registration.registerBlockComponent(RuneInfo.INSTANCE,Block.class);registered=true;}
     public enum RuneInfo implements IBlockComponentProvider {
         INSTANCE;
-        @Override public ResourceLocation getUid(){return ResourceLocation.fromNamespaceAndPath("astral_repository","rune_assignment");}
+        @Override public Identifier getUid(){return Identifier.fromNamespaceAndPath("astral_repository","rune_assignment");}
         @Override public void appendTooltip(ITooltip tooltip,BlockAccessor accessor,IPluginConfig config){
             var rows=RuneRenderer.hoverIcons(accessor.getHitResult());
             if(rows.isEmpty())return;
@@ -27,10 +27,10 @@ public final class AstralJadePlugin implements IWailaPlugin {
     }
     private static final class RuneIcons extends Element {
         private final List<List<RuneRenderer.Icon>> rows;
-        RuneIcons(List<List<RuneRenderer.Icon>> rows){this.rows=rows.stream().map(List::copyOf).toList();}
-        @Override public Vec2 getSize(){return new Vec2(RuneRenderer.iconWidth(rows),RuneRenderer.iconHeight(rows));}
-        @Override public void render(GuiGraphics graphics,float x,float y,float width,float height){
-            RuneRenderer.renderIcons(graphics,rows,Math.round(x),Math.round(y));
+        RuneIcons(List<List<RuneRenderer.Icon>> rows){this.rows=rows.stream().map(List::copyOf).toList();width=RuneRenderer.iconWidth(rows);height=RuneRenderer.iconHeight(rows);}
+        @Override public net.minecraft.network.chat.Component getNarration(){return net.minecraft.network.chat.Component.literal("Assigned runes");}
+        @Override public void extractRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY,float partialTick){
+            RuneRenderer.renderIcons(graphics,rows,getX(),getY());
         }
     }
 }

@@ -10,13 +10,13 @@ import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 
 @JeiPlugin
 public final class AstralJeiPlugin implements IModPlugin {
-    @Override public ResourceLocation getPluginUid(){return ResourceLocation.fromNamespaceAndPath("astral_repository","ghost_ingredients");}
+    @Override public Identifier getPluginUid(){return Identifier.fromNamespaceAndPath("astral_repository","ghost_ingredients");}
     public static boolean registered;
     private static mezz.jei.api.runtime.IJeiRuntime runtime;
     private static Boolean powerVisible;
@@ -38,7 +38,7 @@ public final class AstralJeiPlugin implements IModPlugin {
         }else{
             var level=net.minecraft.client.Minecraft.getInstance().level;
             if(level!=null)hiddenPowerRecipes=recipes.createRecipeLookup(mezz.jei.api.constants.RecipeTypes.CRAFTING).get()
-                    .filter(recipe->recipe.value().getResultItem(level.registryAccess()).is(node.getItem())).toList();
+                    .filter(recipe->com.cappleapple.astralrepository.port.RecipeCompat.output(recipe.value(),level.registryAccess()).is(node.getItem())).toList();
             recipes.hideRecipes(mezz.jei.api.constants.RecipeTypes.CRAFTING,hiddenPowerRecipes);
             ingredients.removeIngredientsAtRuntime(mezz.jei.api.constants.VanillaTypes.ITEM_STACK,List.of(node));
         }

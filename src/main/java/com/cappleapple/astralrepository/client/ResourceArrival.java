@@ -14,7 +14,7 @@ record ResourceArrival(BlockPos destination,Vec3 endpoint,Vec3 displacement,doub
         double z=random.nextDouble()*2-1,angle=random.nextDouble()*Math.PI*2;
         double radius=Math.cbrt(random.nextDouble())*Math.clamp(variance,0,.45),horizontal=Math.sqrt(1-z*z);
         Vec3 offset=new Vec3(horizontal*Math.cos(angle),z,horizontal*Math.sin(angle)).scale(radius);
-        Vec3 endpoint=packet.to().getCenter().add(offset);
+        Vec3 endpoint=Vec3.atCenterOf(packet.to()).add(offset);
         var path=packet.path();
         double lastLeg=TransferVisuals.legTicks(path.get(path.size()-2),path.getLast());
         return new ResourceArrival(packet.to(),endpoint,endpoint.subtract(TransferVisuals.position(packet,1)),1-lastLeg/TransferVisuals.duration(path));

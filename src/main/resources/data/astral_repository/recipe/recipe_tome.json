@@ -6,12 +6,8 @@
     "B"
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "B": {
-      "item": "minecraft:book"
-    }
+    "S": "astral_repository:astral_gem",
+    "B": "minecraft:book"
   },
   "result": {
     "id": "astral_repository:recipe_tome",

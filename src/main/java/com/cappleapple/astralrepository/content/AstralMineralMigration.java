@@ -15,9 +15,9 @@ public final class AstralMineralMigration {
         if (!(event.getChunk() instanceof LevelChunk chunk)) return;
         if (chunk.getLevel() instanceof ServerLevel level) {
             level.getServer().execute(() -> {
-                if (level.getChunkSource().getChunkNow(chunk.getPos().x, chunk.getPos().z) == chunk) repair(chunk);
+                if (level.getChunkSource().getChunkNow(chunk.getPos().x(), chunk.getPos().z()) == chunk) repair(chunk);
             });
-        } else if (chunk.getLevel().isClientSide) {
+        } else if (chunk.getLevel().isClientSide()) {
             // ClientChunkCache posts Load after installing packet sections, before render snapshots are built.
             repair(chunk);
         }
@@ -39,11 +39,11 @@ public final class AstralMineralMigration {
                 if (chunk.getBlockEntity(pos, LevelChunk.EntityCreationType.CHECK) != null) continue;
                 if (chunk.getBlockEntity(pos.immutable(), LevelChunk.EntityCreationType.IMMEDIATE) instanceof AstralMineralBlockEntity) {
                     created++;
-                    if (chunk.getLevel().isClientSide) chunk.getLevel().sendBlockUpdated(pos.immutable(), state, state, 2);
+                    if (chunk.getLevel().isClientSide()) chunk.getLevel().sendBlockUpdated(pos.immutable(), state, state, 2);
                 }
             }
         }
-        if (created > 0 && !chunk.getLevel().isClientSide) chunk.setUnsaved(true);
+        if (created > 0 && !chunk.getLevel().isClientSide()) chunk.markUnsaved();
         return created;
     }
 

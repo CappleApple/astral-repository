@@ -2,12 +2,12 @@ package com.cappleapple.astralrepository.content;
 
 import java.util.*;
 import net.minecraft.nbt.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /** Exact RGB pixels and independent item transforms. No item stacks or flattened item artwork are stored. */
 public final class RuneDesign {
     public static final int MAX_SIZE=128, MAX_ICONS=8;
-    public record Icon(ResourceLocation item,float x,float y,float scale,float rotation) {
+    public record Icon(Identifier item,float x,float y,float scale,float rotation) {
         public Icon {
             Objects.requireNonNull(item);
             if(!Float.isFinite(x)||!Float.isFinite(y)||!Float.isFinite(scale)||!Float.isFinite(rotation)) throw new IllegalArgumentException("Nonfinite icon transform");
@@ -42,7 +42,7 @@ public final class RuneDesign {
     public static int color(int index){return index==0?0:0xff000000|((index>>5&7)*255/7)<<16|((index>>2&7)*255/7)<<8|(index&3)*255/3;}
     public static int index(int rgb){return Math.max(1,((rgb>>16&255)*7/255)<<5|((rgb>>8&255)*7/255)<<2|(rgb&255)*3/255);}
     public CompoundTag save(){CompoundTag t=new CompoundTag();t.putInt("Size",size);t.putIntArray("PixelsRGB",pixels);ListTag list=new ListTag();for(Icon i:icons){CompoundTag v=new CompoundTag();v.putString("Item",i.item.toString());v.putFloat("X",i.x);v.putFloat("Y",i.y);v.putFloat("Scale",i.scale);v.putFloat("Rotation",i.rotation);list.add(v);}t.put("Icons",list);return t;}
-    public static RuneDesign load(CompoundTag t){int n=t.getInt("Size");List<Icon> icons=new ArrayList<>();ListTag list=t.getList("Icons",Tag.TAG_COMPOUND);if(list.size()>MAX_ICONS)throw new IllegalArgumentException("Too many icons");for(int k=0;k<list.size();k++){var v=list.getCompound(k);icons.add(new Icon(ResourceLocation.parse(v.getString("Item")),v.getFloat("X"),v.getFloat("Y"),v.getFloat("Scale"),v.getFloat("Rotation")));}return t.contains("PixelsRGB",Tag.TAG_INT_ARRAY)?new RuneDesign(n,t.getIntArray("PixelsRGB"),icons):new RuneDesign(n,t.getByteArray("Pixels"),icons);}
+    public static RuneDesign load(CompoundTag t){int n=t.getIntOr("Size",0);List<Icon> icons=new ArrayList<>();ListTag list=t.getListOrEmpty("Icons");if(list.size()>MAX_ICONS)throw new IllegalArgumentException("Too many icons");for(int k=0;k<list.size();k++){var v=list.getCompoundOrEmpty(k);icons.add(new Icon(Identifier.parse(v.getStringOr("Item","")),v.getFloatOr("X",0F),v.getFloatOr("Y",0F),v.getFloatOr("Scale",0F),v.getFloatOr("Rotation",0F)));}return t.contains("PixelsRGB")?new RuneDesign(n,t.getIntArray("PixelsRGB").orElseGet(()->new int[0]),icons):new RuneDesign(n,t.getByteArray("Pixels").orElseGet(()->new byte[0]),icons);}
     public static RuneDesign initial(RuneLayer.Mode mode){
         int n=32;byte[] pixels=new byte[n*n];String[] glyph=RuneGlyph.pixels(RuneGlyph.id(mode).getPath());byte color=(byte)index(switch(mode){case PUSH->0xffcc88;case PULL->0x88ddff;case FILTER->0xcc88ff;});
         for(int y=0;y<7;y++)for(int x=0;x<7;x++)if(glyph[y].charAt(x)=='#')for(int dy=0;dy<3;dy++)for(int dx=0;dx<3;dx++)pixels[(y*3+dy+5)*n+x*3+dx+5]=color;

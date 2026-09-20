@@ -32,11 +32,11 @@ public final class NetworkManager {
     private static final class SpatialIndex {
         private final Map<net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level>,Long2ObjectOpenHashMap<List<NetworkAnchor>>> dimensions=new HashMap<>();
         List<NetworkAnchor> at(GlobalPos position,int x,int z){
-            var chunks=dimensions.get(position.dimension());return chunks==null?List.of():chunks.getOrDefault(ChunkPos.asLong(x,z),List.of());
+            var chunks=dimensions.get(position.dimension());return chunks==null?List.of():chunks.getOrDefault(ChunkPos.pack(x,z),List.of());
         }
         void add(NetworkAnchor node){
             var position=location(node);var chunks=dimensions.computeIfAbsent(position.dimension(),ignored->new Long2ObjectOpenHashMap<>());
-            chunks.computeIfAbsent(ChunkPos.asLong(position.pos()),ignored->new ArrayList<>()).add(node);
+            chunks.computeIfAbsent(ChunkPos.pack(position.pos()),ignored->new ArrayList<>()).add(node);
         }
         void replace(SpatialIndex other){dimensions.clear();dimensions.putAll(other.dimensions);}
     }
@@ -116,9 +116,9 @@ public final class NetworkManager {
     private boolean allowed(NetworkAnchor a,NetworkAnchor b){return NetworkTopology.allowed(graphNode(a),graphNode(b),AstralConfig.relayRange.get(),AstralConfig.remoteRange.get())&&visible(location(a),location(b));}
     private NetworkManager(MinecraftServer server){this.server=server;this.runeTransfers=new DirectRuneTransfers(server);}
     public static NetworkManager get(MinecraftServer server){return SERVERS.computeIfAbsent(server,NetworkManager::new);}
-    public static String id(GlobalPos pos){return pos.dimension().location()+"@"+pos.pos().asLong();}
+    public static String id(GlobalPos pos){return pos.dimension().identifier()+"@"+pos.pos().asLong();}
     public static GlobalPos location(NetworkAnchor node){return node.address().position();}
-    private static String cell(GlobalPos pos,int x,int z){return pos.dimension().location()+"/"+x+"/"+z;}
+    private static String cell(GlobalPos pos,int x,int z){return pos.dimension().identifier()+"/"+x+"/"+z;}
     public static void changed(ServerLevel level,BlockPos pos){var manager=get(level.getServer());if(!manager.stopping){manager.coverage.clear();manager.changedPositions.add(GlobalPos.of(level.dimension(),pos.immutable()));}}
     private void refresh(GlobalPos pos){
         ServerLevel level=server.getLevel(pos.dimension());if(level==null||!level.hasChunkAt(pos.pos()))return;
@@ -163,7 +163,7 @@ public final class NetworkManager {
         if(!(event.getLevel() instanceof ServerLevel level))return;NetworkManager manager=get(level.getServer());if(manager.stopping)return;ChunkPos pos=event.getChunk().getPos();
         manager.invalidateSight();
         manager.changes.add(()->{
-            if(!level.hasChunk(pos.x,pos.z))return;var chunk=level.getChunkSource().getChunkNow(pos.x,pos.z);if(chunk==null)return;
+            if(!level.hasChunk(pos.x(),pos.z()))return;var chunk=level.getChunkSource().getChunkNow(pos.x(),pos.z());if(chunk==null)return;
             for(var be:chunk.getBlockEntities().values())if(be instanceof CrystalNodeBlockEntity node){manager.nodes.put(node.address(),node);manager.topologyDirty=true;}
             for(RuneSurface rune:RuneSavedData.get(level.getServer()).surfaces(level.dimension(),pos)){
                 if(rune.hostPresent()){manager.nodes.put(rune.address(),rune);manager.runeTransfers.track(rune);}else RuneSurfaces.remove(level,rune.getBlockPos(),rune.facing());manager.topologyDirty=true;
@@ -174,8 +174,8 @@ public final class NetworkManager {
     public static void chunkUnload(ChunkEvent.Unload event){
         if(!(event.getLevel() instanceof ServerLevel level))return;NetworkManager manager=get(level.getServer());if(manager.stopping)return;ChunkPos chunk=event.getChunk().getPos();manager.invalidateSight();
         manager.changes.add(()->{
-            for(NetworkAnchor node:manager.nodes.values())if(node instanceof RuneSurface rune&&rune.getLevel()==level&&new ChunkPos(rune.getBlockPos()).equals(chunk))rune.unloaded();
-            boolean removed=manager.nodes.keySet().removeIf(a->a.position().dimension().equals(level.dimension())&&new ChunkPos(a.position().pos()).equals(chunk));
+            for(NetworkAnchor node:manager.nodes.values())if(node instanceof RuneSurface rune&&rune.getLevel()==level&&ChunkPos.containing(rune.getBlockPos()).equals(chunk))rune.unloaded();
+            boolean removed=manager.nodes.keySet().removeIf(a->a.position().dimension().equals(level.dimension())&&ChunkPos.containing(a.position().pos()).equals(chunk));
             manager.topologyDirty|=removed;for(AstralNetwork network:manager.networks)network.unloadChunk(level,chunk);
         });
     }
@@ -207,7 +207,7 @@ public final class NetworkManager {
             else RuneSavedData.get(server).removeLinks(address);
         }else if(node instanceof RuneSurface rune)rune.unloaded();
     }
-    private static NetworkTopology.Node graphNode(NetworkAnchor node){var pos=node.address().position();return new NetworkTopology.Node(node.address().id(),pos.dimension().location().toString(),pos.pos().getX(),pos.pos().getY(),pos.pos().getZ(),node.channel(),node.longRange(),node.dimensional());}
+    private static NetworkTopology.Node graphNode(NetworkAnchor node){var pos=node.address().position();return new NetworkTopology.Node(node.address().id(),pos.dimension().identifier().toString(),pos.pos().getX(),pos.pos().getY(),pos.pos().getZ(),node.channel(),node.longRange(),node.dimensional());}
     private AnchorSettings settings(NetworkAnchor node){
         return new AnchorSettings(node.address(),node.kind(),node.channel(),node.priority(),node.dimensional(),node.longRange(),
                 node.facing(),node.providerPosition().immutable(),node.providerSide(),node.nearbyCoverage(),
@@ -298,7 +298,7 @@ public final class NetworkManager {
     private record RelayCell(String dimension,int channel,int x,int y,int z){}
     private void connectNearby(Set<RuneSavedData.Link> links,List<NetworkAnchor> anchors,int range){
         Map<RelayCell,List<NetworkAnchor>> cells=new HashMap<>();
-        for(var a:anchors){var pos=a.getBlockPos();String dimension=location(a).dimension().location().toString();int x=Math.floorDiv(pos.getX(),range),y=Math.floorDiv(pos.getY(),range),z=Math.floorDiv(pos.getZ(),range);
+        for(var a:anchors){var pos=a.getBlockPos();String dimension=location(a).dimension().identifier().toString();int x=Math.floorDiv(pos.getX(),range),y=Math.floorDiv(pos.getY(),range),z=Math.floorDiv(pos.getZ(),range);
             for(int dx=-1;dx<=1;dx++)for(int dy=-1;dy<=1;dy++)for(int dz=-1;dz<=1;dz++)
                 for(var b:cells.getOrDefault(new RelayCell(dimension,a.channel(),x+dx,y+dy,z+dz),List.of()))autoLink(links,a,b);
             cells.computeIfAbsent(new RelayCell(dimension,a.channel(),x,y,z),k->new ArrayList<>()).add(a);
@@ -459,10 +459,10 @@ public final class NetworkManager {
         if(!(level.getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity n) || n.kind()!=NodeKind.NEXUS && n.kind()!=NodeKind.STORAGE && n.kind()!=NodeKind.BUFFER)
             return "The bound Nexus is no longer there. Use this Astral Nexus on a Storage Nexus to bind it again.";
         boolean sameDimension=player.level().dimension().equals(origin.dimension());
-        double distance=player.distanceToSqr(origin.pos().getCenter());
+        double distance=player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(origin.pos()));
         if(!remote)return sameDimension&&distance<=64?null:"Move within 8 blocks of this Nexus to open it.";
         boolean bound=false,attuned=false;
-        for(ItemStack stack:player.getInventory().items)if(stack.is(AstralContent.ASTRAL_NEXUS.get())&&origin.equals(RemoteData.bound(stack))){bound=true;attuned|=RemoteData.attuned(stack);}
+        for(ItemStack stack:player.getInventory().getNonEquipmentItems())if(stack.is(AstralContent.ASTRAL_NEXUS.get())&&origin.equals(RemoteData.bound(stack))){bound=true;attuned|=RemoteData.attuned(stack);}
         ItemStack offhand=player.getOffhandItem();
         if(offhand.is(AstralContent.ASTRAL_NEXUS.get())&&origin.equals(RemoteData.bound(offhand))){bound=true;attuned|=RemoteData.attuned(offhand);}
         if(!bound)return "Keep an Astral Nexus bound to this Storage Nexus in your inventory.";
@@ -472,18 +472,18 @@ public final class NetworkManager {
     }
     public static void open(ServerPlayer player,GlobalPos origin){open(player,origin,false);}
     private static void open(ServerPlayer player,GlobalPos origin,boolean remote){
-        NetworkManager manager=get(player.server);
-        String failure=manager.accessFailure(player,origin,remote); if(failure!=null){player.displayClientMessage(Component.literal(failure),true);return;}
+        NetworkManager manager=get(player.level().getServer());
+        String failure=manager.accessFailure(player,origin,remote); if(failure!=null){player.sendSystemMessage(Component.literal(failure),true);return;}
         if(manager.networkAt(origin)==null){manager.refresh(origin);manager.rebuild();}
         player.openMenu(new SimpleMenuProvider((id,inventory,p)->new NexusMenu(id,inventory,origin,remote),serverTitle(player,origin,remote)));
     }
     private static Component serverTitle(ServerPlayer player,GlobalPos origin,boolean remote){
-        var level=player.server.getLevel(origin.dimension());
+        var level=player.level().getServer().getLevel(origin.dimension());
         return !remote&&level!=null?level.getBlockState(origin.pos()).getBlock().getName():Component.translatable("block.astral_repository.storage_nexus");
     }
     public static void remote(ServerPlayer player,ItemStack stack){
         GlobalPos origin=RemoteData.bound(stack);
-        if(origin==null){player.displayClientMessage(Component.literal("Bind this Astral Nexus by using it on a Storage Nexus."),true);return;}
+        if(origin==null){player.sendSystemMessage(Component.literal("Bind this Astral Nexus by using it on a Storage Nexus."),true);return;}
         open(player,origin,true);
     }
 
@@ -492,13 +492,13 @@ public final class NetworkManager {
             if(!GogglesEquipment.isWearing(player))continue;
             List<NetworkPackets.DiagnosticNode> visible=new ArrayList<>();List<NetworkPackets.DiagnosticEdge> edges=new ArrayList<>();Set<AnchorAddress> shown=new HashSet<>();
             for(var entry:nodes.entrySet()){
-                var pos=entry.getKey().position();if(!pos.dimension().equals(player.level().dimension())||player.distanceToSqr(pos.pos().getCenter())>4096||visible.size()>=128)continue;
+                var pos=entry.getKey().position();if(!pos.dimension().equals(player.level().dimension())||player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(pos.pos()))>4096||visible.size()>=128)continue;
                 var node=entry.getValue();AstralNetwork network=membership.get(entry.getKey());String text=node.kind()+" · "+(node.channel()<0?"neutral":net.minecraft.world.item.DyeColor.byId(node.channel()).getName())+" · "+node.distributionMode();
                 if(network!=null)text+="\n"+network.status();visible.add(new NetworkPackets.DiagnosticNode(pos.pos(),AstralNetwork.color(node),text));shown.add(entry.getKey());
             }
             for(RuneSavedData.Link link:effectiveLinks.entrySet().stream().flatMap(e->e.getValue().stream().filter(b->e.getKey().compareTo(b)<0).map(b->new RuneSavedData.Link(e.getKey(),b))).toList())if(shown.contains(link.first())&&shown.contains(link.second())&&edges.size()<512&&membership.get(link.first())==membership.get(link.second())&&NetworkTopology.allowed(graphNode(nodes.get(link.first())),graphNode(nodes.get(link.second())),AstralConfig.relayRange.get(),AstralConfig.remoteRange.get()))
                 edges.add(new NetworkPackets.DiagnosticEdge(link.first().position().pos(),link.second().position().pos(),AstralNetwork.color(nodes.get(link.first()))));
-            for(var network:networks)for(var processor:network.crafting().processorLabels().entrySet()){if(visible.size()>=256)break;if(processor.getKey().dimension().equals(player.level().dimension())&&player.distanceToSqr(processor.getKey().pos().getCenter())<4096)visible.add(new NetworkPackets.DiagnosticNode(processor.getKey().pos(),0xE8C987,processor.getValue()));}
+            for(var network:networks)for(var processor:network.crafting().processorLabels().entrySet()){if(visible.size()>=256)break;if(processor.getKey().dimension().equals(player.level().dimension())&&player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(processor.getKey().pos()))<4096)visible.add(new NetworkPackets.DiagnosticNode(processor.getKey().pos(),0xE8C987,processor.getValue()));}
             PacketDistributor.sendToPlayer(player,new NetworkPackets.Diagnostics(visible,edges));
         }
     }

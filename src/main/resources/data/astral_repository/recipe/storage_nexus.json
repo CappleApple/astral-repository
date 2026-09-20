@@ -7,15 +7,9 @@
     "III"
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "C": {
-      "item": "minecraft:crafting_table"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    }
+    "S": "astral_repository:astral_gem",
+    "C": "minecraft:crafting_table",
+    "I": "minecraft:iron_ingot"
   },
   "result": {
     "id": "astral_repository:storage_nexus",

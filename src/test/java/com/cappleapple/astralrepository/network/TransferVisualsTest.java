@@ -48,10 +48,10 @@ class TransferVisualsTest {
     @Test void flightPassesNearRelayInsteadOfThroughCenter(){
         var a=new BlockPos(0,0,0);var b=new BlockPos(8,0,0);var c=new BlockPos(8,0,16);var path=List.of(a,b,c);
         assertEquals(60,TransferVisuals.duration(path));
-        assertEquals(a.getCenter(),TransferVisuals.position(path,0));
-        assertEquals(.45,b.getCenter().distanceTo(TransferVisuals.position(path,1.0/3)),1e-8);
-        assertEquals(c.getCenter(),TransferVisuals.position(path,1));
-        assertEquals(c.getCenter(),TransferVisuals.position(path,2));
+        assertEquals(net.minecraft.world.phys.Vec3.atCenterOf(a),TransferVisuals.position(path,0));
+        assertEquals(.45,net.minecraft.world.phys.Vec3.atCenterOf(b).distanceTo(TransferVisuals.position(path,1.0/3)),1e-8);
+        assertEquals(net.minecraft.world.phys.Vec3.atCenterOf(c),TransferVisuals.position(path,1));
+        assertEquals(net.minecraft.world.phys.Vec3.atCenterOf(c),TransferVisuals.position(path,2));
         assertTrue(TransferVisuals.position(path,.2).x<8.5);
         assertTrue(TransferVisuals.position(path,.7).x>8.5,"The spline bends around the corner rather than stopping and turning");
     }
@@ -65,10 +65,10 @@ class TransferVisualsTest {
     @Test void allRuneFacesLaunchOutwardAndArriveInward(){
         var path=List.of(BlockPos.ZERO,new BlockPos(8,2,4));
         for(var face:net.minecraft.core.Direction.values()){
-            var normal=net.minecraft.world.phys.Vec3.atLowerCornerOf(face.getNormal());
+            var normal=net.minecraft.world.phys.Vec3.atLowerCornerOf(face.getUnitVec3i());
             var endpoint=new TransferVisuals.Endpoint(normal.scale(.502),face);
             var start=TransferVisuals.position(path,0,endpoint,endpoint);var finish=TransferVisuals.position(path,1,endpoint,endpoint);
-            assertEquals(path.getFirst().getCenter().add(endpoint.offset()),start);assertEquals(path.getLast().getCenter().add(endpoint.offset()),finish);
+            assertEquals(net.minecraft.world.phys.Vec3.atCenterOf(path.getFirst()).add(endpoint.offset()),start);assertEquals(net.minecraft.world.phys.Vec3.atCenterOf(path.getLast()).add(endpoint.offset()),finish);
             assertTrue(TransferVisuals.position(path,1e-4,endpoint,endpoint).subtract(start).scale(100000).normalize().dot(normal)>.999);
             assertTrue(finish.subtract(TransferVisuals.position(path,1-1e-4,endpoint,endpoint)).normalize().dot(normal)<-.999);
         }

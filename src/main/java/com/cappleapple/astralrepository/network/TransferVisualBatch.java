@@ -5,14 +5,14 @@ import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /** Server entries are encoded once and shared between audiences; clients decode one bounded update. */
 public final class TransferVisualBatch implements CustomPacketPayload {
     public static final int MAX_BYTES = 262144;
     public static final int MAX_ENTRIES = 1536;
     public static final int HEADER_BYTES = 4;
-    public static final Type<TransferVisualBatch> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository", "visual_batch"));
+    public static final Type<TransferVisualBatch> TYPE = new Type<>(Identifier.fromNamespaceAndPath("astral_repository", "visual_batch"));
     private final boolean resetStations;
     private final List<byte[]> encoded;
     private final List<NetworkPackets.Visual> visuals;
