@@ -28,6 +28,7 @@
     "ItemLayerStateAccessor",
     "AstralRenderTypeMixin",
     "RuneCompositeGuiMixin",
-    "AstralTrimSelectionMixin"
+    "AstralTrimSelectionMixin",
+    "TransferWeatherMixin"
   ]
 }

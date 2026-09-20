@@ -17,6 +17,13 @@ public final class BindingBeamRenderType {
         .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.QUADS)
         .withColorTargetState(new ColorTargetState(BlendFunction.LIGHTNING)).withCull(false)
         .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false)).build();
-    public static final RenderType BEAM=RenderType.create("astral_repository:binding_beam",RenderSetup.builder(PIPELINE).createRenderSetup());
+    public static final RenderType BEAM=RenderType.create("astral_repository:binding_beam",RenderSetup.builder(PIPELINE).setOutputTarget(TransferRenderPass.TARGET).createRenderSetup());
+    static final RenderPipeline DEPTH_PIPELINE=RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
+        .withLocation(Identifier.fromNamespaceAndPath("astral_repository","pipeline/binding_beam_depth"))
+        .withVertexShader("core/rendertype_lightning").withFragmentShader("core/rendertype_lightning")
+        .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.QUADS)
+        .withColorTargetState(new ColorTargetState(java.util.Optional.empty(),com.mojang.blaze3d.GpuFormat.RGBA8_UNORM,ColorTargetState.WRITE_NONE)).withCull(false)
+        .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,true)).build();
+    static final RenderType DEPTH=RenderType.create("astral_repository:binding_beam_depth",RenderSetup.builder(DEPTH_PIPELINE).setOutputTarget(TransferRenderPass.TARGET).createRenderSetup());
     private BindingBeamRenderType(){}
 }
