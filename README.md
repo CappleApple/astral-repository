@@ -2,7 +2,7 @@
 
 Astral Repository connects workshop inventories through crystal networks, moves items, fluids, and energy, and crafts products from recipes taught to the network.
 
-The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.11.9. It builds independently of the other Minecraft and loader branches.
+The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.11.11. It builds independently of the other Minecraft and loader branches.
 
 ## Installation
 
@@ -37,11 +37,13 @@ Set `JAVA_HOME` to a JDK 17 installation and run:
 .\gradlew.bat -PgameplaySmoke -PoptionalRuntime runClient
 ```
 
-The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.9.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
+The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.11.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
 
-The port audit passed 146 JUnit tests and 10 native Forge GameTests. Runtime checks cover all ten blocks placed through their items on all six faces, storage recovery after breaking and replacement, Nexus withdrawal/deposit and vanilla crafting/refill, Recipe Tome inscription and bookshelf discovery, completed automatic crafting with ingredient conservation, item/fluid/energy rune transfers with stock limits, capability invalidation, all thirteen base recipes, and worldgen registration. This is a focused port suite; it does not claim the original NeoForge edition's complete GameTest coverage.
+The port audit passed 146 JUnit tests and 22 native Forge GameTests. Runtime checks cover all ten blocks placed through their items on all six faces, storage recovery after breaking and replacement, Nexus withdrawal/deposit and vanilla crafting/refill, Recipe Tome inscription and bookshelf discovery, completed automatic crafting with ingredient conservation, item/fluid/energy rune transfers with stock limits, capability invalidation, all thirteen base recipes, and worldgen registration. This is a focused port suite; it does not claim the original NeoForge edition's complete GameTest coverage.
 
-The gameplay client runs hidden and muted without capturing the mouse. It verifies placed blocks, translated item names and tooltips, synchronized Nexus contents, real client/server transfer packets, and vanilla crafting clicks. It saves images and a result file under `run-gameplay/gameplay-captures/`. The installed retail client also passed the Recipe Tome catalogue, inscription, and an eight-plank autocraft consuming exactly two logs. The earlier development-client checks passed with all five optional mods together. The older `-PclientSmoke` gate separately checks models and shaders.
+The 1.11.11 regression checks cover delayed and instant Push/Pull for items, fluids, energy and Source; one-tick pipelines; shared stock limits; save/load timing; failed delivery recovery; and physical destinations in network-bound transfers.
+
+The gameplay client runs hidden and muted without capturing the mouse. It verifies placed blocks, translated item names and tooltips, synchronized Nexus contents, real client/server transfer packets, and vanilla crafting clicks. It saves images and a result file under `run-gameplay/gameplay-captures/`. The installed retail client also passed 24 GPU cloud-depth cases across Fast, Fancy and Fabulous, the Recipe Tome catalogue, inscription, and an eight-plank autocraft consuming exactly two logs. The earlier development-client checks passed with all five optional mods together. The older `-PclientSmoke` gate separately checks models and shaders.
 
 `auditHarnessJar` builds a separate test mod for an installed Forge client or server. Its client subscriber uses the fixture mod ID; it is excluded from the release JAR. The installed-server audit verified the reobfuscated release, normal placement, Nexus transactions, rune transfers, automatic crafting, and saved storage/rune data, taught recipes, and crafted output after a second JVM start. The audit harness is a development artifact; do not distribute its `-audit-harness.jar` alongside the release.
 

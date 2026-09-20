@@ -123,7 +123,7 @@ public final class WorldVisuals {
             AstralPlaneRenderType.endWorld();
     }
     @SubscribeEvent public static void render(RenderLevelStageEvent event){
-        if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
+        if(!TransferRenderPass.matches(event))return;
         var mc=Minecraft.getInstance();if(mc.level==null||mc.player==null)return;
         PoseStack pose=event.getPoseStack();Vec3 camera=event.getCamera().getPosition();var buffers=mc.renderBuffers().bufferSource();
         boolean profile=Boolean.getBoolean("astral_repository.transferStress");long renderStart=profile?System.nanoTime():0;

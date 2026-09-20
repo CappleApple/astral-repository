@@ -111,8 +111,8 @@ public final class ForgeGameplayGameTests {
         var pull=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.PULL),RuneLayer.Mode.PULL);pull.filter().setTarget(300);pull.changed();
         h.assertTrue(surface.toggleTarget(pull.id(),GlobalPos.of(h.getLevel().dimension(),h.absolutePos(source)),Direction.WEST).assigned(),"Pull binds to real native resource stores");
         h.onEachTick(()->{
-            h.assertTrue(from.tank().getFluidAmount()+to.tank().getFluidAmount()==1000,"Native tanks conserve fluid each tick");
-            h.assertTrue(from.energy().getEnergyStored()+to.energy().getEnergyStored()==1000,"Native energy stores conserve power each tick");
+            h.assertTrue(from.tank().getFluidAmount()+to.tank().getFluidAmount()+RuneTransitData.get(h.getLevel().getServer()).pendingAmount(pull.id(),new com.cappleapple.astralrepository.api.FluidKey(new net.minecraftforge.fluids.FluidStack(net.minecraft.world.level.material.Fluids.WATER,1)))==1000,"Native tanks conserve fluid each tick");
+            h.assertTrue(from.energy().getEnergyStored()+to.energy().getEnergyStored()+RuneTransitData.get(h.getLevel().getServer()).pendingAmount(pull.id(),com.cappleapple.astralrepository.api.ResourceKinds.FE)==1000,"Native energy stores conserve power each tick");
             h.assertTrue(to.tank().getFluidAmount()<=300&&to.energy().getEnergyStored()<=300,"Both resource transfers respect stock caps");
         });
         h.succeedWhen(()->{h.assertTrue(to.tank().getFluidAmount()==300&&to.energy().getEnergyStored()==300,"Actual scheduled pull reaches both stock caps");pull.setEnabled(false);});
