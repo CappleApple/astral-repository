@@ -7,15 +7,15 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.neoforged.neoforge.energy.EnergyStorage;
-import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemStackHandler;
+import com.cappleapple.astralrepository.platform.energy.EnergyStorage;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.items.ItemStackHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CapabilityProviderTest {
-    @BeforeAll static void initializeMinecraft() { SharedConstants.tryDetectVersion(); Bootstrap.bootStrap(); }
+    @BeforeAll static void initializeMinecraft() { com.cappleapple.astralrepository.MinecraftTestBootstrap.initialize(); }
     @Test void immutableItemKeysKeepComponentsButIgnoreCount() {
         ItemStack stack=new ItemStack(Items.IRON_INGOT,32);
         stack.set(DataComponents.CUSTOM_NAME,Component.literal("Attuned iron"));

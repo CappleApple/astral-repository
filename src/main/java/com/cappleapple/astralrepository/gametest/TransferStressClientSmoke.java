@@ -7,7 +7,7 @@ import com.cappleapple.astralrepository.network.NetworkPackets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.api.distmarker.Dist;
@@ -63,7 +63,7 @@ public final class TransferStressClientSmoke {
                 int slot=ITEMS||i<128?-1:-2-i%3;
                 var item=slot==-1?new ItemStack(List.of(Items.DIAMOND,Items.CHEST,Items.IRON_BLOCK,Items.DIAMOND_PICKAXE,Items.OAK_STAIRS,Items.APPLE,Items.ENDER_PEARL,Items.IRON_INGOT).get(i%8)):ItemStack.EMPTY;
                 if(UNIQUE&&!item.isEmpty())item.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,net.minecraft.network.chat.Component.literal("Transfer variant "+i));
-                WorldVisuals.add(new NetworkPackets.Visual(from,to,item,0x8270ee,600,slot,List.of(from,from.offset(4,2,0),to),null,null,slot==-2?ResourceLocation.withDefaultNamespace(i%2==0?"water":"lava"):null));
+                WorldVisuals.add(new NetworkPackets.Visual(from,to,item,0x8270ee,600,slot,List.of(from,from.offset(4,2,0),to),null,null,slot==-2?Identifier.withDefaultNamespace(i%2==0?"water":"lava"):null));
             }
             admissionNanos=System.nanoTime()-begin;
             check(WorldVisuals.performance().active()==4096,"Admission did not retain its configured bounded population");

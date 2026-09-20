@@ -7,12 +7,12 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 public final class NetworkPackets {
     public static final int SEARCH=0, QUICK_WITHDRAW=1, DEPOSIT=2, CRAFT=3, CANCEL=4, PICKUP=5, CRAFT_STACK=6, CLEAR_GRID=7;
@@ -21,7 +21,7 @@ public final class NetworkPackets {
     public static Consumer<Visual> visualReceiver = p -> {};
     public static Runnable visualResetReceiver = () -> {};
     public static Consumer<Diagnostics> diagnosticsReceiver = p -> {};
-    private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> type(String path) { return new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository",path)); }
+    private static <T extends CustomPacketPayload> CustomPacketPayload.Type<T> type(String path) { return new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath("astral_repository",path)); }
     public record Action(int menu,int kind,ItemStack stack,int amount,int row,String query,long request) implements CustomPacketPayload {
         public Action(int menu,int kind,ItemStack stack,int amount,int row,String query){this(menu,kind,stack,amount,row,query,0);}
         public static final Type<Action> TYPE=NetworkPackets.type("action");
@@ -111,7 +111,7 @@ public final class NetworkPackets {
         List<Job> ordered=new ArrayList<>();if(delta.jobOrder==null)ordered.addAll(jobs.values());else for(UUID id:delta.jobOrder){Job job=jobs.remove(id);if(job==null)return null;ordered.add(job);}
         return new Page(delta.menu,delta.revision,baseline.row,delta.total,delta.error==null?baseline.error:delta.error,entries,ordered,delta.request);
     }
-    public record Visual(BlockPos from,BlockPos to,ItemStack stack,int color,int duration,int slot,List<BlockPos> path,TransferVisuals.Endpoint departure,TransferVisuals.Endpoint arrival,ResourceLocation fluid) implements CustomPacketPayload {
+    public record Visual(BlockPos from,BlockPos to,ItemStack stack,int color,int duration,int slot,List<BlockPos> path,TransferVisuals.Endpoint departure,TransferVisuals.Endpoint arrival,Identifier fluid) implements CustomPacketPayload {
         public Visual(BlockPos from,BlockPos to,ItemStack stack,int color,int duration,int slot,List<BlockPos> path,TransferVisuals.Endpoint departure,TransferVisuals.Endpoint arrival){this(from,to,stack,color,duration,slot,path,departure,arrival,null);}
         public Visual(BlockPos from,BlockPos to,ItemStack stack,int color,int duration,int slot,List<BlockPos> path){this(from,to,stack,color,duration,slot,path,null,null);}
         public Visual(BlockPos from,BlockPos to,ItemStack stack,int color,int duration,int slot){this(from,to,stack,color,duration,slot,List.of(from,to));}
@@ -119,8 +119,8 @@ public final class NetworkPackets {
         public static final Type<Visual> TYPE=NetworkPackets.type("visual");
         public static final StreamCodec<RegistryFriendlyByteBuf,Visual> CODEC=StreamCodec.of((b,p)->{
             b.writeBlockPos(p.from);b.writeBlockPos(p.to);ItemStack.OPTIONAL_STREAM_CODEC.encode(b,p.stack);b.writeInt(p.color);b.writeVarInt(p.duration);b.writeInt(p.slot);
-            b.writeVarInt(p.path.size());p.path.forEach(b::writeBlockPos);writeEndpoint(b,p.departure);writeEndpoint(b,p.arrival);b.writeBoolean(p.fluid!=null);if(p.fluid!=null)b.writeResourceLocation(p.fluid);
-        },b->{var from=b.readBlockPos();var to=b.readBlockPos();var stack=ItemStack.OPTIONAL_STREAM_CODEC.decode(b);int color=b.readInt(),duration=b.readVarInt(),slot=b.readInt(),n=size(b,130);List<BlockPos> path=new ArrayList<>();for(int i=0;i<n;i++)path.add(b.readBlockPos());return new Visual(from,to,stack,color,duration,slot,path,readEndpoint(b),readEndpoint(b),b.readBoolean()?b.readResourceLocation():null);});
+            b.writeVarInt(p.path.size());p.path.forEach(b::writeBlockPos);writeEndpoint(b,p.departure);writeEndpoint(b,p.arrival);b.writeBoolean(p.fluid!=null);if(p.fluid!=null)b.writeIdentifier(p.fluid);
+        },b->{var from=b.readBlockPos();var to=b.readBlockPos();var stack=ItemStack.OPTIONAL_STREAM_CODEC.decode(b);int color=b.readInt(),duration=b.readVarInt(),slot=b.readInt(),n=size(b,130);List<BlockPos> path=new ArrayList<>();for(int i=0;i<n;i++)path.add(b.readBlockPos());return new Visual(from,to,stack,color,duration,slot,path,readEndpoint(b),readEndpoint(b),b.readBoolean()?b.readIdentifier():null);});
         private static void writeEndpoint(RegistryFriendlyByteBuf b,TransferVisuals.Endpoint e){b.writeBoolean(e!=null);if(e!=null){b.writeEnum(e.face());b.writeFloat((float)e.offset().x);b.writeFloat((float)e.offset().y);b.writeFloat((float)e.offset().z);}}
         private static TransferVisuals.Endpoint readEndpoint(RegistryFriendlyByteBuf b){if(!b.readBoolean())return null;var face=b.readEnum(net.minecraft.core.Direction.class);return new TransferVisuals.Endpoint(new net.minecraft.world.phys.Vec3(b.readFloat(),b.readFloat(),b.readFloat()),face);}
         @Override public Type<Visual> type(){return TYPE;}
@@ -132,7 +132,7 @@ public final class NetworkPackets {
         public static final StreamCodec<RegistryFriendlyByteBuf,Diagnostics> CODEC=StreamCodec.of((b,p)->{b.writeVarInt(p.nodes.size());for(var n:p.nodes){b.writeBlockPos(n.pos);b.writeInt(n.color);b.writeUtf(n.text,256);}b.writeVarInt(p.edges.size());for(var e:p.edges){b.writeBlockPos(e.from);b.writeBlockPos(e.to);b.writeInt(e.color);}},b->{int n=b.readVarInt();if(n<0||n>256)throw new IllegalArgumentException();List<DiagnosticNode> nodes=new ArrayList<>();for(int i=0;i<n;i++)nodes.add(new DiagnosticNode(b.readBlockPos(),b.readInt(),b.readUtf(256)));int m=b.readVarInt();if(m<0||m>512)throw new IllegalArgumentException();List<DiagnosticEdge> edges=new ArrayList<>();for(int i=0;i<m;i++)edges.add(new DiagnosticEdge(b.readBlockPos(),b.readBlockPos(),b.readInt()));return new Diagnostics(nodes,edges);});
         @Override public Type<Diagnostics> type(){return TYPE;}
     }
-    public static void setup(IEventBus bus) { bus.addListener(NetworkPackets::register); }
+    public static void setup(IEventBus bus) { register(new RegisterPayloadHandlersEvent()); }
     private static void register(RegisterPayloadHandlersEvent event) {
         var r=event.registrar("8");
         r.playToServer(Action.TYPE,Action.CODEC,(payload,context)-> { if(context.player() instanceof ServerPlayer p && p.containerMenu instanceof NexusMenu menu && menu.containerId==payload.menu) menu.action(payload); });

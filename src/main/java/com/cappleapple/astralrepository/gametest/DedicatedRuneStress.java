@@ -8,7 +8,7 @@ import java.nio.file.*;
 import java.util.*;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
@@ -58,7 +58,7 @@ public final class DedicatedRuneStress {
         Work(RuneLayer rune,boolean busy,Media media){this.rune=rune;this.busy=busy;this.media=media;}
     }
 
-    @EventBusSubscriber(modid=AstralRepository.MOD_ID,bus=EventBusSubscriber.Bus.MOD,value=Dist.DEDICATED_SERVER)
+    @EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.DEDICATED_SERVER)
     public static final class CapabilitiesForFixture {
         @SubscribeEvent public static void register(RegisterCapabilitiesEvent event){
             if(!ACTIVE)return;
@@ -254,7 +254,7 @@ public final class DedicatedRuneStress {
     }
     private static final class SourceStorage implements ResourceProvider {
         final String id;long amount=64000,inserted,extracted;SourceStorage(BlockPos pos){id="rune_stress_source:"+pos.asLong();}
-        public String id(){return id;}public Object identity(){return this;}public ResourceLocation resourceType(){return ResourceKinds.SOURCE;}
+        public String id(){return id;}public Object identity(){return this;}public Identifier resourceType(){return ResourceKinds.SOURCE;}
         public Map<ResourceKey,Long> snapshot(){return Map.of(ResourceKinds.ARS_SOURCE,amount);}
         public long insert(ResourceKey key,long n,boolean simulate){long accepted=key.equals(ResourceKinds.ARS_SOURCE)?Math.min(n,capacity()-amount):0;if(!simulate){amount+=accepted;inserted+=accepted;}return accepted;}
         public long extract(ResourceKey key,long n,boolean simulate){long taken=key.equals(ResourceKinds.ARS_SOURCE)?Math.min(n,amount):0;if(!simulate){amount-=taken;extracted+=taken;}return taken;}

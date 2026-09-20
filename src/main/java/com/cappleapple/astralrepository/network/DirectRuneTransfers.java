@@ -225,7 +225,7 @@ public final class DirectRuneTransfers {
     }
     private static long itemTotal(Endpoint endpoint,ItemKey key){long total=0;for(ItemView view:endpoint.items)if(view.ready)total=NetworkInventoryIndex.saturatingAdd(total,view.contents.getOrDefault(key,0L));return total;}
     private static long fluidTotal(Map<ResourceProvider,Map<ResourceKey,Long>> snapshots,ResourceKey key){long total=0;for(var values:snapshots.values())total=NetworkInventoryIndex.saturatingAdd(total,values.getOrDefault(key,0L));return total;}
-    private boolean moveResources(RuneLayer layer,Endpoint source,Endpoint destination,net.minecraft.resources.ResourceLocation kind){
+    private boolean moveResources(RuneLayer layer,Endpoint source,Endpoint destination,net.minecraft.resources.Identifier kind){
         if(fluidBudget<=0||source.fluids.isEmpty()||destination.fluids.isEmpty())return false;
         boolean supported=false;for(ResourceProvider provider:destination.fluids)if(provider.resourceType().equals(kind)){supported=true;break;}if(!supported)return false;
         Map<ResourceProvider,Map<ResourceKey,Long>> sourceAmounts=new LinkedHashMap<>();
@@ -291,7 +291,7 @@ public final class DirectRuneTransfers {
     private static void verifyStack(ItemStack stack,ItemKey key,int maximum){if(stack.getCount()<0||stack.getCount()>maximum||!stack.isEmpty()&&!key.matches(stack))throw new IllegalStateException("Provider violated extraction contract");}
     private static void verifyRemainder(ItemStack stack,ItemKey key,int maximum){if(stack.getCount()<0||stack.getCount()>maximum||!stack.isEmpty()&&!key.matches(stack))throw new IllegalStateException("Provider violated insertion contract");}
     private static long checked(long amount,long maximum){if(amount<0||amount>maximum)throw new IllegalStateException("Provider violated quantity contract");return amount;}
-    private void visual(RuneLayer layer,Endpoint source,Endpoint destination,java.util.function.Supplier<ItemStack> sample,int style,net.minecraft.resources.ResourceLocation fluid){
+    private void visual(RuneLayer layer,Endpoint source,Endpoint destination,java.util.function.Supplier<ItemStack> sample,int style,net.minecraft.resources.Identifier fluid){
         if(AstralConfig.particleDensity.get()<=0)return;
         var level=server.getLevel(source.target.position().dimension());if(level==null||level.players().isEmpty())return;
         if(source.target.face()==null||destination.target.face()==null)return; // Aggregate providers emit their actual storage path.

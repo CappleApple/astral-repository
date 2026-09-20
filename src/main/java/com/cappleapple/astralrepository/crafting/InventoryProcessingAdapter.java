@@ -8,8 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 import java.util.*;
 
 /** Executes deterministic single-input recipes through real sided machine capabilities. */
@@ -25,17 +25,17 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
         for (var rule : ProcessingRules.rules()) {
             if (rule.block().getNamespace().equals("create") && !CompatConfig.create.get()) continue;
             if (!BuiltInRegistries.BLOCK.containsKey(rule.block())) continue;
-            for (var holder : access.level().getRecipeManager().getRecipes()) {
+            for (var holder : access.level().getServer().getRecipeManager().getRecipes()) {
                 Recipe<?> recipe = holder.value();
-                if (!rule.recipeType().equals(BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType())) || recipe.getIngredients().size() != 1) continue;
-                ItemStack output = recipe.getResultItem(access.level().registryAccess());
+                if (!rule.recipeType().equals(BuiltInRegistries.RECIPE_TYPE.getKey(recipe.getType())) || com.cappleapple.astralrepository.port.RecipeCompat.ingredients(recipe).size() != 1) continue;
+                ItemStack output = com.cappleapple.astralrepository.port.RecipeCompat.output(recipe,access.level().registryAccess());
                 if (output.isEmpty()) continue;
                 Map<ItemKey, Long> outputs = possibleOutputs(recipe, output);
                 if (outputs.isEmpty()) continue;
-                Ingredient ingredient = recipe.getIngredients().getFirst();
+                Ingredient ingredient = com.cappleapple.astralrepository.port.RecipeCompat.ingredients(recipe).getFirst();
                 Set<ItemKey> alternatives = new LinkedHashSet<>();
-                for (ItemStack display : ingredient.getItems()) stockByItem.getOrDefault(display.getItem(), List.of()).stream().filter(key -> ingredient.test(key.sample())).forEach(alternatives::add);
-                for (ItemStack stack : ingredient.getItems()) if (!stack.isEmpty()) alternatives.add(new ItemKey(stack));
+                for (ItemStack display : com.cappleapple.astralrepository.port.RecipeCompat.samples(ingredient,access.level().registryAccess())) stockByItem.getOrDefault(display.getItem(), List.of()).stream().filter(key -> ingredient.test(key.sample())).forEach(alternatives::add);
+                for (ItemStack stack : com.cappleapple.astralrepository.port.RecipeCompat.samples(ingredient,access.level().registryAccess())) if (!stack.isEmpty()) alternatives.add(new ItemKey(stack));
                 alternatives.remove(new ItemKey(output));
                 if (alternatives.isEmpty()) continue;
                 String id = rule.id() + "/" + holder.id();
@@ -71,16 +71,18 @@ public final class InventoryProcessingAdapter implements ProcessingAdapter {
         ServerLevel level = VanillaProcessingAdapter.world(access, position);
         if (level == null || !level.hasChunkAt(position.pos())) return false;
         var rule = binding.rule();
-        return level.getBlockState(position.pos()).is(BuiltInRegistries.BLOCK.get(rule.block()))
-                && (rule.aboveBlock() == null || level.getBlockState(position.pos().above(rule.aboveOffset())).is(BuiltInRegistries.BLOCK.get(rule.aboveBlock())));
+        return level.getBlockState(position.pos()).is(BuiltInRegistries.BLOCK.getValue(rule.block()))
+                && (rule.aboveBlock() == null || level.getBlockState(position.pos().above(rule.aboveOffset())).is(BuiltInRegistries.BLOCK.getValue(rule.aboveBlock())));
     }
     @Override public CraftScheduler.Operation<ItemKey> start(CraftingService.NetworkAccess access, GlobalPos position, CraftPlan.Node<ItemKey> node) {
         if (!supports(access, position, node) || node.selected().size() != 1) return null;
         var rule = bindings.get(node.recipe().id()).rule();
         ServerLevel level = VanillaProcessingAdapter.world(access, position);
         var original = level.getBlockEntity(position.pos());
-        IItemHandler input = level.getCapability(Capabilities.ItemHandler.BLOCK, position.pos(), rule.inputSide());
-        IItemHandler output = level.getCapability(Capabilities.ItemHandler.BLOCK, position.pos(), rule.outputSide());
+        var inputResource = com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, position.pos(), rule.inputSide());
+        IItemHandler input = inputResource == null ? null : inputResource;
+        var outputResource = com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, position.pos(), rule.outputSide());
+        IItemHandler output = outputResource == null ? null : outputResource;
         if (input == null || output == null) return null;
         List<Integer> inputSlots = slots(rule.inputSlots(), input), outputSlots = slots(rule.outputSlots(), output);
         if (outputSlots.stream().anyMatch(slot -> !output.getStackInSlot(slot).isEmpty())) return null;

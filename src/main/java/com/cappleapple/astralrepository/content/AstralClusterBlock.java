@@ -10,6 +10,6 @@ import net.minecraft.world.level.block.state.BlockState;
 /** Keeps vanilla attachment, waterlogging, collision, sounds, and piston behavior. */
 public final class AstralClusterBlock extends AmethystClusterBlock implements EntityBlock {
     public AstralClusterBlock(float height, float inset, Properties properties) { super(height, inset, properties); }
-    @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.ENTITYBLOCK_ANIMATED; }
+    @Override protected RenderShape getRenderShape(BlockState state) { return RenderShape.INVISIBLE; }
     @Override public BlockEntity newBlockEntity(BlockPos pos, BlockState state) { return new AstralMineralBlockEntity(pos, state); }
 }

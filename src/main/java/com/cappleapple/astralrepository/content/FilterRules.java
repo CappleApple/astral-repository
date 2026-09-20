@@ -8,10 +8,10 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 /** Positive predicates combine by ANY; exclusions always veto. Empty filters accept all. */
 public final class FilterRules {
@@ -61,7 +61,7 @@ public final class FilterRules {
         String namespace = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
         return evaluate(e -> switch (e.kind) {
             case ITEM -> BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(e.id);
-            case ITEM_TAG -> stack.is(TagKey.create(Registries.ITEM, ResourceLocation.parse(e.id)));
+            case ITEM_TAG -> stack.is(TagKey.create(Registries.ITEM, Identifier.parse(e.id)));
             case NAMESPACE -> namespace.equals(e.id);
             case COMPONENTS -> ItemStack.isSameItemSameComponents(stack, e.sample);
             default -> false;
@@ -71,10 +71,10 @@ public final class FilterRules {
     public boolean matches(FluidStack stack) {
         if (stack.isEmpty()) return false;
         if (unrestricted()) return true;
-        ResourceLocation id = BuiltInRegistries.FLUID.getKey(stack.getFluid());
+        Identifier id = BuiltInRegistries.FLUID.getKey(stack.getFluid());
         return evaluate(e -> switch (e.kind) {
             case FLUID -> id.toString().equals(e.id);
-            case FLUID_TAG -> stack.is(TagKey.create(Registries.FLUID, ResourceLocation.parse(e.id)));
+            case FLUID_TAG -> stack.is(TagKey.create(Registries.FLUID, Identifier.parse(e.id)));
             case NAMESPACE -> id.getNamespace().equals(e.id);
             default -> false;
         }, true);
@@ -105,24 +105,24 @@ public final class FilterRules {
             CompoundTag value = new CompoundTag();
             value.putString("Kind", entry.kind.name()); value.putString("Id", entry.id);
             value.putBoolean("Exclude", entry.exclude);
-            if (!entry.sample.isEmpty()) value.put("Sample", entry.sample.save(registries));
+            if (!entry.sample.isEmpty()) value.put("Sample", com.cappleapple.astralrepository.port.NbtCodecs.save(entry.sample,registries));
             values.add(value);
         }
         tag.put("Entries", values); return tag;
     }
 
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        clear(); blacklist = tag.getBoolean("Blacklist");
-        minimum = Math.max(0, tag.getLong("Minimum"));
-        target = tag.contains("Target") ? Math.max(0, tag.getLong("Target")) : Long.MAX_VALUE;
-        ListTag values = tag.getList("Entries", Tag.TAG_COMPOUND);
+        clear(); blacklist = tag.getBooleanOr("Blacklist",false);
+        minimum = Math.max(0, tag.getLongOr("Minimum",0L));
+        target = tag.contains("Target") ? Math.max(0, tag.getLongOr("Target",0L)) : Long.MAX_VALUE;
+        ListTag values = tag.getListOrEmpty("Entries");
         for (int i = 0; i < Math.min(64, values.size()); i++) {
-            CompoundTag value = values.getCompound(i);
+            CompoundTag value = values.getCompoundOrEmpty(i);
             try {
-                Kind kind = Kind.valueOf(value.getString("Kind"));
-                String id = value.getString("Id");
-                if (kind != Kind.NAMESPACE) ResourceLocation.parse(id);
-                add(kind, id, value.getBoolean("Exclude"), ItemStack.parseOptional(registries, value.getCompound("Sample")));
+                Kind kind = Kind.valueOf(value.getStringOr("Kind",""));
+                String id = value.getStringOr("Id","");
+                if (kind != Kind.NAMESPACE) Identifier.parse(id);
+                add(kind, id, value.getBooleanOr("Exclude",false), com.cappleapple.astralrepository.port.NbtCodecs.item(registries, value.getCompoundOrEmpty("Sample")));
             } catch (IllegalArgumentException ignored) { /* Ignore invalid edited filter entries. */ }
         }
     }

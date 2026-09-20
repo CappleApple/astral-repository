@@ -40,7 +40,7 @@ final class PreparedTransferPath {
         Vec3[] points = new Vec3[path.size()];
         int total = 0;
         for (int i = 0; i < path.size(); i++) {
-            centers[i] = path.get(i).getCenter();
+            centers[i] = Vec3.atCenterOf(path.get(i));
             if (i > 0) legEnds[i - 1] = total += TransferVisuals.legTicks(path.get(i - 1), path.get(i));
         }
         duration = total;
@@ -128,7 +128,7 @@ final class PreparedTransferPath {
             int ticks = legTicks(start ? 0 : last - 1);
             TransferVisuals.Endpoint endpoint = start ? departure : arrival;
             return endpoint == null ? delta.scale((start ? 1.0 : -1.0) / ticks)
-                    : Vec3.atLowerCornerOf(endpoint.face().getNormal())
+                    : Vec3.atLowerCornerOf(endpoint.face().getUnitVec3i())
                             .scale((start ? 1 : -1) * Math.min(3, Math.max(.75, delta.length() * .35)) / ticks);
         }
         Vec3 before = point.subtract(points[i - 1]), after = points[i + 1].subtract(point);

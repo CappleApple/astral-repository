@@ -9,7 +9,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -20,7 +20,7 @@ final class CraftRecoveryData extends SavedData {
     record Entry(GlobalPos origin, Map<ItemKey, Long> items, boolean uncertain) {}
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
     static CraftRecoveryData get(MinecraftServer server) {
-        return server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(CraftRecoveryData::new, CraftRecoveryData::load), "astral_repository_craft_recovery");
+        return server.overworld().getDataStorage().computeIfAbsent(com.cappleapple.astralrepository.port.NbtCodecs.savedType("astral_repository_craft_recovery",CraftRecoveryData::new,server.registryAccess(),CraftRecoveryData::load,(data,registries)->data.save(new CompoundTag(),registries)));
     }
     void put(UUID id, GlobalPos origin, Map<ItemKey, Long> items) {
         Entry next = new Entry(origin, Map.copyOf(items), false);
@@ -35,38 +35,38 @@ final class CraftRecoveryData extends SavedData {
     }
     private static CraftRecoveryData load(CompoundTag tag, HolderLookup.Provider registries) {
         CraftRecoveryData data = new CraftRecoveryData();
-        ListTag entries = tag.getList("Jobs", Tag.TAG_COMPOUND);
+        ListTag entries = tag.getListOrEmpty("Jobs");
         for (int i = 0; i < entries.size(); i++) {
-            CompoundTag entry = entries.getCompound(i);
+            CompoundTag entry = entries.getCompoundOrEmpty(i);
             try {
-                GlobalPos origin = GlobalPos.of(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(entry.getString("Dimension"))), BlockPos.of(entry.getLong("Position")));
+                GlobalPos origin = GlobalPos.of(ResourceKey.create(Registries.DIMENSION, Identifier.parse(entry.getStringOr("Dimension",""))), BlockPos.of(entry.getLongOr("Position",0L)));
                 Map<ItemKey, Long> items = new LinkedHashMap<>();
-                ListTag savedItems = entry.getList("Escrow", Tag.TAG_COMPOUND);
+                ListTag savedItems = entry.getListOrEmpty("Escrow");
                 for (int j = 0; j < savedItems.size(); j++) {
-                    CompoundTag savedItem = savedItems.getCompound(j);
-                    ItemStack stack = ItemStack.parseOptional(registries, savedItem.getCompound("Stack"));
-                    long count = savedItem.getLong("Count");
+                    CompoundTag savedItem = savedItems.getCompoundOrEmpty(j);
+                    ItemStack stack = com.cappleapple.astralrepository.port.NbtCodecs.item(registries, savedItem.getCompoundOrEmpty("Stack"));
+                    long count = savedItem.getLongOr("Count",0L);
                     if (!stack.isEmpty() && count > 0) items.merge(new ItemKey(stack), count, Math::addExact);
                 }
-                data.entries.put(entry.getUUID("Id"), new Entry(origin, Map.copyOf(items), entry.getBoolean("Uncertain")));
+                data.entries.put(entry.read("Id",net.minecraft.core.UUIDUtil.CODEC).orElseThrow(), new Entry(origin, Map.copyOf(items), entry.getBooleanOr("Uncertain",false)));
             } catch (RuntimeException error) {
                 CraftingService.LOGGER.error("Invalid saved crafting recovery entry {}", i, error);
             }
         }
         return data;
     }
-    @Override public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag jobs = new ListTag();
         entries.forEach((id, entry) -> {
             CompoundTag job = new CompoundTag();
-            job.putUUID("Id", id);
+            job.store("Id",net.minecraft.core.UUIDUtil.CODEC, id);
             job.putBoolean("Uncertain", entry.uncertain());
-            job.putString("Dimension", entry.origin().dimension().location().toString());
+            job.putString("Dimension", entry.origin().dimension().identifier().toString());
             job.putLong("Position", entry.origin().pos().asLong());
             ListTag items = new ListTag();
             entry.items().forEach((key, count) -> {
                 CompoundTag item = new CompoundTag();
-                item.put("Stack", key.sample().save(registries));
+                item.put("Stack", com.cappleapple.astralrepository.port.NbtCodecs.save(key.sample(),registries));
                 item.putLong("Count", count);
                 items.add(item);
             });

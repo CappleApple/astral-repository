@@ -2,8 +2,8 @@ package com.cappleapple.astralrepository.api;
 
 import java.util.Objects;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraft.resources.Identifier;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 /** Fluid identity retaining data components. Quantities are measured in millibuckets. */
 public final class FluidKey implements ResourceKey {
@@ -15,8 +15,8 @@ public final class FluidKey implements ResourceKey {
         hash = FluidStack.hashFluidAndComponents(sample);
     }
     public FluidStack sample() { return sample.copy(); }
-    public ResourceLocation id() { return BuiltInRegistries.FLUID.getKey(sample.getFluid()); }
-    public ResourceLocation type() { return ResourceKinds.FLUID; }
+    public Identifier id() { return BuiltInRegistries.FLUID.getKey(sample.getFluid()); }
+    public Identifier type() { return ResourceKinds.FLUID; }
     @Override public boolean equals(Object other) {
         return other instanceof FluidKey key && FluidStack.isSameFluidSameComponents(sample, key.sample);
     }

@@ -4,7 +4,7 @@ import com.cappleapple.astralrepository.api.NetworkPowerProvider;
 import com.cappleapple.astralrepository.api.ResourceKinds;
 import java.util.Map;
 import java.util.WeakHashMap;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -25,9 +25,9 @@ public final class CreateStressProvider implements NetworkPowerProvider {
         return tile != null && OptionalApi.type(KINETIC).isInstance(tile)
                 && (Boolean)OptionalApi.call(tile, KINETIC, "hasNetwork");
     }
-    public String id() { return "create:stress:" + level.dimension().location() + ":" + tile.getBlockPos().asLong(); }
+    public String id() { return "create:stress:" + level.dimension().identifier() + ":" + tile.getBlockPos().asLong(); }
     public Object identity() { return network; }
-    public ResourceLocation resourceType() { return ResourceKinds.STRESS; }
+    public Identifier resourceType() { return ResourceKinds.STRESS; }
     public Mode mode() { return Mode.CAPACITY; }
     public boolean valid() {
         return !tile.isRemoved() && level.hasChunkAt(tile.getBlockPos()) && level.getBlockEntity(tile.getBlockPos()) == tile

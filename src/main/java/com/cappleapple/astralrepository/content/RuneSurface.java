@@ -4,7 +4,7 @@ import com.cappleapple.astralrepository.network.*;
 import java.util.*;
 import net.minecraft.core.*;
 import net.minecraft.nbt.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -48,7 +48,7 @@ public final class RuneSurface implements NetworkAnchor {
     public List<RuneLayer> layers(){return layerView;}
     public int archivedLayerCount(){return archivedLayers.size();}
     public RuneLayer get(UUID id){for(RuneLayer layer:layers)if(layer.id().equals(id))return layer;return null;}
-    public RuneLayer addLayer(ResourceLocation item,RuneLayer.Mode mode){if(layers.size()>=placementLimit()||layers.size()+archivedLayers.size()>=MAX_LAYERS)return null;RuneLayer layer=new RuneLayer(this,UUID.randomUUID(),Objects.requireNonNull(item),Objects.requireNonNull(mode));layers.add(layer);topologyChanged();return layer;}
+    public RuneLayer addLayer(Identifier item,RuneLayer.Mode mode){if(layers.size()>=placementLimit()||layers.size()+archivedLayers.size()>=MAX_LAYERS)return null;RuneLayer layer=new RuneLayer(this,UUID.randomUUID(),Objects.requireNonNull(item),Objects.requireNonNull(mode));layers.add(layer);topologyChanged();return layer;}
     public boolean removeLayer(UUID id){boolean removed=layers.removeIf(layer->layer.id().equals(id));if(removed){restoreArchivedLayer();topologyChanged();}return removed;}
     private void restoreArchivedLayer(){if(layers.size()<placementLimit()&&!archivedLayers.isEmpty()){RuneLayer restored=archivedLayers.removeFirst();layers.add(restored);restored.setEnabled(false);restored.report("Preserved legacy rune restored; paused");}}
     public record TargetResult(boolean success,boolean assigned,String message){}
@@ -62,10 +62,10 @@ public final class RuneSurface implements NetworkAnchor {
         layer.toggleTarget(target);return new TargetResult(true,true,layer.mode()==RuneLayer.Mode.PULL?"Pull target assigned: linked container → rune host.":"Push target assigned: rune host → linked container.");
     }
     public boolean clearTarget(UUID id){RuneLayer layer=get(id);if(layer==null||layer.target()==null)return false;layer.target(null);return true;}
-    public List<ResourceLocation> glyphs(){return layers.stream().map(RuneLayer::item).toList();}
+    public List<Identifier> glyphs(){return layers.stream().map(RuneLayer::item).toList();}
     /** Legacy construction remains source-compatible, but never restores automatic network routing. */
-    public boolean addGlyph(ResourceLocation glyph,NodeKind role){return addLayer(glyph,role==NodeKind.DISTRIBUTION?RuneLayer.Mode.PUSH:RuneLayer.Mode.PULL)!=null;}
-    public boolean removeGlyph(ResourceLocation glyph){for(int i=layers.size()-1;i>=0;i--)if(layers.get(i).item().equals(glyph)){return removeLayer(layers.get(i).id());}return false;}
+    public boolean addGlyph(Identifier glyph,NodeKind role){return addLayer(glyph,role==NodeKind.DISTRIBUTION?RuneLayer.Mode.PUSH:RuneLayer.Mode.PULL)!=null;}
+    public boolean removeGlyph(Identifier glyph){for(int i=layers.size()-1;i>=0;i--)if(layers.get(i).item().equals(glyph)){return removeLayer(layers.get(i).id());}return false;}
     public boolean collects(){return false;} public boolean stocks(){return false;} public boolean distributes(){return false;}
     public NodeKind kind(){return NodeKind.ROUTING;}
     public int channel(){return channel;} public int priority(){return priority;} public boolean dimensional(){return dimensional;} public boolean enabled(){return enabled;}
@@ -89,21 +89,21 @@ public final class RuneSurface implements NetworkAnchor {
         ListTag archive=new ListTag();for(RuneLayer layer:archivedLayers)archive.add(layer.save(registries));tag.put("ArchivedLayers",archive);tag.putInt("LayerVersion",2);return tag;
     }
     public static RuneSurface load(MinecraftServer server,CompoundTag tag,HolderLookup.Provider registries){
-        RuneSurface rune=new RuneSurface(server,AnchorAddress.load(tag));rune.channel=tag.contains("Channel")?Math.clamp(tag.getInt("Channel"),-1,15):-1;rune.priority=Math.clamp(tag.getInt("Priority"),-999,999);
-        rune.dimensional=tag.getBoolean("Dimensional");rune.enabled=!tag.contains("Enabled")||tag.getBoolean("Enabled");rune.editingExtraction=tag.getBoolean("EditingExtraction");rune.excludeNext=tag.getBoolean("ExcludeNext");
-        try{rune.distribution=DistributionMode.valueOf(tag.getString("Distribution"));}catch(IllegalArgumentException ignored){}
-        rune.insertion.load(tag.getCompound("Insertion"),registries);rune.extraction.load(tag.getCompound("Extraction"),registries);rune.persistent.merge(tag.getCompound("Persistent"));
+        RuneSurface rune=new RuneSurface(server,AnchorAddress.load(tag));rune.channel=tag.contains("Channel")?Math.clamp(tag.getIntOr("Channel",0),-1,15):-1;rune.priority=Math.clamp(tag.getIntOr("Priority",0),-999,999);
+        rune.dimensional=tag.getBooleanOr("Dimensional",false);rune.enabled=!tag.contains("Enabled")||tag.getBooleanOr("Enabled",false);rune.editingExtraction=tag.getBooleanOr("EditingExtraction",false);rune.excludeNext=tag.getBooleanOr("ExcludeNext",false);
+        try{rune.distribution=DistributionMode.valueOf(tag.getStringOr("Distribution",""));}catch(IllegalArgumentException ignored){}
+        rune.insertion.load(tag.getCompoundOrEmpty("Insertion"),registries);rune.extraction.load(tag.getCompoundOrEmpty("Extraction"),registries);rune.persistent.merge(tag.getCompoundOrEmpty("Persistent"));
         if(tag.contains("Layers")){
-            ListTag values=tag.getList("Layers",Tag.TAG_COMPOUND);Set<UUID> ids=new HashSet<>();
-            for(int i=0;i<Math.min(64,values.size());i++)try{RuneLayer layer=RuneLayer.load(rune,values.getCompound(i),registries);if(ids.add(layer.id()))rune.acceptLoaded(layer);}catch(IllegalArgumentException ignored){}
-            ListTag archive=tag.getList("ArchivedLayers",Tag.TAG_COMPOUND);
-            for(int i=0;i<archive.size()&&rune.layers.size()+rune.archivedLayers.size()<64;i++)try{RuneLayer layer=RuneLayer.load(rune,archive.getCompound(i),registries);if(ids.add(layer.id()))rune.archivedLayers.add(layer);}catch(IllegalArgumentException ignored){}
+            ListTag values=tag.getListOrEmpty("Layers");Set<UUID> ids=new HashSet<>();
+            for(int i=0;i<Math.min(64,values.size());i++)try{RuneLayer layer=RuneLayer.load(rune,values.getCompoundOrEmpty(i),registries);if(ids.add(layer.id()))rune.acceptLoaded(layer);}catch(IllegalArgumentException ignored){}
+            ListTag archive=tag.getListOrEmpty("ArchivedLayers");
+            for(int i=0;i<archive.size()&&rune.layers.size()+rune.archivedLayers.size()<64;i++)try{RuneLayer layer=RuneLayer.load(rune,archive.getCompoundOrEmpty(i),registries);if(ids.add(layer.id()))rune.archivedLayers.add(layer);}catch(IllegalArgumentException ignored){}
         }else{
-            ListTag values=tag.getList("Glyphs",Tag.TAG_COMPOUND);
+            ListTag values=tag.getListOrEmpty("Glyphs");
             for(int i=0;i<Math.min(64,values.size());i++){
-                CompoundTag old=values.getCompound(i);boolean push="DISTRIBUTION".equals(old.getString("Role"))||old.getString("Item").endsWith(":distribution_rune");
-                RuneLayer layer=new RuneLayer(rune,UUID.randomUUID(),ResourceLocation.fromNamespaceAndPath("astral_repository",push?"push_rune":"pull_rune"),push?RuneLayer.Mode.PUSH:RuneLayer.Mode.PULL);
-                layer.filter().load(tag.getCompound(push?"Extraction":"Insertion"),registries);rune.acceptLoaded(layer);
+                CompoundTag old=values.getCompoundOrEmpty(i);boolean push="DISTRIBUTION".equals(old.getStringOr("Role",""))||old.getStringOr("Item","").endsWith(":distribution_rune");
+                RuneLayer layer=new RuneLayer(rune,UUID.randomUUID(),Identifier.fromNamespaceAndPath("astral_repository",push?"push_rune":"pull_rune"),push?RuneLayer.Mode.PUSH:RuneLayer.Mode.PULL);
+                layer.filter().load(tag.getCompoundOrEmpty(push?"Extraction":"Insertion"),registries);rune.acceptLoaded(layer);
             }
         }
         return rune;

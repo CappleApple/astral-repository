@@ -3,7 +3,7 @@ package com.cappleapple.astralrepository.compat;
 import com.mojang.logging.LogUtils;
 import java.math.BigInteger;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.fml.ModList;
+import com.cappleapple.astralrepository.platform.ModList;
 
 /** Soft bridge to the installed Stacks Not Slots 1.x public exact capacity semantics. */
 public final class StacksNotSlotsCapacity {

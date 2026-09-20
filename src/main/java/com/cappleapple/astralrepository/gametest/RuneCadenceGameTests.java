@@ -28,7 +28,7 @@ public final class RuneCadenceGameTests {
         var face=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(from),Direction.SOUTH);var rune=face.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);
         int[] amounts={3,70,90,40},intervals={5,7,11,13};RuneCadence cadence=RuneCadence.DEFAULT;
         for(var kind:RuneCadence.Kind.values())cadence=cadence.with(kind,new RuneCadence.Rate(amounts[kind.ordinal()],intervals[kind.ordinal()]));rune.setCadence(cadence);
-        var packet=new NetworkPackets.Visual(h.absolutePos(from),h.absolutePos(to),ItemStack.EMPTY,0xffffff,20,-2,List.of(h.absolutePos(from),h.absolutePos(to)),null,null,net.minecraft.resources.ResourceLocation.withDefaultNamespace("lava"));
+        var packet=new NetworkPackets.Visual(h.absolutePos(from),h.absolutePos(to),ItemStack.EMPTY,0xffffff,20,-2,List.of(h.absolutePos(from),h.absolutePos(to)),null,null,net.minecraft.resources.Identifier.withDefaultNamespace("lava"));
         var buf=new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(),h.getLevel().registryAccess());try{NetworkPackets.Visual.CODEC.encode(buf,packet);h.assertTrue(NetworkPackets.Visual.CODEC.decode(buf).fluid().equals(packet.fluid()),"Resource packet preserves the actual fluid instead of guessing from color");}finally{buf.release();}
         h.assertTrue(RuneSettingsPackets.supportedResources(face)==15,"Capability discovery retains all four types on the same host");
         h.assertTrue(face.toggleTarget(rune.id(),GlobalPos.of(h.getLevel().dimension(),h.absolutePos(to)),Direction.SOUTH).assigned(),"Combined resource host accepts a direct target");
@@ -102,7 +102,7 @@ public final class RuneCadenceGameTests {
         h.succeed();
     }
     public static ResourceProvider scalar(String id,long[] amounts,int index){return new ResourceProvider(){
-        public String id(){return id;}public Object identity(){return id;}public boolean valid(){return true;}public long capacity(){return 10000;}public net.minecraft.resources.ResourceLocation resourceType(){return ResourceKinds.SOURCE;}
+        public String id(){return id;}public Object identity(){return id;}public boolean valid(){return true;}public long capacity(){return 10000;}public net.minecraft.resources.Identifier resourceType(){return ResourceKinds.SOURCE;}
         public Map<ResourceKey,Long> snapshot(){return Map.of(ResourceKinds.ARS_SOURCE,amounts[index]);}
         public long insert(ResourceKey key,long n,boolean simulate){long accepted=key.equals(ResourceKinds.ARS_SOURCE)?Math.min(n,10000-amounts[index]):0;if(!simulate)amounts[index]+=accepted;return accepted;}
         public long extract(ResourceKey key,long n,boolean simulate){long taken=key.equals(ResourceKinds.ARS_SOURCE)?Math.min(n,amounts[index]):0;if(!simulate)amounts[index]-=taken;return taken;}

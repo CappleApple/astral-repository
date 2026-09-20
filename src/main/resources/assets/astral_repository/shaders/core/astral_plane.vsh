@@ -1,24 +1,24 @@
-#version 150
+#version 330
 
-#moj_import <fog.glsl>
+#moj_import <minecraft:dynamictransforms.glsl>
+#moj_import <minecraft:projection.glsl>
+#moj_import <astral_repository:astral_parameters.glsl>
+#ifndef ASTRAL_INTERFACE
+#moj_import <minecraft:fog.glsl>
+#endif
 
 in vec3 Position;
 in vec4 Color;
 in vec2 UV0;
+
+#ifndef ASTRAL_INTERFACE
 in ivec2 UV1;
 in ivec2 UV2;
 in vec3 Normal;
 
-uniform mat4 ModelViewMat;
-uniform mat4 ProjMat;
 uniform sampler2D Sampler1;
 uniform sampler2D Sampler2;
-uniform int FogShape;
-uniform float AstralInterfaceMode;
-uniform mat4 AstralViewToWorld;
-uniform mat4 AstralParallaxViewCorrection;
-uniform mat4 AstralWorldProjectionBob;
-uniform vec3 AstralCameraPosition;
+#endif
 
 out vec2 crystalUV;
 out vec3 viewPosition;
@@ -28,6 +28,7 @@ out vec4 surfaceColor;
 out vec4 overlayColor;
 out vec4 lightColor;
 out float vertexDistance;
+out float vertexCylindricalDistance;
 
 void main() {
     vec4 view = ModelViewMat * vec4(Position, 1.0);
@@ -42,14 +43,16 @@ void main() {
     astralWorldRay = (AstralViewToWorld * AstralWorldProjectionBob * view).xyz;
     crystalUV = UV0;
     surfaceColor = Color;
-    if (AstralInterfaceMode > 0.5) {
+    #ifdef ASTRAL_INTERFACE
         // GUI panels do not bind world lightmaps or damage overlays.
         overlayColor = vec4(0.0);
         lightColor = vec4(1.0);
         vertexDistance = 0.0;
-    } else {
+        vertexCylindricalDistance = 0.0;
+    #else
         overlayColor = texelFetch(Sampler1, UV1, 0);
         lightColor = texelFetch(Sampler2, UV2 / 16, 0);
-        vertexDistance = fog_distance(Position, FogShape);
-    }
+        vertexDistance = fog_spherical_distance(Position);
+        vertexCylindricalDistance = fog_cylindrical_distance(Position);
+    #endif
 }

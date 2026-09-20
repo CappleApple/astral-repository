@@ -10,10 +10,10 @@ import java.util.function.DoubleUnaryOperator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 import static com.cappleapple.astralrepository.api.PowerPolicy.Component.*;
 
 /** Known fuel becomes node credit before payment. A failed multi-resource preflight never spends that credit. */
@@ -60,9 +60,9 @@ public final class NetworkPower implements AutoCloseable {
                 if(provider.resourceType().equals(ResourceKinds.ENERGY)) key=ResourceKinds.FE;
                 else if(provider.resourceType().equals(ResourceKinds.SOURCE)) key=ResourceKinds.ARS_SOURCE;
                 else if(provider.resourceType().equals(ResourceKinds.FLUID)) {
-                    ResourceLocation id=ResourceLocation.tryParse(AstralConfig.fluidFuel.get());
+                    Identifier id=Identifier.tryParse(AstralConfig.fluidFuel.get());
                     if(id==null) continue;
-                    FluidStack fuel=new FluidStack(BuiltInRegistries.FLUID.get(id),1);
+                    FluidStack fuel=new FluidStack(BuiltInRegistries.FLUID.getValue(id),1);
                     if(fuel.isEmpty()) continue;
                     key=new FluidKey(fuel); unit=AstralConfig.fluidFuelValue.get();
                 } else continue;
@@ -74,9 +74,9 @@ public final class NetworkPower implements AutoCloseable {
             for(StorageProvider discovered:CompatibilityRegistry.discoverStorage(level,pos,side)) {
                 StorageProvider provider=storageViews.compute(discovered.id(),(id,previous) -> previous!=null&&previous.valid()?previous:discovered);
                 if(reportedFailures.contains(provider.id())||!provider.valid()||!seen.add(List.of(provider.identity(),ResourceKinds.ITEM))) continue;
-                ResourceLocation id=ResourceLocation.tryParse(AstralConfig.itemFuel.get());
+                Identifier id=Identifier.tryParse(AstralConfig.itemFuel.get());
                 if(id==null) continue;
-                ItemStack fuel=new ItemStack(BuiltInRegistries.ITEM.get(id));
+                ItemStack fuel=new ItemStack(BuiltInRegistries.ITEM.getValue(id));
                 if(fuel.isEmpty()) continue;
                 ItemKey key=new ItemKey(fuel); double value=AstralConfig.itemFuelValue.get();
                 supplies.add(new Supply(provider.id(),provider.identity(),"item",node,
@@ -157,7 +157,7 @@ public final class NetworkPower implements AutoCloseable {
     }
     private static long units(double amount,double unitValue) { return (long)Math.ceil(amount/unitValue); }
     private static double credit(NetworkAnchor node,String kind) {
-        double value=node.getPersistentData().getDouble("AstralPowerCredit_"+kind);
+        double value=node.getPersistentData().getDoubleOr("AstralPowerCredit_"+kind,0D);
         return Double.isFinite(value)&&value>0?value:0;
     }
     private static double saturatingAdd(double a,double b) { return b>Double.MAX_VALUE-a?Double.MAX_VALUE:a+b; }

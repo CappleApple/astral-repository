@@ -76,7 +76,7 @@ public final class CraftingService {
     private record ProcessorProbe(ProcessingAdapter adapter,CraftPlan.Node<ItemKey> node) {}
     private List<ProcessorProbe> processorProbes=List.of();
     private void refreshCatalog(Map<ItemKey,Long> stock){
-        var holders=List.copyOf(access.level().getRecipeManager().getRecipes());
+        var holders=List.copyOf(access.level().getServer().getRecipeManager().getRecipes());
         var rules=List.copyOf(ProcessingRules.rules());
         var variants=stock.keySet().stream().filter(k->{var sample=k.sample();return !ItemStack.isSameItemSameComponents(sample,new ItemStack(sample.getItem()));}).collect(java.util.stream.Collectors.toUnmodifiableSet());
         if(catalog!=null&&holders.equals(recipeHolders)&&rules.equals(processingRules)&&variants.equals(catalogVariants))return;

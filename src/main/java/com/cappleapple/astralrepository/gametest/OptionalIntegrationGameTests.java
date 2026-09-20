@@ -10,7 +10,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.fml.ModList;
@@ -54,7 +54,7 @@ public final class OptionalIntegrationGameTests {
     public static void realCreateMotorStressIsSharedCapacityLease(GameTestHelper h) {
         if (!available(h,"create")) return;
         BlockPos motor = new BlockPos(5,3,5);
-        var id = ResourceLocation.parse("create:creative_motor");
+        var id = Identifier.parse("create:creative_motor");
         h.assertTrue(BuiltInRegistries.BLOCK.containsKey(id), "Installed Create motor is registered");
         h.setBlock(motor,BuiltInRegistries.BLOCK.get(id));
         h.succeedWhen(()->{

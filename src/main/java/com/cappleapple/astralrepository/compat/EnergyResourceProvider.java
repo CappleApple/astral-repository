@@ -3,8 +3,8 @@ package com.cappleapple.astralrepository.compat;
 import com.cappleapple.astralrepository.api.*;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.minecraft.resources.Identifier;
+import com.cappleapple.astralrepository.platform.energy.IEnergyStorage;
 
 public final class EnergyResourceProvider implements ResourceProvider {
     private final String id;
@@ -17,7 +17,7 @@ public final class EnergyResourceProvider implements ResourceProvider {
     public String id() { return id; }
     public Object identity() { return identity; }
     public boolean valid() { return valid.getAsBoolean(); }
-    public ResourceLocation resourceType() { return ResourceKinds.ENERGY; }
+    public Identifier resourceType() { return ResourceKinds.ENERGY; }
     public String unit() { return "FE"; }
     public Map<ResourceKey, Long> snapshot() {
         return valid() ? Map.of(ResourceKinds.FE, (long)handler.getEnergyStored()) : Map.of();

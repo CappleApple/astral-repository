@@ -7,13 +7,13 @@ import net.minecraft.core.registries.*;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.IEventBus;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import com.cappleapple.astralrepository.platform.IEventBus;
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHandlersEvent;
 
 /** The server issues a short-lived editor session for exactly one nearby rune layer. */
 public final class RuneSettingsPackets {
@@ -24,7 +24,7 @@ public final class RuneSettingsPackets {
         public Page(UUID session,String title,String target,String status,List<String> entries,boolean all,boolean blacklist,boolean enabled,long minimum,long targetAmount,int priority,boolean closed){
             this(session,title,target,status,entries,all,blacklist,enabled,minimum,targetAmount,priority,closed,true);
         }
-        public static final Type<Page> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository","rune_settings"));
+        public static final Type<Page> TYPE=new Type<>(Identifier.fromNamespaceAndPath("astral_repository","rune_settings"));
         public static final StreamCodec<RegistryFriendlyByteBuf,Page> CODEC=StreamCodec.of((b,p)->{
             b.writeUUID(p.session);b.writeUtf(p.title,32);b.writeUtf(p.target,256);b.writeUtf(p.status,256);b.writeVarInt(p.entries.size());for(String e:p.entries)b.writeUtf(e,256);
             b.writeBoolean(p.all);b.writeBoolean(p.blacklist);b.writeBoolean(p.enabled);b.writeLong(p.minimum);b.writeLong(p.targetAmount);b.writeInt(p.priority);b.writeBoolean(p.closed);b.writeBoolean(p.accepted);b.writeEnum(p.mode);b.writeVarInt(p.rules.size());for(String rule:p.rules)b.writeUtf(rule,256);b.writeVarInt(p.resources);b.writeNbt(p.cadence.save());b.writeNbt(p.defaults.save());
@@ -33,29 +33,29 @@ public final class RuneSettingsPackets {
         @Override public Type<Page> type(){return TYPE;}
     }
     public record Action(UUID session,Operation operation,boolean all,boolean blacklist,boolean enabled,long minimum,long targetAmount,int priority,String rule,int index) implements CustomPacketPayload {
-        public static final Type<Action> TYPE=new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository","rune_settings_action"));
+        public static final Type<Action> TYPE=new Type<>(Identifier.fromNamespaceAndPath("astral_repository","rune_settings_action"));
         public static final StreamCodec<RegistryFriendlyByteBuf,Action> CODEC=StreamCodec.of((b,p)->{b.writeUUID(p.session);b.writeEnum(p.operation);b.writeBoolean(p.all);b.writeBoolean(p.blacklist);b.writeBoolean(p.enabled);b.writeLong(p.minimum);b.writeLong(p.targetAmount);b.writeInt(p.priority);b.writeUtf(p.rule,256);b.writeInt(p.index);},b->new Action(b.readUUID(),b.readEnum(Operation.class),b.readBoolean(),b.readBoolean(),b.readBoolean(),b.readLong(),b.readLong(),b.readInt(),b.readUtf(256),b.readInt()));
         @Override public Type<Action> type(){return TYPE;}
     }
     private record Session(UUID token,RuneSurface surface,UUID layer,long expires,net.minecraft.nbt.CompoundTag configuration){}
     private static final Map<ServerPlayer,Session> SESSIONS=new WeakHashMap<>();
     public static Consumer<Page> receiver=page->{};
-    public static void setup(IEventBus bus){bus.addListener(RuneSettingsPackets::register);}
+    public static void setup(IEventBus bus){register(new RegisterPayloadHandlersEvent());}
     private static void register(RegisterPayloadHandlersEvent event){var registrar=event.registrar("5");registrar.playToClient(Page.TYPE,Page.CODEC,(p,c)->receiver.accept(p));registrar.playToServer(Action.TYPE,Action.CODEC,(p,c)->{if(c.player() instanceof ServerPlayer player)handle(player,p);});}
     public static void open(ServerPlayer player,RuneSurface surface,RuneLayer layer){
         if(!nearby(player,surface)||surface.get(layer.id())!=layer)return;
         player.openMenu(new net.minecraft.world.SimpleMenuProvider((id,inventory,who)->new com.cappleapple.astralrepository.menu.RuneSettingsMenu(id,inventory),net.minecraft.network.chat.Component.literal("Rune")));
-        Session session=new Session(UUID.randomUUID(),surface,layer.id(),player.serverLevel().getGameTime()+6000,configuration(surface,layer));SESSIONS.put(player,session);send(player,session,layer,"",false);
+        Session session=new Session(UUID.randomUUID(),surface,layer.id(),player.level().getGameTime()+6000,configuration(surface,layer));SESSIONS.put(player,session);send(player,session,layer,"",false);
     }
     private static net.minecraft.nbt.CompoundTag configuration(RuneSurface surface,RuneLayer layer){
         var tag=new net.minecraft.nbt.CompoundTag();tag.put("Filter",layer.filter().save(surface.getLevel().registryAccess()));tag.put("Cadence",layer.cadence().save());tag.putInt("Priority",layer.priority());tag.putBoolean("Enabled",layer.enabled());tag.putString("Mode",layer.mode().name());tag.putString("Item",layer.item().toString());
         var targets=new net.minecraft.nbt.ListTag();for(var target:layer.targets())targets.add(new AnchorAddress(target.position(),target.face()).save());tag.put("Targets",targets);return tag;
     }
-    private static boolean nearby(ServerPlayer player,RuneSurface surface){return player.isAlive()&&player.serverLevel()==surface.getLevel()&&!surface.isRemoved()&&player.distanceToSqr(surface.getBlockPos().getCenter())<=Math.pow(player.blockInteractionRange()+1,2);}
+    private static boolean nearby(ServerPlayer player,RuneSurface surface){return player.isAlive()&&player.level()==surface.getLevel()&&!surface.isRemoved()&&player.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(surface.getBlockPos()))<=Math.pow(player.blockInteractionRange()+1,2);}
     public static void handle(ServerPlayer player,Action action){
         Session session=SESSIONS.get(player);if(session==null||!session.token.equals(action.session))return;
         RuneLayer layer=session.surface.get(session.layer);
-        if(layer==null||!nearby(player,session.surface)||player.serverLevel().getGameTime()>session.expires){SESSIONS.remove(player);send(player,session,layer,"This rune is no longer within reach. Open it again.",true,false);return;}
+        if(layer==null||!nearby(player,session.surface)||player.level().getGameTime()>session.expires){SESSIONS.remove(player);send(player,session,layer,"This rune is no longer within reach. Open it again.",true,false);return;}
         if(!session.configuration.equals(configuration(session.surface,layer))){
             SESSIONS.remove(player);String reason="This rune changed while its settings were open. Reopen it before applying changes.";
             send(player,session,layer,reason,true,false);return;
@@ -100,7 +100,7 @@ public final class RuneSettingsPackets {
         if(action.operation!=Operation.SAVE)SESSIONS.put(player,new Session(session.token,session.surface,session.layer,session.expires,configuration(session.surface,layer)));send(player,session,layer,status,action.operation==Operation.SAVE);if(action.operation==Operation.SAVE)SESSIONS.remove(player);
     }
     public static String sampleRule(ItemStack sample){
-        var fluid=net.neoforged.neoforge.fluids.FluidUtil.getFluidContained(sample);
+        var fluid=com.cappleapple.astralrepository.platform.fluids.FluidUtil.getFluidContained(sample);
         return fluid.isPresent()?"fluid:"+BuiltInRegistries.FLUID.getKey(fluid.get().getFluid()):BuiltInRegistries.ITEM.getKey(sample.getItem()).toString();
     }
     private static ItemStack heldSample(ServerPlayer player, String id) {
@@ -118,8 +118,8 @@ public final class RuneSettingsPackets {
             String namespace=rule.substring(1);if(!namespace.matches("[a-z0-9_.-]+")||java.util.stream.Stream.concat(BuiltInRegistries.ITEM.keySet().stream(),BuiltInRegistries.FLUID.keySet().stream()).noneMatch(id->id.getNamespace().equals(namespace)))throw new IllegalArgumentException("No loaded items or fluids use that mod ID.");
             return new FilterRules.Entry(FilterRules.Kind.NAMESPACE,namespace,exclude,ItemStack.EMPTY);
         }
-        boolean tag=rule.startsWith("#");if(tag)rule=rule.substring(1);ResourceLocation id=ResourceLocation.tryParse(rule);if(id==null)throw new IllegalArgumentException("Use an item ID, #item_tag, @mod_id, or fluid:minecraft:water.");
-        if(tag){boolean exists=fluid?BuiltInRegistries.FLUID.getTag(TagKey.create(Registries.FLUID,id)).isPresent():BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM,id)).isPresent();if(!exists)throw new IllegalArgumentException("That tag is not loaded.");}
+        boolean tag=rule.startsWith("#");if(tag)rule=rule.substring(1);Identifier id=Identifier.tryParse(rule);if(id==null)throw new IllegalArgumentException("Use an item ID, #item_tag, @mod_id, or fluid:minecraft:water.");
+        if(tag){boolean exists=fluid?BuiltInRegistries.FLUID.get(TagKey.create(Registries.FLUID,id)).isPresent():BuiltInRegistries.ITEM.get(TagKey.create(Registries.ITEM,id)).isPresent();if(!exists)throw new IllegalArgumentException("That tag is not loaded.");}
         else if(fluid?!BuiltInRegistries.FLUID.containsKey(id):!BuiltInRegistries.ITEM.containsKey(id))throw new IllegalArgumentException("That "+(fluid?"fluid":"item")+" ID does not exist.");
         return new FilterRules.Entry(fluid?(tag?FilterRules.Kind.FLUID_TAG:FilterRules.Kind.FLUID):(tag?FilterRules.Kind.ITEM_TAG:FilterRules.Kind.ITEM),id.toString(),exclude,ItemStack.EMPTY);
     }
@@ -127,7 +127,7 @@ public final class RuneSettingsPackets {
     private static void send(ServerPlayer player,Session session,RuneLayer layer,String status,boolean closed,boolean accepted){
         if(layer==null){PacketDistributor.sendToPlayer(player,new Page(session.token,"Rune","",limit(status),List.of(),false,false,false,0,Long.MAX_VALUE,0,true,accepted));return;}
         var snapshot=RunePackets.snapshot(session.surface,layer);String target=layer.target()==null?"Unlinked — use the wand to choose a container":(layer.mode()==RuneLayer.Mode.PUSH?"To ":"From ")+snapshot.targetName()+" at "+layer.target().position().pos().toShortString()+" ("+(layer.target().face()==null?"network":layer.target().face().getName())+")";
-        List<String> entries=layer.filter().entries().stream().map(e->limit((e.exclude()?"Except ":"")+switch(e.kind()){case ITEM->BuiltInRegistries.ITEM.get(ResourceLocation.parse(e.id())).getDescription().getString();case COMPONENTS->e.sample().getHoverName().getString()+" (exact data)";case ITEM_TAG->"#"+e.id();case FLUID_TAG->"Fluid #"+e.id();case NAMESPACE->"@"+e.id();case FLUID->"Fluid: "+e.id();})).toList();
+        List<String> entries=layer.filter().entries().stream().map(e->limit((e.exclude()?"Except ":"")+switch(e.kind()){case ITEM->BuiltInRegistries.ITEM.getValue(Identifier.parse(e.id())).getDefaultInstance().getHoverName().getString();case COMPONENTS->e.sample().getHoverName().getString()+" (exact data)";case ITEM_TAG->"#"+e.id();case FLUID_TAG->"Fluid #"+e.id();case NAMESPACE->"@"+e.id();case FLUID->"Fluid: "+e.id();})).toList();
         PacketDistributor.sendToPlayer(player,new Page(session.token,layer.mode().title()+" Rune",limit(target),limit(status),entries,layer.filter().all(),layer.filter().blacklist(),layer.enabled(),layer.filter().minimum(),layer.filter().target(),layer.priority(),closed,accepted,layer.mode(),layer.filter().entries().stream().map(RuneSettingsPackets::ruleCode).toList(),supportedResources(session.surface),layer.cadence().resolved(),RuneCadence.DEFAULT.resolved()));
     }
     public static int supportedResources(RuneSurface surface){

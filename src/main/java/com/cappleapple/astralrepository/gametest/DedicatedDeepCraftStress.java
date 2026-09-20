@@ -17,7 +17,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.*;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ClientboundCustomPayloadPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.*;
 import net.minecraft.server.network.*;
@@ -66,8 +66,8 @@ public final class DedicatedDeepCraftStress {
             check(!AstralConfig.instantAutomaticLogistics.get(),"This fixture must exercise actual transit and processor waiting");
             check(AstralConfig.instantPlayerInteractions.get(),"This fixture tests the default immediate Nexus request path");
             Files.createDirectories(OUT);level.getGameRules().getRule(GameRules.RULE_DOMOBSPAWNING).set(false,server);
-            for(String name:NAMES)ITEMS.add(BuiltInRegistries.ITEM.get(ResourceLocation.parse("minecraft:"+name+"_pottery_sherd")));
-            for(int i=1;i<=12;i++)check(level.getRecipeManager().byKey(ResourceLocation.parse(String.format(Locale.ROOT,"astral_stress:stage_%02d",i))).isPresent(),"Missing isolated stage recipe "+i);
+            for(String name:NAMES)ITEMS.add(BuiltInRegistries.ITEM.get(Identifier.parse("minecraft:"+name+"_pottery_sherd")));
+            for(int i=1;i<=12;i++)check(level.getRecipeManager().byKey(Identifier.parse(String.format(Locale.ROOT,"astral_stress:stage_%02d",i))).isPresent(),"Missing isolated stage recipe "+i);
             fixture();observer();ready=true;NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST,DedicatedDeepCraftStress::finishTick);
             AstralRepository.LOGGER.info("Deep crafting stress: {} concurrent orders x {} items x 12 dependent stages; 40 machines across five types",ORDERS,COUNT);
         }catch(Throwable error){fail(error);}

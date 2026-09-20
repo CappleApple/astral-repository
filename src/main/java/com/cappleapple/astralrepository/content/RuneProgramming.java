@@ -24,11 +24,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.neoforged.neoforge.capabilities.Capabilities;
-import net.neoforged.neoforge.common.CommonHooks;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
-import net.neoforged.neoforge.items.wrapper.PlayerMainInvWrapper;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.common.CommonHooks;
+import com.cappleapple.astralrepository.platform.items.ItemHandlerHelper;
+import com.cappleapple.astralrepository.platform.items.wrapper.PlayerMainInvWrapper;
+import com.cappleapple.astralrepository.platform.event.entity.player.PlayerInteractEvent;
 
 /** Each visible Push/Pull rune has its own target and filter. All mutations are server-owned. */
 public final class RuneProgramming {
@@ -42,7 +42,7 @@ public final class RuneProgramming {
     private RuneProgramming() {}
     public static void interact(PlayerInteractEvent.RightClickBlock event) {
         if (use(event.getItemStack(), event.getLevel(), event.getPos(), event.getEntity(), event.getHand(), event.getHitVec())) {
-            event.setCancellationResult(InteractionResult.sidedSuccess(event.getLevel().isClientSide));
+            event.setCancellationResult(com.cappleapple.astralrepository.port.Interactions.sidedSuccess(event.getLevel().isClientSide()));
             event.setCanceled(true);
         }
     }
@@ -51,7 +51,7 @@ public final class RuneProgramming {
         if (PICKUP_PERMISSION_CHECK.get() || !event.getEntity().isShiftKeyDown()) return;
         if (event.getEntity() instanceof ServerPlayer player) {
             BlockHitResult hit = pickupHit(player, event.getPos(), event.getFace());
-            if (hit != null && selectedLayer(player.serverLevel(), hit) != null) event.setCanceled(true);
+            if (hit != null && selectedLayer(player.level(), hit) != null) event.setCanceled(true);
         } else {
             var hit = event.getEntity().pick(event.getEntity().blockInteractionRange(), 1, false);
             if (hit instanceof BlockHitResult blockHit && hit.getType() == HitResult.Type.BLOCK
@@ -64,22 +64,22 @@ public final class RuneProgramming {
     public static boolean pickup(ServerPlayer player, BlockPos pos, Direction face, UUID expectedLayer) {
         BlockHitResult hit = pickupHit(player, pos, face);
         if (hit == null) return false;
-        RuneLayer selected = selectedLayer(player.serverLevel(), hit);
+        RuneLayer selected = selectedLayer(player.level(), hit);
         if (selected == null || !selected.id().equals(expectedLayer)) return false;
         // Preserve other mods' normal mining protection hooks without canceling our own permission check.
         PICKUP_PERMISSION_CHECK.set(true);
         try {
             if (CommonHooks.onLeftClickBlock(player, pos, face, ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK).isCanceled()) return false;
         } finally { PICKUP_PERMISSION_CHECK.remove(); }
-        RuneSurface surface = RuneSurfaces.get(player.serverLevel(), pos, face);
+        RuneSurface surface = RuneSurfaces.get(player.level(), pos, face);
         return surface != null && removeAndReturnRune(player, surface, selected);
     }
 
     private static BlockHitResult pickupHit(ServerPlayer player, BlockPos pos, Direction face) {
-        ServerLevel level = player.serverLevel();
+        ServerLevel level = player.level();
         if (face == null || !player.isAlive() || player.isSpectator() || !player.isShiftKeyDown()
                 || !level.hasChunkAt(pos) || !level.getWorldBorder().isWithinBounds(pos)
-                || !player.canInteractWithBlock(pos, 0) || !level.mayInteract(player, pos)
+                || !player.isWithinBlockInteractionRange(pos, 0) || !level.mayInteract(player, pos)
                 || player.blockActionRestricted(level, pos, player.gameMode.getGameModeForPlayer())) return null;
         double reach = player.blockInteractionRange();
         // Check the short ray's chunks before calling vanilla outline clipping; pickup never loads chunks.
@@ -106,7 +106,7 @@ public final class RuneProgramming {
     public static boolean removeAndReturnRune(ServerPlayer player, RuneSurface surface, RuneLayer layer) {
         if (surface.get(layer.id()) != layer) return false;
         if (!surface.removeLayer(layer.id())) return false;
-        if (surface.layers().isEmpty()) RuneSurfaces.remove(player.serverLevel(), surface.getBlockPos(), surface.facing());
+        if (surface.layers().isEmpty()) RuneSurfaces.remove(player.level(), surface.getBlockPos(), surface.facing());
         player.containerMenu.broadcastChanges();
         message(player, "Rune picked up.");
         return true;
@@ -115,7 +115,7 @@ public final class RuneProgramming {
         boolean wand = stack.is(AstralContent.ATTUNEMENT_WAND.get());
         
         if (level.getBlockEntity(pos) == null) {
-            if(wand&&player.isShiftKeyDown()){if(!level.isClientSide)cancel(stack);return true;}
+            if(wand&&player.isShiftKeyDown()){if(!level.isClientSide())cancel(stack);return true;}
             return false;
         }
         if (!(level instanceof ServerLevel server)) {
@@ -178,9 +178,9 @@ public final class RuneProgramming {
         return false;
     }
     public static boolean isContainer(ServerLevel level, BlockPos pos, Direction face) {
-        return level.hasChunkAt(pos) && (level.getCapability(Capabilities.ItemHandler.BLOCK, pos, face) != null
-                || level.getCapability(Capabilities.FluidHandler.BLOCK, pos, face) != null
-                || level.getCapability(Capabilities.EnergyStorage.BLOCK,pos,face)!=null
+        return level.hasChunkAt(pos) && (com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.ItemHandler.BLOCK, pos, face) != null
+                || com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.FluidHandler.BLOCK, pos, face) != null
+                || com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,Capabilities.EnergyStorage.BLOCK,pos,face)!=null
                 || !com.cappleapple.astralrepository.compat.CompatibilityRegistry.discoverStorage(level,pos,face).isEmpty()
                 || !com.cappleapple.astralrepository.compat.CompatibilityRegistry.discoverResources(level,pos,face).isEmpty());
     }
@@ -211,7 +211,7 @@ public final class RuneProgramming {
             var result = surface.toggleTarget(rune.layer(), target.address().position(), crystal(level,target)?null:face(target));
             message(player, result.message());
             var data=wand.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
-            if(result.success()&&!data.getBoolean("RuneTargeting")&&!data.getBoolean("ContainerTargeting"))cancel(wand);
+            if(result.success()&&!data.getBooleanOr("RuneTargeting",false)&&!data.getBooleanOr("ContainerTargeting",false))cancel(wand);
             return;
         }
         if (crystal(level, first) && crystal(level, current)) {
@@ -241,7 +241,7 @@ public final class RuneProgramming {
     private static void select(ItemStack wand, Selection selected) {
         CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         CompoundTag endpoint = selected.address().save();
-        if (selected.layer() != null) endpoint.putUUID("Layer", selected.layer());
+        if (selected.layer() != null) endpoint.store("Layer",net.minecraft.core.UUIDUtil.CODEC, selected.layer());
         tag.put(SELECTION, endpoint);
         wand.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
@@ -249,8 +249,8 @@ public final class RuneProgramming {
         CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains(SELECTION)) return null;
         try {
-            CompoundTag endpoint = tag.getCompound(SELECTION);
-            return new Selection(AnchorAddress.load(endpoint), endpoint.hasUUID("Layer") ? endpoint.getUUID("Layer") : null);
+            CompoundTag endpoint = tag.getCompoundOrEmpty(SELECTION);
+            return new Selection(AnchorAddress.load(endpoint), endpoint.read("Layer",net.minecraft.core.UUIDUtil.CODEC).isPresent() ? endpoint.read("Layer",net.minecraft.core.UUIDUtil.CODEC).orElseThrow() : null);
         } catch (IllegalArgumentException invalid) { return null; }
     }
     public static void cancel(ItemStack wand) {

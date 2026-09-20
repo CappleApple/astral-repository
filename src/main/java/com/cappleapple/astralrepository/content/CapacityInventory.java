@@ -10,10 +10,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 
 /** Dense virtual positions. Capacity is an exact rational sum, never rounded per individual item. */
 public final class CapacityInventory implements IItemHandler {
+    record Snapshot(List<ItemStack> entries, List<Fraction> costs, BigInteger numerator, BigInteger denominator, long revision) {}
     private final List<ItemStack> entries = new ArrayList<>();
     private final List<Fraction> costs = new ArrayList<>();
     private final LongSupplier capacity;
@@ -56,7 +57,7 @@ public final class CapacityInventory implements IItemHandler {
         if (accepted <= 0) return stack;
         if (!simulate) {
             if (existing < 0) { entries.add(stack.copyWithCount(accepted)); costs.add(unit); } else entries.get(existing).grow(accepted);
-            charge(unit, accepted); revision++; changed.run();
+            charge(unit, accepted); revision++; notifyChanged();
         }
         return stack.copyWithCount(stack.getCount() - accepted);
     }
@@ -67,26 +68,27 @@ public final class CapacityInventory implements IItemHandler {
         if (!simulate) {
             present.shrink(count); charge(costs.get(slot), -count);
             if (present.isEmpty()) { entries.remove(slot); costs.remove(slot); }
-            revision++; changed.run();
+            revision++; notifyChanged();
         }
         return extracted;
     }
     public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag(); ListTag items = new ListTag();
         for (ItemStack stack : entries) {
-            CompoundTag entry = new CompoundTag(); entry.put("Item", stack.copyWithCount(1).save(registries)); entry.putInt("Count", stack.getCount()); items.add(entry);
+            CompoundTag entry = new CompoundTag(); entry.put("Item", com.cappleapple.astralrepository.port.NbtCodecs.save(stack.copyWithCount(1),registries)); entry.putInt("Count", stack.getCount()); items.add(entry);
         }
         tag.put("Contents", items); return tag;
     }
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
         revision++; entries.clear(); costs.clear(); usedNumerator = BigInteger.ZERO; usedDenominator = BigInteger.ONE;
-        ListTag items = tag.getList("Contents", Tag.TAG_COMPOUND);
+        ListTag items = tag.getListOrEmpty("Contents");
         for (int i = 0; i < items.size(); i++) {
-            CompoundTag entry = items.getCompound(i); ItemStack stack = ItemStack.parseOptional(registries, entry.getCompound("Item"));
-            if (!stack.isEmpty() && entry.getInt("Count") > 0) {
-                stack.setCount(entry.getInt("Count")); entries.add(stack); Fraction unit = cost(stack); costs.add(unit); charge(unit, stack.getCount());
+            CompoundTag entry = items.getCompoundOrEmpty(i); ItemStack stack = com.cappleapple.astralrepository.port.NbtCodecs.item(registries, entry.getCompoundOrEmpty("Item"));
+            if (!stack.isEmpty() && entry.getIntOr("Count",0) > 0) {
+                stack.setCount(entry.getIntOr("Count",0)); entries.add(stack); Fraction unit = cost(stack); costs.add(unit); charge(unit, stack.getCount());
             }
         }
     }
-}
 
+    private void notifyChanged() { changed.run(); }
+}

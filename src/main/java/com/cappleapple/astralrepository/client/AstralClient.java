@@ -5,15 +5,11 @@ import com.cappleapple.astralrepository.network.NetworkPackets;
 import com.cappleapple.astralrepository.content.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.DyeColor;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.*;
+import com.cappleapple.astralrepository.platform.client.event.*;
 
-@EventBusSubscriber(modid=AstralRepository.MOD_ID,bus=EventBusSubscriber.Bus.MOD,value=Dist.CLIENT)
 public final class AstralClient {
-    @SubscribeEvent public static void tooltips(RegisterClientTooltipComponentFactoriesEvent event){event.register(RecipeTomeItem.OutputTooltip.class,TomeOutputTooltip::new);}
-    @SubscribeEvent public static void screens(RegisterMenuScreensEvent event){
+    public static void tooltips(RegisterClientTooltipComponentFactoriesEvent event){event.register(RecipeTomeItem.OutputTooltip.class,TomeOutputTooltip::new);}
+    public static void screens(RegisterMenuScreensEvent event){
         RunePickupClient.setup();
         com.cappleapple.astralrepository.network.BindingPreviewPackets.receiver=BindingPreviewRenderer::update;
         com.cappleapple.astralrepository.network.RunePackets.artReceiver=RuneDesignRenderer::receive;
@@ -21,22 +17,33 @@ public final class AstralClient {
         event.register(AstralRepository.NEXUS_MENU.get(),NexusScreen::new);
         event.register(AstralRepository.RECIPE_TOME_MENU.get(),RecipeTomeScreen::new);
         event.register(AstralRepository.RUNE_SETTINGS_MENU.get(),RuneSettingsScreen::new);
-        com.cappleapple.astralrepository.network.RecipeTomePackets.pageReceiver=p->{if(Minecraft.getInstance().screen instanceof RecipeTomeScreen screen)screen.update(p);};
+        com.cappleapple.astralrepository.network.RecipeTomePackets.pageReceiver=p->{if(Minecraft.getInstance().gui.screen() instanceof RecipeTomeScreen screen)screen.update(p);};
         com.cappleapple.astralrepository.network.RunePackets.receiver=RuneRenderer::update;
-        com.cappleapple.astralrepository.network.RuneSettingsPackets.receiver=p->{if(Minecraft.getInstance().screen instanceof RuneSettingsScreen screen)screen.update(p);};
+        com.cappleapple.astralrepository.network.RuneSettingsPackets.receiver=p->{if(Minecraft.getInstance().gui.screen() instanceof RuneSettingsScreen screen)screen.update(p);};
         RuneProgramming.clientSelection=hit->{var selected=RuneRenderer.hover(hit);return selected==null?-1:selected.index();};
-        NetworkPackets.pageReceiver=p->{if(Minecraft.getInstance().screen instanceof NexusScreen screen)screen.update(p);};
+        NetworkPackets.pageReceiver=p->{if(Minecraft.getInstance().gui.screen() instanceof NexusScreen screen)screen.update(p);};
         NetworkPackets.visualReceiver=WorldVisuals::add;NetworkPackets.visualResetReceiver=WorldVisuals::clearStationDisplays;NetworkPackets.diagnosticsReceiver=WorldVisuals::diagnostics;
     }
-    @SubscribeEvent public static void reload(RegisterClientReloadListenersEvent event){event.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager->RuneDesignRenderer.clearTextures());}
-    @SubscribeEvent public static void blockColors(RegisterColorHandlersEvent.Block event){
-        for(var block:AstralContent.BLOCKS.getEntries())event.register((state,level,pos,tint)->{
-            if(level!=null&&pos!=null&&level.getBlockEntity(pos) instanceof CrystalNodeBlockEntity node)return node.channel()<0?0x65D6CF:DyeColor.byId(node.channel()).getTextureDiffuseColor();return 0x65D6CF;
-        },block.get());
+    public static void reload(AddClientReloadListenersEvent event){event.addListener(net.minecraft.resources.Identifier.fromNamespaceAndPath("astral_repository","rune_textures"),(net.minecraft.server.packs.resources.ResourceManagerReloadListener) manager->RuneDesignRenderer.clearTextures());}
+    public static void blockColors(RegisterColorHandlersEvent.BlockTintSources event){
+        var tint = new net.minecraft.client.color.block.BlockTintSource() {
+            @Override public int color(net.minecraft.world.level.block.state.BlockState state) { return 0xFF65D6CF; }
+            @Override public int colorInWorld(net.minecraft.world.level.block.state.BlockState state, net.minecraft.client.renderer.block.BlockAndTintGetter level, net.minecraft.core.BlockPos pos) {
+                if (level.getBlockEntity(pos) instanceof CrystalNodeBlockEntity node && node.channel() >= 0)
+                    return 0xFF000000 | DyeColor.byId(node.channel()).getTextureDiffuseColor();
+                return color(state);
+            }
+        };
+        for(var block:AstralContent.BLOCKS.getEntries())event.register(java.util.List.of(tint),block.get());
     }
-    @SubscribeEvent public static void renderers(EntityRenderersEvent.RegisterRenderers event){event.registerBlockEntityRenderer(AstralContent.NODE_ENTITY.get(),CrystalRenderer::new);}
-    @SubscribeEvent public static void itemColors(RegisterColorHandlersEvent.Item event){
-        for(var item:AstralContent.ITEMS.getEntries())event.register(AstralClient::itemColor,item.get());
+    public static void renderers(EntityRenderersEvent.RegisterRenderers event){event.registerBlockEntityRenderer(AstralContent.NODE_ENTITY.get(),CrystalRenderer::new);}
+    public static void itemColors(RegisterColorHandlersEvent.ItemTintSources event){
+        event.register(net.minecraft.resources.Identifier.fromNamespaceAndPath("astral_repository","item_color"), ItemTint.CODEC);
+    }
+    public record ItemTint() implements net.minecraft.client.color.item.ItemTintSource {
+        public static final com.mojang.serialization.MapCodec<ItemTint> CODEC = com.mojang.serialization.MapCodec.unit(new ItemTint());
+        @Override public int calculate(net.minecraft.world.item.ItemStack stack, net.minecraft.client.multiplayer.ClientLevel level, net.minecraft.world.entity.LivingEntity owner) { return itemColor(stack, 0); }
+        @Override public com.mojang.serialization.MapCodec<ItemTint> type() { return CODEC; }
     }
     private static int itemColor(net.minecraft.world.item.ItemStack stack,int tint){
         int color=0xFFFFFF;

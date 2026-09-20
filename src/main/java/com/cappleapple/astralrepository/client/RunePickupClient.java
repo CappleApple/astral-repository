@@ -4,10 +4,10 @@ import com.cappleapple.astralrepository.network.RunePickupPackets;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.BlockHitResult;
-import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.cappleapple.astralrepository.platform.client.event.ClientTickEvent;
+import com.cappleapple.astralrepository.platform.client.event.InputEvent;
+
+import com.cappleapple.astralrepository.platform.network.PacketDistributor;
 
 /** A consumed attack stays consumed until release, including after the last glyph disappears. */
 public final class RunePickupClient {
@@ -16,14 +16,11 @@ public final class RunePickupClient {
     private static Object level;
     public static long pickupRequests;
     private RunePickupClient() {}
-    public static void setup() {
-        NeoForge.EVENT_BUS.addListener(RunePickupClient::attack);
-        NeoForge.EVENT_BUS.addListener(RunePickupClient::tick);
-    }
+    public static void setup() {}
     public static void attack(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isAttack()) return;
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) return;
+        if (minecraft.player == null || minecraft.level == null || minecraft.gui.screen() != null) return;
         if (level != minecraft.level) {
             attackSeen = false;
             consumed = false;
@@ -36,7 +33,7 @@ public final class RunePickupClient {
             if (selected != null) {
                 consumed = true;
                 if (first) {
-                    PacketDistributor.sendToServer(new RunePickupPackets.Pickup(selected.face().pos(), selected.face().face(), selected.layer().id()));
+                    com.cappleapple.astralrepository.platform.network.PacketDistributor.sendToServer(new RunePickupPackets.Pickup(selected.face().pos(), selected.face().face(), selected.layer().id()));
                     pickupRequests++;
                     minecraft.player.swing(InteractionHand.MAIN_HAND);
                 }

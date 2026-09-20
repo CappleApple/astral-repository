@@ -7,7 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -31,7 +31,7 @@ public final class CreateProcessingGameTests {
         BlockPos chest = new BlockPos(1, 2, 1), depot = new BlockPos(3, 2, 1), press = depot.above(2);
         h.setBlock(chest, Blocks.CHEST);
         h.setBlock(depot, block("create:depot")); h.setBlock(press, block("create:mechanical_press"));
-        ItemStack target = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.parse("create:iron_sheet")));
+        ItemStack target = new ItemStack(BuiltInRegistries.ITEM.get(Identifier.parse("create:iron_sheet")));
         run(h, chest, depot, press, new ItemStack(Items.IRON_INGOT), target);
     }
     @GameTest(templateNamespace="astral_repository", template="empty_workshop", timeoutTicks=800)
@@ -47,7 +47,7 @@ public final class CreateProcessingGameTests {
         h.succeed(); return false;
     }
     private static net.minecraft.world.level.block.Block block(String id) {
-        ResourceLocation key = ResourceLocation.parse(id);
+        Identifier key = Identifier.parse(id);
         if (!BuiltInRegistries.BLOCK.containsKey(key)) throw new IllegalStateException("Missing Create fixture block " + key);
         return BuiltInRegistries.BLOCK.get(key);
     }

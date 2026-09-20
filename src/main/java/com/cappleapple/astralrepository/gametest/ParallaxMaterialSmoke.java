@@ -17,7 +17,7 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.*;
@@ -60,7 +60,7 @@ public final class ParallaxMaterialSmoke {
             RenderSystem.disableScissor(); RenderSystem.depthMask(true); RenderSystem.disableBlend(); RenderSystem.enableDepthTest(); RenderSystem.enableCull();
             RenderSystem.setShaderFogStart(1000); RenderSystem.setShaderFogEnd(2000); RenderSystem.setShaderColor(1, 1, 1, 1);
             target = new TextureTarget(SIZE, SIZE, true, Minecraft.ON_OSX);
-            TextureAtlasSprite sprite = minecraft.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"block/astral_geode"));
+            TextureAtlasSprite sprite = minecraft.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID,"block/astral_geode"));
             try (NativeImage zero = render(target, sprite, 0, FRONT, 4200);
                  NativeImage zeroShift = render(target, sprite, 0, SHIFT, 4200);
                  NativeImage zeroAngle = render(target, sprite, 0, ANGLE, 4200);

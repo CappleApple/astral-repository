@@ -5,7 +5,7 @@ import com.cappleapple.astralrepository.network.SpatialHash;
 import java.util.*;
 import net.minecraft.core.*;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /** One visible rune, with independently persisted transfer assignments. Server-thread mutations only. */
 public final class RuneLayer {
@@ -19,7 +19,7 @@ public final class RuneLayer {
     }
     private final RuneSurface surface;
     private final UUID id;
-    private ResourceLocation item;
+    private Identifier item;
     private Mode mode;
     private RuneDesign design;
     private double u=Double.NaN,v=Double.NaN;
@@ -39,9 +39,9 @@ public final class RuneLayer {
     public void setCadence(RuneCadence value){cadence=Objects.requireNonNull(value);changed();}
     private long transferredItems,transferredFluid;
     private String status="Unlinked",pendingStatus;
-    RuneLayer(RuneSurface surface,UUID id,ResourceLocation item,Mode mode){this.surface=surface;this.id=id;this.item=item;this.mode=mode;this.design=RuneDesign.initial(mode);}
+    RuneLayer(RuneSurface surface,UUID id,Identifier item,Mode mode){this.surface=surface;this.id=id;this.item=item;this.mode=mode;this.design=RuneDesign.initial(mode);}
     public UUID id(){return id;}
-    public ResourceLocation item(){return item;}
+    public Identifier item(){return item;}
     public Mode mode(){return mode;}
     public Target target(){return targets.isEmpty()?null:targets.getFirst();}
     public List<Target> targets(){return List.copyOf(targets);}
@@ -67,17 +67,17 @@ public final class RuneLayer {
     public void transferred(long items,long fluid){transferredItems=saturatingAdd(transferredItems,items);transferredFluid=saturatingAdd(transferredFluid,fluid);if(enabled)report("Transferring");surface.changed();}
     private static long saturatingAdd(long a,long b){return b>Long.MAX_VALUE-a?Long.MAX_VALUE:a+Math.max(0,b);}
     CompoundTag save(HolderLookup.Provider registries){
-        CompoundTag tag=new CompoundTag();tag.putUUID("Id",id);tag.putString("Item",item.toString());tag.putString("Mode",mode.name());tag.putBoolean("Enabled",enabled);tag.putInt("Priority",priority);
+        CompoundTag tag=new CompoundTag();tag.store("Id",net.minecraft.core.UUIDUtil.CODEC,id);tag.putString("Item",item.toString());tag.putString("Mode",mode.name());tag.putBoolean("Enabled",enabled);tag.putInt("Priority",priority);
         tag.put("Cadence",cadence.save());tag.put("Design",design().save());if(Double.isFinite(u)&&Double.isFinite(v)){tag.putDouble("U",u);tag.putDouble("V",v);}tag.put("Filter",filter.save(registries));tag.putLong("TransferredItems",transferredItems);tag.putLong("TransferredFluid",transferredFluid);
         net.minecraft.nbt.ListTag saved=new net.minecraft.nbt.ListTag();for(var target:targets)saved.add(new AnchorAddress(target.position(),target.face()).save());tag.put("Targets",saved);return tag;
     }
     static RuneLayer load(RuneSurface surface,CompoundTag tag,HolderLookup.Provider registries){
-        Mode mode=Mode.valueOf(tag.getString("Mode"));RuneLayer result=new RuneLayer(surface,tag.hasUUID("Id")?tag.getUUID("Id"):UUID.randomUUID(),ResourceLocation.parse(tag.getString("Item")),mode);
-        if(tag.contains("Design"))result.design=RuneDesign.load(tag.getCompound("Design"));if(tag.contains("U")&&tag.contains("V")){result.u=tag.getDouble("U");result.v=tag.getDouble("V");}
-        result.cadence=RuneCadence.load(tag.getCompound("Cadence"));result.enabled=!tag.contains("Enabled")||tag.getBoolean("Enabled");result.priority=Math.clamp(tag.getInt("Priority"),-999,999);result.filter.load(tag.getCompound("Filter"),registries);
-        result.transferredItems=Math.max(0,tag.getLong("TransferredItems"));result.transferredFluid=Math.max(0,tag.getLong("TransferredFluid"));
-        if(tag.contains("Targets")){var saved=tag.getList("Targets",10);for(int i=0;i<Math.min(MAX_TARGETS,saved.size());i++){var a=AnchorAddress.load(saved.getCompound(i));var t=new Target(a.position(),a.face());if(!result.targets.contains(t))result.targets.add(t);}}
-        else if(tag.contains("Target")){AnchorAddress address=AnchorAddress.load(tag.getCompound("Target"));result.targets.add(new Target(address.position(),address.face()));}
+        Mode mode=Mode.valueOf(tag.getStringOr("Mode",""));RuneLayer result=new RuneLayer(surface,tag.read("Id",net.minecraft.core.UUIDUtil.CODEC).isPresent()?tag.read("Id",net.minecraft.core.UUIDUtil.CODEC).orElseThrow():UUID.randomUUID(),Identifier.parse(tag.getStringOr("Item","")),mode);
+        if(tag.contains("Design"))result.design=RuneDesign.load(tag.getCompoundOrEmpty("Design"));if(tag.contains("U")&&tag.contains("V")){result.u=tag.getDoubleOr("U",0D);result.v=tag.getDoubleOr("V",0D);}
+        result.cadence=RuneCadence.load(tag.getCompoundOrEmpty("Cadence"));result.enabled=!tag.contains("Enabled")||tag.getBooleanOr("Enabled",false);result.priority=Math.clamp(tag.getIntOr("Priority",0),-999,999);result.filter.load(tag.getCompoundOrEmpty("Filter"),registries);
+        result.transferredItems=Math.max(0,tag.getLongOr("TransferredItems",0L));result.transferredFluid=Math.max(0,tag.getLongOr("TransferredFluid",0L));
+        if(tag.contains("Targets")){var saved=tag.getListOrEmpty("Targets");for(int i=0;i<Math.min(MAX_TARGETS,saved.size());i++){var a=AnchorAddress.load(saved.getCompoundOrEmpty(i));var t=new Target(a.position(),a.face());if(!result.targets.contains(t))result.targets.add(t);}}
+        else if(tag.contains("Target")){AnchorAddress address=AnchorAddress.load(tag.getCompoundOrEmpty("Target"));result.targets.add(new Target(address.position(),address.face()));}
         result.status=!result.enabled?"Paused":result.targets.isEmpty()?"Unlinked":"Waiting";return result;
     }
 }

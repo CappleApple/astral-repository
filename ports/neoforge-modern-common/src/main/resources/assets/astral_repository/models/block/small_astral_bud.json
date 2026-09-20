@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:block/cross",
-  "textures": {
-    "cross": "astral_repository:block/small_astral_bud"
-  }
-}

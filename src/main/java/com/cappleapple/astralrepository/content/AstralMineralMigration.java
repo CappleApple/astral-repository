@@ -4,20 +4,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.level.ChunkEvent;
+import com.cappleapple.astralrepository.platform.event.level.ChunkEvent;
 
 /** Old mineral states had no block-entity NBT. Repair only already loaded matching sections. */
-@EventBusSubscriber(modid = AstralContent.MOD_ID)
 public final class AstralMineralMigration {
-    @SubscribeEvent public static void loaded(ChunkEvent.Load event) {
+    public static void loaded(ChunkEvent.Load event) {
         if (!(event.getChunk() instanceof LevelChunk chunk)) return;
         if (chunk.getLevel() instanceof ServerLevel level) {
             level.getServer().execute(() -> {
-                if (level.getChunkSource().getChunkNow(chunk.getPos().x, chunk.getPos().z) == chunk) repair(chunk);
+                if (level.getChunkSource().getChunkNow(chunk.getPos().x(), chunk.getPos().z()) == chunk) repair(chunk);
             });
-        } else if (chunk.getLevel().isClientSide) {
+        } else if (chunk.getLevel().isClientSide()) {
             // ClientChunkCache posts Load after installing packet sections, before render snapshots are built.
             repair(chunk);
         }
@@ -39,11 +36,11 @@ public final class AstralMineralMigration {
                 if (chunk.getBlockEntity(pos, LevelChunk.EntityCreationType.CHECK) != null) continue;
                 if (chunk.getBlockEntity(pos.immutable(), LevelChunk.EntityCreationType.IMMEDIATE) instanceof AstralMineralBlockEntity) {
                     created++;
-                    if (chunk.getLevel().isClientSide) chunk.getLevel().sendBlockUpdated(pos.immutable(), state, state, 2);
+                    if (chunk.getLevel().isClientSide()) chunk.getLevel().sendBlockUpdated(pos.immutable(), state, state, 2);
                 }
             }
         }
-        if (created > 0 && !chunk.getLevel().isClientSide) chunk.setUnsaved(true);
+        if (created > 0 && !chunk.getLevel().isClientSide()) chunk.markUnsaved();
         return created;
     }
 

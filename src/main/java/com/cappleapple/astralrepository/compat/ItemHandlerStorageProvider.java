@@ -10,7 +10,7 @@ import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import java.util.function.BooleanSupplier;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.platform.items.IItemHandler;
 
 /** Sided capability adapter with incremental snapshots and verified, bounded slot lookups. */
 public final class ItemHandlerStorageProvider implements StorageProvider {

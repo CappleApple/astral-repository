@@ -18,7 +18,7 @@ public final class RuneGlyph {
         Map.entry("direction_rune",new String[]{"...#...","..##...",".#.#...","#..####",".#.#...","..##...","...#..."}),
         Map.entry("stock_rune",new String[]{".#####.",".#...#.","..###..","...#...","..###..",".#...#.",".#####."}),
         Map.entry("priority_rune",new String[]{"...#...","..#.#..",".#...#.",".......","...#...","..#.#..",".#...#."}));
-    public static net.minecraft.resources.ResourceLocation id(RuneLayer.Mode mode){return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("astral_repository",switch(mode){case PUSH->"push_rune";case PULL->"pull_rune";case FILTER->"filter_sigil";});}
+    public static net.minecraft.resources.Identifier id(RuneLayer.Mode mode){return net.minecraft.resources.Identifier.fromNamespaceAndPath("astral_repository",switch(mode){case PUSH->"push_rune";case PULL->"pull_rune";case FILTER->"filter_sigil";});}
     public static boolean isRune(ItemStack stack) { var id=BuiltInRegistries.ITEM.getKey(stack.getItem()); return id.getNamespace().equals("astral_repository")&&(id.getPath().equals("push_rune")||id.getPath().equals("pull_rune")); }
     public static boolean isLegacyRune(ItemStack stack) { var id=BuiltInRegistries.ITEM.getKey(stack.getItem()); return id.getNamespace().equals("astral_repository")&&PIXELS.containsKey(id.getPath())&&!isRune(stack); }
     public static String[] pixels(String path) { return PIXELS.getOrDefault(path,PIXELS.get("filter_sigil")); }

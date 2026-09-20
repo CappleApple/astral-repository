@@ -13,10 +13,10 @@ import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.capabilities.BlockCapability;
-import net.neoforged.neoforge.capabilities.BlockCapabilityCache;
-import net.neoforged.neoforge.capabilities.Capabilities;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.capabilities.BlockCapability;
+import com.cappleapple.astralrepository.platform.capabilities.BlockCapabilityCache;
+import com.cappleapple.astralrepository.platform.capabilities.Capabilities;
 
 /** Registration and bounded, loaded-world-only discovery. Register adapters during common setup. */
 public final class CompatibilityRegistry {
@@ -146,7 +146,7 @@ public final class CompatibilityRegistry {
         return new NetworkPowerProvider() {
             public String id() { return backend.id(); }
             public Object identity() { return backend.identity(); }
-            public net.minecraft.resources.ResourceLocation resourceType() { return backend.resourceType(); }
+            public net.minecraft.resources.Identifier resourceType() { return backend.resourceType(); }
             public Mode mode() { return backend.mode(); }
             public boolean valid() { return guard.read(backend::valid,false); }
             public double available() { return guard.read(backend::available,0D); }
@@ -164,7 +164,7 @@ public final class CompatibilityRegistry {
             cache=BlockCapabilityCache.create(capability,level,pos,context,() -> !invalidated,() -> invalidated=true);
             handler=cache.getCapability();
         }
-        boolean valid() { return !invalidated && physical.getAsBoolean(); }
+        boolean valid() { return !invalidated && physical.getAsBoolean() && cache.isValid(); }
     }
     private static <T,C> TrackedCapability<T,C> track(BlockCapability<T,C> capability,ServerLevel level,BlockPos pos,C context) {
         return new TrackedCapability<>(capability,level,pos,context);
@@ -179,12 +179,12 @@ public final class CompatibilityRegistry {
         try { T result=work.get(); failures.remove(key); return result; }
         catch (RuntimeException | LinkageError failure) {
             failures.put(key,now+1200);
-            LogUtils.getLogger().error("Astral Repository adapter {} failed at {} {}; retry after 1200 ticks",adapter,level.dimension().location(),pos,failure);
+            LogUtils.getLogger().error("Astral Repository adapter {} failed at {} {}; retry after 1200 ticks",adapter,level.dimension().identifier(),pos,failure);
             return null;
         }
     }
     static String location(String kind,ServerLevel level,BlockPos pos,Direction side) {
-        return kind+":"+level.dimension().location()+":"+pos.asLong()+":"+(side==null?"all":side.getName());
+        return kind+":"+level.dimension().identifier()+":"+pos.asLong()+":"+(side==null?"all":side.getName());
     }
     static BooleanSupplier validity(ServerLevel level,BlockPos pos) {
         BlockPos immutable=pos.immutable();
@@ -215,11 +215,11 @@ public final class CompatibilityRegistry {
             BlockPos other=pos.relative(ChestBlock.getConnectedDirection(state));
             if (level.hasChunkAt(other)) second=other.asLong();
         }
-        return new PhysicalIdentity(level.dimension().location().toString(),Math.min(first,second),Math.max(first,second));
+        return new PhysicalIdentity(level.dimension().identifier().toString(),Math.min(first,second),Math.max(first,second));
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static Object capability(ServerLevel level,BlockPos pos,Object capability,Direction side) {
-        return level.getCapability((BlockCapability)capability,pos,side);
+        return com.cappleapple.astralrepository.platform.capabilities.Capabilities.find(level,(BlockCapability)capability,pos,side);
     }
     @SuppressWarnings({"unchecked","rawtypes"})
     private static TrackedCapability<Object,Object> trackOptional(ServerLevel level,BlockPos pos,Object capability,Object context) {

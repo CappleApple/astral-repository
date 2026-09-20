@@ -6,8 +6,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.fluids.FluidStack;
+import com.cappleapple.astralrepository.platform.ModList;
+import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
 /** A per-editor catalogue of the registries and tags actually loaded by this client. */
 public final class RuneFilterSearch {
@@ -27,8 +27,8 @@ public final class RuneFilterSearch {
             namespaces.putIfAbsent(id.getNamespace(), icon);
         });
         BuiltInRegistries.ITEM.getTags().forEach(pair -> {
-            var id = pair.getFirst().location();
-            var icon = pair.getSecond().stream().findFirst().map(holder -> new ItemStack(holder.value())).orElse(new ItemStack(Items.PAPER));
+            var id = pair.key().location();
+            var icon = pair.stream().findFirst().map(holder -> new ItemStack(holder.value())).orElse(new ItemStack(Items.PAPER));
             values.add(new Option("#" + id, readable(id.getPath()), "Item tag #" + id, icon, Category.TAGS));
         });
         BuiltInRegistries.FLUID.forEach(fluid -> {
@@ -39,12 +39,12 @@ public final class RuneFilterSearch {
             namespaces.putIfAbsent(id.getNamespace(), icon);
         });
         BuiltInRegistries.FLUID.getTags().forEach(pair -> {
-            var id = pair.getFirst().location();
-            var icon = pair.getSecond().stream().findFirst().map(holder -> fluidIcon(holder.value())).orElse(new ItemStack(Items.BUCKET));
+            var id = pair.key().location();
+            var icon = pair.stream().findFirst().map(holder -> fluidIcon(holder.value())).orElse(new ItemStack(Items.BUCKET));
             values.add(new Option("fluid:#" + id, readable(id.getPath()), "Fluid tag #" + id, icon, Category.TAGS));
         });
         namespaces.forEach((namespace, icon) -> {
-            String name = namespace.equals("minecraft") ? "Minecraft" : ModList.get().getModContainerById(namespace).map(container -> container.getModInfo().getDisplayName()).orElse(namespace);
+            String name = namespace.equals("minecraft") ? "Minecraft" : net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(namespace).map(container -> container.getMetadata().getName()).orElse(namespace);
             values.add(new Option("@" + namespace, name, "Mod @" + namespace, icon, Category.MODS));
         });
         values.sort(Comparator.comparing(Option::name, String.CASE_INSENSITIVE_ORDER).thenComparing(Option::rule));

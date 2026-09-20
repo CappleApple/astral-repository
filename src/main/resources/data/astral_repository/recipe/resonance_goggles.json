@@ -6,15 +6,9 @@
     "G G"
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "L": {
-      "item": "minecraft:leather"
-    },
-    "G": {
-      "item": "minecraft:gold_ingot"
-    }
+    "S": "astral_repository:astral_gem",
+    "L": "minecraft:leather",
+    "G": "minecraft:gold_ingot"
   },
   "result": {
     "id": "astral_repository:resonance_goggles",

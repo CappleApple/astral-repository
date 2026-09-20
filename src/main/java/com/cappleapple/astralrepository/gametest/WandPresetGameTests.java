@@ -8,7 +8,7 @@ import java.util.*;
 import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
@@ -30,7 +30,7 @@ public final class WandPresetGameTests {
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
     public static void paintedPresetPlacementPersistsIndependentCopiesAndNearestFreePositions(GameTestHelper h)throws Exception {
         BlockPos pos=h.absolutePos(new BlockPos(3,2,3));h.getLevel().setBlockAndUpdate(pos,Blocks.CHEST.defaultBlockState());var player=new FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"preset-placement"));player.setPos(pos.getCenter().add(0,0,2));
-        byte[] pixels=new byte[64*64];pixels[63*64+63]=45;pixels[3*64+5]=99;var icon=new RuneDesign.Icon(ResourceLocation.withDefaultNamespace("diamond"),12,15,10,45);var design=new RuneDesign(64,pixels,List.of(icon));FilterRules filter=new FilterRules();filter.add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,ItemStack.EMPTY);filter.setTarget(32);
+        byte[] pixels=new byte[64*64];pixels[63*64+63]=45;pixels[3*64+5]=99;var icon=new RuneDesign.Icon(Identifier.withDefaultNamespace("diamond"),12,15,10,45);var design=new RuneDesign(64,pixels,List.of(icon));FilterRules filter=new FilterRules();filter.add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,ItemStack.EMPTY);filter.setTarget(32);
         var preset=new RunePreset(UUID.randomUUID(),"Saved rune",RuneLayer.Mode.PULL,design,filter.save(h.getLevel().registryAccess()),7,true);var decoded=RunePresetFiles.decode(RunePresetFiles.encode(preset),h.getLevel().registryAccess());h.assertTrue(decoded.design().key().equals(design.key())&&decoded.filter().equals(preset.filter()),"Portable JSON preserves hidden pixels, item transforms, and behavior");
         var library=RuneLibraryData.get(h.getLevel().getServer()).library(player.getUUID());library.put(preset.id(),preset);ItemStack wand=new ItemStack(AstralContent.ATTUNEMENT_WAND.get());WandPackets.selection(wand,preset.id(),true);player.setItemInHand(InteractionHand.MAIN_HAND,wand);
         var surface=RuneSurfaces.getOrCreate(h.getLevel(),pos,Direction.UP);var frame=RuneLayout.frame(h.getLevel(),pos,Direction.UP);Vec3 point=frame.center().center().add(frame.center().right().scale(.30)).add(frame.center().up().scale(.20));

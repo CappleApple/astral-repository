@@ -1,13 +1,22 @@
 package com.cappleapple.astralrepository.client;
 
+import com.mojang.blaze3d.PrimitiveTopology;
+import com.mojang.blaze3d.pipeline.*;
+import com.mojang.blaze3d.platform.CompareOp;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.resources.Identifier;
 
-/** Read world depth, but never let the coplanar glow and core write depth against each other. */
-public final class BindingBeamRenderType extends RenderType {
-    public static final RenderType BEAM=create("astral_repository:binding_beam",DefaultVertexFormat.POSITION_COLOR,VertexFormat.Mode.QUADS,1536,false,false,
-            CompositeState.builder().setShaderState(RENDERTYPE_LIGHTNING_SHADER).setTransparencyState(LIGHTNING_TRANSPARENCY)
-                    .setCullState(NO_CULL).setWriteMaskState(COLOR_WRITE).createCompositeState(false));
-    private BindingBeamRenderType(String name,com.mojang.blaze3d.vertex.VertexFormat format,VertexFormat.Mode mode,int size,boolean crumbling,boolean sorted,Runnable setup,Runnable clear){super(name,format,mode,size,crumbling,sorted,setup,clear);}
+/** Additive beam color reads world depth without writing depth against overlapping glow. */
+public final class BindingBeamRenderType {
+    static final RenderPipeline PIPELINE=RenderPipeline.builder(RenderPipelines.MATRICES_FOG_SNIPPET)
+        .withLocation(Identifier.fromNamespaceAndPath("astral_repository","pipeline/binding_beam"))
+        .withVertexShader("core/rendertype_lightning").withFragmentShader("core/rendertype_lightning")
+        .withVertexBinding(0,DefaultVertexFormat.POSITION_COLOR).withPrimitiveTopology(PrimitiveTopology.QUADS)
+        .withColorTargetState(new ColorTargetState(BlendFunction.LIGHTNING)).withCull(false)
+        .withDepthStencilState(new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL,false)).build();
+    public static final RenderType BEAM=RenderType.create("astral_repository:binding_beam",RenderSetup.builder(PIPELINE).createRenderSetup());
+    private BindingBeamRenderType(){}
 }

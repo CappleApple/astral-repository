@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Blocks;
@@ -70,8 +70,8 @@ public final class RuneSettingsGameTests {
         var player=new FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"rune-settings"));
         var near=h.absolutePos(host).getCenter().add(0,0,2);player.setPos(near);
         RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(host),Direction.SOUTH);
-        RuneLayer push=surface.addLayer(ResourceLocation.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
-        RuneLayer pull=surface.addLayer(ResourceLocation.parse("astral_repository:pull_rune"),RuneLayer.Mode.PULL);
+        RuneLayer push=surface.addLayer(Identifier.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
+        RuneLayer pull=surface.addLayer(Identifier.parse("astral_repository:pull_rune"),RuneLayer.Mode.PULL);
         RuneSettingsPackets.open(player,surface,push);
         UUID token=token(player);
         h.assertTrue(token!=null,"Nearby player receives a session for the exact rune");
@@ -121,7 +121,7 @@ public final class RuneSettingsGameTests {
         surface.removeLayer(push.id());
         RuneSettingsPackets.handle(player,action(token,Operation.SAVE,14,""));
         h.assertTrue(surface.get(push.id())==null&&pull.priority()==0,"A removed layer cannot redirect a stale session to the next visible cell");
-        RuneLayer retained=surface.addLayer(ResourceLocation.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
+        RuneLayer retained=surface.addLayer(Identifier.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
         h.assertTrue(surface.toggleTarget(retained.id(),GlobalPos.of(h.getLevel().dimension(),h.absolutePos(target)),Direction.UP).success(),"Remaining layer has a plain-container target");
         int before=count(player,Items.STICK);
         RuneSettingsPackets.open(player,surface,pull);token=token(player);
@@ -134,7 +134,7 @@ public final class RuneSettingsGameTests {
     public static void concurrentFilterEditsInvalidateIndexedActionsButCountersDoNot(GameTestHelper h) throws ReflectiveOperationException {
         BlockPos pos=new BlockPos(3,2,3);h.setBlock(pos,Blocks.CHEST);
         var player=new FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"rune-concurrent"));player.setPos(h.absolutePos(pos).getCenter().add(0,0,2));
-        RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(pos),Direction.SOUTH);RuneLayer layer=surface.addLayer(ResourceLocation.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
+        RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(pos),Direction.SOUTH);RuneLayer layer=surface.addLayer(Identifier.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
         layer.filter().add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,net.minecraft.world.item.ItemStack.EMPTY);layer.filter().add(FilterRules.Kind.ITEM,"minecraft:gold_ingot",false,net.minecraft.world.item.ItemStack.EMPTY);layer.changed();
         RuneSettingsPackets.open(player,surface,layer);UUID token=token(player);
         layer.filter().remove(0);layer.changed();
@@ -150,8 +150,8 @@ public final class RuneSettingsGameTests {
         BlockPos pos=new BlockPos(3,2,3);h.setBlock(pos,Blocks.CHEST);
         var player=new FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"rune-autosave"));player.setPos(h.absolutePos(pos).getCenter().add(0,0,2));
         RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(pos),Direction.SOUTH);
-        RuneLayer layer=surface.addLayer(ResourceLocation.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
-        RuneLayer neighbor=surface.addLayer(ResourceLocation.parse("astral_repository:pull_rune"),RuneLayer.Mode.PULL);
+        RuneLayer layer=surface.addLayer(Identifier.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
+        RuneLayer neighbor=surface.addLayer(Identifier.parse("astral_repository:pull_rune"),RuneLayer.Mode.PULL);
         RuneSettingsPackets.open(player,surface,layer);UUID token=token(player);
         RuneSettingsPackets.handle(player,new RuneSettingsPackets.Action(token,Operation.AUTOSAVE,false,false,false,1,32,2,"",-1));
         h.assertTrue(layer.priority()==2&&!layer.enabled()&&layer.filter().minimum()==1&&token.equals(token(player)),"Autosave persists fields without consuming the editing session");
@@ -184,7 +184,7 @@ public final class RuneSettingsGameTests {
         var player=new FakePlayer(h.getLevel(),new GameProfile(UUID.randomUUID(),"rune-rejections"));player.setPos(h.absolutePos(pos).getCenter().add(0,0,2));
         var pages=capturePages(player);
         RuneSurface surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(pos),Direction.SOUTH);
-        RuneLayer layer=surface.addLayer(ResourceLocation.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
+        RuneLayer layer=surface.addLayer(Identifier.parse("astral_repository:push_rune"),RuneLayer.Mode.PUSH);
         layer.filter().add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,net.minecraft.world.item.ItemStack.EMPTY);layer.changed();
         RuneSettingsPackets.open(player,surface,layer);UUID token=token(player);
         h.assertTrue(pages.getLast().accepted()&&!pages.getLast().closed(),"Initial editor page is a successful nonclosing response");
@@ -197,7 +197,7 @@ public final class RuneSettingsGameTests {
         RuneSettingsPackets.handle(player,new RuneSettingsPackets.Action(token,Operation.AUTOSAVE,false,false,true,3,32,11,"",-1));
         h.assertTrue(pages.getLast().accepted()&&!pages.getLast().closed()&&layer.priority()==11&&layer.filter().minimum()==3,"A following automatic scalar save is separately acknowledged without retrying the failed operation");
 
-        var ids=net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().stream().filter(id->!id.equals(ResourceLocation.withDefaultNamespace("air"))).sorted().limit(65).toList();
+        var ids=net.minecraft.core.registries.BuiltInRegistries.ITEM.keySet().stream().filter(id->!id.equals(Identifier.withDefaultNamespace("air"))).sorted().limit(65).toList();
         layer.filter().clearPredicates();for(int index=0;index<64;index++)layer.filter().add(FilterRules.Kind.ITEM,ids.get(index).toString(),false,net.minecraft.world.item.ItemStack.EMPTY);layer.changed();
         RuneSettingsPackets.open(player,surface,layer);token=token(player);
         RuneSettingsPackets.handle(player,new RuneSettingsPackets.Action(token,Operation.ADD_RULE,false,false,true,4,40,22,ids.get(64).toString(),-1));
@@ -221,7 +221,7 @@ public final class RuneSettingsGameTests {
             @Override public void send(net.minecraft.network.protocol.Packet<?> packet,net.minecraft.network.PacketSendListener listener){send(packet);}
         };
         int[] pixels=new int[128*128];for(int i=0;i<pixels.length;i++)pixels[i]=i%7==0?0:0xff000000|(i*7919)&0xffffff;
-        var icons=java.util.List.of(new RuneDesign.Icon(ResourceLocation.withDefaultNamespace("diamond"),12.25f,7.5f,19.75f,-137.5f),new RuneDesign.Icon(ResourceLocation.withDefaultNamespace("water_bucket"),123.5f,111.25f,64.5f,225.25f));
+        var icons=java.util.List.of(new RuneDesign.Icon(Identifier.withDefaultNamespace("diamond"),12.25f,7.5f,19.75f,-137.5f),new RuneDesign.Icon(Identifier.withDefaultNamespace("water_bucket"),123.5f,111.25f,64.5f,225.25f));
         var design=new RuneDesign(128,pixels,icons);var filter=new FilterRules();
         var named=new net.minecraft.world.item.ItemStack(Items.IRON_INGOT);named.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,net.minecraft.network.chat.Component.literal("Stored sample"));
         filter.add(FilterRules.Kind.COMPONENTS,"minecraft:iron_ingot",false,named);filter.add(FilterRules.Kind.FLUID_TAG,"minecraft:water",true,net.minecraft.world.item.ItemStack.EMPTY);filter.setMinimum(12);filter.setTarget(80);

@@ -10,7 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -147,8 +147,8 @@ public final class NaturalCrystalGameTests {
     public static void generatedGeodeExactlyMatchesVanillaShellAndGrowthPlacement(GameTestHelper h) {
         var level = h.getLevel();
         var registry = level.registryAccess().registryOrThrow(Registries.CONFIGURED_FEATURE);
-        var astral = registry.get(ResourceLocation.fromNamespaceAndPath("astral_repository", "astral_geode"));
-        var vanilla = registry.get(ResourceLocation.withDefaultNamespace("amethyst_geode"));
+        var astral = registry.get(Identifier.fromNamespaceAndPath("astral_repository", "astral_geode"));
+        var vanilla = registry.get(Identifier.withDefaultNamespace("amethyst_geode"));
         h.assertTrue(astral != null && vanilla != null, "Both configured geodes are loaded");
         BlockPos origin = h.absolutePos(new BlockPos(20, 20, 20));
         Map<BlockPos, BlockState> actual = new HashMap<>();

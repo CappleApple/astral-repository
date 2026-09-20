@@ -24,7 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -33,8 +33,8 @@ import org.lwjgl.opengl.*;
 /** Excluded development fixture: calls the loaded BNS rail and toolbar through reflection. */
 public final class BundledTabSmoke {
     private static final int SIZE = 96, X = 24, Y = 16, WIDTH = 21, HEIGHT = 64, BUTTON = 13;
-    private static final ResourceLocation CONTROLS = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus_controls.png");
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/bundled_tab.png");
+    private static final Identifier CONTROLS = Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus_controls.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/bundled_tab.png");
     private BundledTabSmoke() {}
 
     public static void verify(NexusScreen screen) throws Exception {

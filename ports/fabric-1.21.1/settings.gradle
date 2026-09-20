@@ -1,2 +1,0 @@
-pluginManagement { repositories { maven { url = 'https://maven.fabricmc.net/' }; gradlePluginPortal(); mavenCentral() } }
-rootProject.name = 'astral-repository-fabric-1.21.1'

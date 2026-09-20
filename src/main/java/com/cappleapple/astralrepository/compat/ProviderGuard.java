@@ -4,7 +4,7 @@ import com.cappleapple.astralrepository.api.*;
 import com.mojang.logging.LogUtils;
 import java.util.Map;
 import java.util.function.Supplier;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 /** Quarantines a failed provider for its current discovery lifetime. Uncertain commits are propagated. */
@@ -85,7 +85,7 @@ public final class ProviderGuard {
         return new ResourceProvider() {
             public String id() { return backend.id(); }
             public Object identity() { return backend.identity(); }
-            public ResourceLocation resourceType() { return backend.resourceType(); }
+            public Identifier resourceType() { return backend.resourceType(); }
             public Map<ResourceKey,Long> snapshot() { return guard.read(backend::snapshot, Map.of()); }
             public long insert(ResourceKey key, long amount, boolean simulate) {
                 return guard.transfer(() -> backend.insert(key, amount, simulate), 0L, simulate);

@@ -1,0 +1,22 @@
+sourceSets {
+ test { java.srcDirs=['src/test/java']; resources.srcDirs=['src/test/resources'] }
+ portTest {
+  java.srcDirs=['src/portTest/java']; resources.srcDirs=['src/portTest/resources']
+  compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+  runtimeClasspath += sourceSets.main.output + sourceSets.main.runtimeClasspath
+ }
+}
+dependencies { testImplementation 'org.junit.platform:junit-platform-launcher' }
+loom {
+ mods { astral_repository {sourceSet sourceSets.main}; astral_repository_port_test {sourceSet sourceSets.portTest} }
+ runs { serverSmoke {server(); name 'Fabric dedicated smoke'; runDir 'run-server-smoke'; vmArg '-Dastral_repository.portSmoke=true'; source sourceSets.portTest; programArg '--nogui'} }
+}
+
+if (minecraft_version == '26.3') {
+ def generatedTests=layout.buildDirectory.dir('generated/sources/fabric263/test')
+ def generateTests=tasks.register('generateFabric263Tests',Sync) {
+  from('src/test/java');into generatedTests
+  filter { String line -> line.replace('VanillaRegistries.createLookup()', 'VanillaRegistries.createReloadableLookup(net.minecraft.data.registries.VanillaRegistries.createWorldLookup())') }
+ }
+ sourceSets.test.java.setSrcDirs([generatedTests]);tasks.named('compileTestJava'){dependsOn generateTests}
+}
