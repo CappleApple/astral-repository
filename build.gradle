@@ -55,11 +55,12 @@ jar { exclude 'com/cappleapple/astralrepository/porttest/**'; exclude 'data/astr
 
 tasks.named('jar') { from('LICENSE') }
 
-// MixinGradle writes its annotation-processor refmap into the compile task's
-// temporary directory. Declare it so clean builds restored from cache retain it.
+// MixinGradle writes refmaps and member mappings into the compile task's
+// temporary directory. Declare all three so cached builds retain reobfuscation inputs.
 tasks.named('compileJava') {
     outputs.file(layout.buildDirectory.file('tmp/compileJava/compileJava-refmap.json'))
     outputs.file(layout.buildDirectory.file('tmp/compileJava/astral_repository.refmap.json'))
+    outputs.file(layout.buildDirectory.file('tmp/compileJava/compileJava-mappings.tsrg'))
 }
 
 // Separate validation mod for an installed server. It is never part of the release JAR.
@@ -78,3 +79,12 @@ tasks.named('processPortTestResources') {
  inputs.property 'version', project.version
  filesMatching('META-INF/mods.toml') { expand version: project.version }
 }
+// Reuse the client scenario in the separate production fixture with its own mod ID.
+def packagedGameplaySources = layout.buildDirectory.dir('generated/sources/packagedGameplay')
+tasks.register('generatePackagedGameplay', Copy) {
+ from('src/main/java/com/cappleapple/astralrepository/porttest/ForgeGameplaySmoke.java')
+ into(packagedGameplaySources.map { it.dir('com/cappleapple/astralrepository/porttest') })
+ filter { String line -> line.replace('modid="astral_repository"', 'modid="astral_port_test"') }
+}
+sourceSets.portTest.java.srcDir(packagedGameplaySources)
+tasks.named('compilePortTestJava') { dependsOn 'generatePackagedGameplay' }

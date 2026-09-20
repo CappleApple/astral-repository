@@ -28,8 +28,9 @@ import net.minecraft.world.phys.*;
 @net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid="astral_repository",value=net.minecraftforge.api.distmarker.Dist.CLIENT)
 public final class ForgeGameplaySmoke {
     private static final Path OUT=Path.of("gameplay-captures");
-    private static final BlockPos NEXUS=new BlockPos(0,-60,0), STORAGE=new BlockPos(2,-60,0), CHEST=new BlockPos(4,-60,0);
+    private static final BlockPos NEXUS=new BlockPos(0,-60,0), STORAGE=new BlockPos(2,-60,0), CHEST=new BlockPos(4,-60,2);
     private static int phase,ticks;
+    private static long craftingLogs;
     private static boolean done;
     private static CompletableFuture<Void> pending;
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void event(net.minecraftforge.event.TickEvent.ClientTickEvent event){if(event.phase==net.minecraftforge.event.TickEvent.Phase.END)tick(Minecraft.getInstance());}
@@ -72,7 +73,27 @@ public final class ForgeGameplaySmoke {
                 check(mc.player.containerMenu.getCarried().getCount()==4,"Client recipe produced wrong quantity");capture("nexus-crafted.png");
                 server(p->check(p.containerMenu.getCarried().is(Items.OAK_PLANKS)&&p.containerMenu.getCarried().getCount()==4,"Server craft differs from client"));next(10);
             }else if(phase==10){
-                check(!mc.mouseHandler.isMouseGrabbed(),"Client captured mouse");Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: actual block-item placement for every registered block; placed world render; all item localization/tooltips; synchronized linked Nexus menu; client-to-server withdrawal/deposit packets and vanilla menu-click crafting.\n");LogUtils.getLogger().info("FORGE_GAMEPLAY_OK");done=true;mc.stop();
+                server(p->{p.closeContainer();p.setItemInHand(InteractionHand.MAIN_HAND,new ItemStack(AstralContent.RECIPE_TOME.get()));AstralContent.RECIPE_TOME.get().use(p.level(),p,InteractionHand.MAIN_HAND);});next(11);
+            }else if(phase==11&&mc.screen instanceof RecipeTomeScreen screen){screen.acceptItem(new ItemStack(Items.OAK_PLANKS));next(12);
+            }else if(phase==12&&mc.screen instanceof RecipeTomeScreen screen){
+                var id=new net.minecraft.resources.ResourceLocation("minecraft:oak_planks");
+                if(!screen.selectRecipe(id))return;capture("recipe-catalogue.png");screen.inscribeSelection();next(13);
+            }else if(phase==13&&RecipeTomeItem.product(mc.player.getMainHandItem(),mc.level.registryAccess()).is(Items.OAK_PLANKS)){
+                server(p->{
+                    var level=p.serverLevel();var tome=p.getMainHandItem().copy();check(RecipeTomeItem.product(tome,level.registryAccess()).is(Items.OAK_PLANKS),"Server inscription output");p.closeContainer();
+                    var table=new BlockPos(0,-60,-2);var shelf=new BlockPos(1,-60,-2);level.setBlockAndUpdate(table,Blocks.CRAFTING_TABLE.defaultBlockState());level.setBlockAndUpdate(shelf,Blocks.CHISELED_BOOKSHELF.defaultBlockState());((Container)level.getBlockEntity(shelf)).setItem(0,tome);
+                    check(net.minecraftforge.items.ItemHandlerHelper.insertItem(new net.minecraftforge.items.wrapper.InvWrapper((Container)level.getBlockEntity(CHEST)),new ItemStack(Items.OAK_LOG,4),false).isEmpty(),"Extra crafting logs fit without replacing existing stock");NetworkManager.changed(level,table);NetworkManager.changed(level,shelf);NetworkManager.changed(level,CHEST);
+                    p.setItemInHand(InteractionHand.MAIN_HAND,ItemStack.EMPTY);
+                });next(14);
+            }else if(phase==14&&ticks>60){server(p->NetworkManager.open(p,GlobalPos.of(p.level().dimension(),NEXUS)));next(15);
+            }else if(phase==15&&mc.screen instanceof NexusScreen screen&&screen.getMenu().entries.stream().anyMatch(e->e.stack().is(Items.OAK_PLANKS)&&e.craftable())){
+                server(p->{craftingLogs=((NexusMenu)p.containerMenu).network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.OAK_LOG)),0L);check(craftingLogs>=2,"Autocraft has real ingredients");});next(18);
+            }else if(phase==18){
+                com.cappleapple.astralrepository.platform.PacketDistributor.sendToServer(new NetworkPackets.Action(mc.player.containerMenu.containerId,NetworkPackets.CRAFT,new ItemStack(Items.OAK_PLANKS),8,0,""));next(16);
+            }else if(phase==16&&mc.screen instanceof NexusScreen screen&&screen.getMenu().entries.stream().anyMatch(e->e.stack().is(Items.OAK_PLANKS)&&e.count()==8)){
+                server(p->{var menu=(NexusMenu)p.containerMenu;check(menu.network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.OAK_PLANKS)),0L)==8,"Autocraft output inserted in real storage");check(menu.network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.OAK_LOG)),0L)==craftingLogs-2,"Autocraft consumed exactly two logs");check(menu.network().snapshot().getOrDefault(new com.cappleapple.astralrepository.api.ItemKey(new ItemStack(Items.IRON_INGOT)),0L)==64,"Autocraft preserves unrelated deposited iron");check(menu.network().crafting().statuses().stream().anyMatch(j->j.state().equals("COMPLETE")),"Autocraft finished a real job");});capture("nexus-autocraft.png");next(17);
+            }else if(phase==17){
+                check(!mc.mouseHandler.isMouseGrabbed(),"Client captured mouse");Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: actual block-item placement for every registered block; placed world render; all item localization/tooltips; synchronized linked Nexus menu; client-to-server withdrawal/deposit packets and vanilla menu-click crafting; actual Recipe Tome catalogue and inscription; bookshelf discovery; completed eight-plank autocraft consuming exactly two logs.\n");LogUtils.getLogger().info("FORGE_GAMEPLAY_OK");done=true;mc.stop();
 
             }
         }catch(Throwable failure){done=true;LogUtils.getLogger().error("Forge gameplay regression failed",failure);try{Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"FAIL: "+failure+"\n");}catch(Exception ignored){}mc.stop();}
