@@ -48,8 +48,8 @@ public final class NexusMenu extends AbstractContainerMenu {
         super(AstralRepository.NEXUS_MENU.get(), id);
         this.player = inventory.player; this.origin = origin; this.remote = remote;
         localStorage=!remote && origin!=null && player instanceof ServerPlayer sp
-                && sp.server.getLevel(origin.dimension())!=null
-                && sp.server.getLevel(origin.dimension()).getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity node
+                && sp.level().getServer().getLevel(origin.dimension())!=null
+                && sp.level().getServer().getLevel(origin.dimension()).getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity node
                 && (node.kind()==NodeKind.STORAGE||node.kind()==NodeKind.BUFFER)?node.inventory():null;
         addSlot(new ResultSlot(player, grid, result, 0, 284, 72) {
             @Override public void onTake(Player player,ItemStack stack) {
@@ -63,7 +63,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         for (int y=0;y<3;y++) for(int x=0;x<9;x++) addSlot(new Slot(inventory,x+y*9+9,8+x*18,180+y*18));
         for (int x=0;x<9;x++) addSlot(new Slot(inventory,x,8+x*18,238));
     }
-    public AstralNetwork network() { return player instanceof ServerPlayer p && origin != null ? NetworkManager.get(p.server).networkAt(origin) : null; }
+    public AstralNetwork network() { return player instanceof ServerPlayer p && origin != null ? NetworkManager.get(p.level().getServer()).networkAt(origin) : null; }
     private Map<ItemKey,Long> storedItems(AstralNetwork network){
         if(localStorage==null)return network.snapshot();
         Map<ItemKey,Long> items=new HashMap<>();
@@ -77,21 +77,21 @@ public final class NexusMenu extends AbstractContainerMenu {
     }
     private ItemStack deposit(AstralNetwork network,ItemStack stack){
         if(localStorage==null)return network.insertAt(stack,origin);
-        ItemStack rest=net.neoforged.neoforge.items.ItemHandlerHelper.insertItem(localStorage,stack,false);
+        ItemStack rest=com.cappleapple.astralrepository.port.storage.ItemHandlerHelper.insertItem(localStorage,stack,false);
         if(rest.getCount()!=stack.getCount())network.providerChanged(origin);return rest;
     }
     private boolean payForAccess(AstralNetwork network,ServerPlayer player){return localStorage!=null||network.payForAccess(player,origin,remote);}
     @Override public boolean stillValid(Player p) {
         if (!(p instanceof ServerPlayer sp) || origin == null) return true;
-        return NetworkManager.get(sp.server).canAccess(sp, origin, remote)
-                && (localStorage==null || sp.server.getLevel(origin.dimension()).getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity node && node.inventory()==localStorage);
+        return NetworkManager.get(sp.level().getServer()).canAccess(sp, origin, remote)
+                && (localStorage==null || sp.level().getServer().getLevel(origin.dimension()).getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity node && node.inventory()==localStorage);
     }
     @Override public void slotsChanged(Container container) {
         if (!(player instanceof ServerPlayer sp)) return;
         ItemStack output = ItemStack.EMPTY;
-        var recipe = sp.server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid.asCraftInput(), sp.level());
-        if (recipe.isPresent() && result.setRecipeUsed(sp.level(),sp,recipe.get())) {
-            ItemStack assembled = recipe.get().value().assemble(grid.asCraftInput(),sp.registryAccess());
+        var recipe = sp.level().getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid.asCraftInput(), sp.level());
+        if (recipe.isPresent() && result.setRecipeUsed(sp,recipe.get())) {
+            ItemStack assembled = recipe.get().value().assemble(grid.asCraftInput());
             if (assembled.isItemEnabled(sp.level().enabledFeatures())) output = assembled;
         }
         result.setItem(0,output); setRemoteSlot(0,output);
@@ -164,7 +164,7 @@ public final class NexusMenu extends AbstractContainerMenu {
     private void interact(Runnable action){
         if(pendingInteraction!=null)return;
         if(LogisticsTiming.playerDelayTicks()==0){commitInteraction(action);return;}
-        if(player instanceof ServerPlayer sp)pendingInteraction=new PendingInteraction(sp.server.getTickCount()+LogisticsTiming.playerDelayTicks(),copySlots(),getCarried().copy(),action);
+        if(player instanceof ServerPlayer sp)pendingInteraction=new PendingInteraction(sp.level().getServer().getTickCount()+LogisticsTiming.playerDelayTicks(),copySlots(),getCarried().copy(),action);
     }
     private void tickInteraction(){
         if(pendingInteraction==null||!(player instanceof ServerPlayer sp))return;
@@ -172,7 +172,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         boolean unchanged=!sp.isSpectator()&&sp.containerMenu==this&&stillValid(player)&&sameStack(getCarried(),pending.carried())&&slots.size()==pending.slots().size();
         for(int i=0;unchanged&&i<slots.size();i++)unchanged=sameStack(slots.get(i).getItem(),pending.slots().get(i));
         if(!unchanged){pendingInteraction=null;return;}
-        if(sp.server.getTickCount()<pending.due())return;
+        if(sp.level().getServer().getTickCount()<pending.due())return;
         pendingInteraction=null;commitInteraction(pending.action());
     }
     private void flushDeferredRefill(){
@@ -210,7 +210,7 @@ public final class NexusMenu extends AbstractContainerMenu {
             if(present.isEmpty())grid.setItem(i,extracted);else{ItemStack filled=present.copy();filled.grow(extracted.getCount());grid.setItem(i,filled);}
         }
     }
-    @Override public void clicked(int slot,int button,ClickType type,Player player){
+    @Override public void clicked(int slot,int button,ContainerInput type,Player player){
         boolean outer=insideClick;if(!outer){insideClick=true;handledShiftCraft=false;}
         try{super.clicked(slot,button,type,player);}finally{if(!outer){insideClick=false;flushDeferredRefill();sendPage();}}
     }
@@ -225,13 +225,13 @@ public final class NexusMenu extends AbstractContainerMenu {
     }
     private static String clipped(String value){return value.length()>512?value.substring(0,509)+"...":value;}
     private void showError(String message) {
-        error=clipped(message);feedbackUntil=player instanceof ServerPlayer sp?sp.server.getTickCount()+200L:0;sendPage();
+        error=clipped(message);feedbackUntil=player instanceof ServerPlayer sp?sp.level().getServer().getTickCount()+200L:0;sendPage();
     }
     private void clearError(){error="";feedbackUntil=0;}
     @Override public void broadcastChanges() {
         tickInteraction();super.broadcastChanges();
-        if(player instanceof ServerPlayer sp&&(searchPending||sp.server.getTickCount()>=nextUpdate)){
-            nextUpdate=sp.server.getTickCount()+2;sendPage();
+        if(player instanceof ServerPlayer sp&&(searchPending||sp.level().getServer().getTickCount()>=nextUpdate)){
+            nextUpdate=sp.level().getServer().getTickCount()+2;sendPage();
         }
     }
     public void sendPage(){
@@ -242,7 +242,7 @@ public final class NexusMenu extends AbstractContainerMenu {
     public CustomPacketPayload collectUpdate() {
         if(!(player instanceof ServerPlayer sp))return null;
         AstralNetwork network=network();if(network==null)return null;
-        if(!error.isEmpty()&&sp.server.getTickCount()>=feedbackUntil)clearError();
+        if(!error.isEmpty()&&sp.level().getServer().getTickCount()>=feedbackUntil)clearError();
         boolean networkChanged=network!=cachedNetwork;
         long version=localStorage==null?network.menuStorageVersion():localStorage.revision();
         boolean identitiesChanged=networkChanged;
@@ -280,12 +280,12 @@ public final class NexusMenu extends AbstractContainerMenu {
     private static boolean matches(ItemKey key,String query) {
         if (query.isBlank()) return true;
         if (query.startsWith("@")) return key.id().getNamespace().contains(query.substring(1));
-        if (query.startsWith("#")) return key.sample().getTags().anyMatch(tag -> tag.location().toString().contains(query.substring(1)));
+        if (query.startsWith("#")) return key.sample().getItem().builtInRegistryHolder().tags().anyMatch(tag -> tag.location().toString().contains(query.substring(1)));
         return key.id().toString().contains(query) || key.sample().getHoverName().getString().toLowerCase(Locale.ROOT).contains(query);
     }
     @Override public ItemStack quickMoveStack(Player player,int slotIndex) {
         if(slotIndex<0||slotIndex>=slots.size())return ItemStack.EMPTY;
-        if(slotIndex>=10&&player.level().isClientSide)return ItemStack.EMPTY;
+        if(slotIndex>=10&&player.level().isClientSide())return ItemStack.EMPTY;
         if(slotIndex>=10&&!committingInteraction){
             ItemStack[] moved={ItemStack.EMPTY};interact(()->moved[0]=quickMoveNow(player,slotIndex));return moved[0];
         }
@@ -318,7 +318,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         var positioned=grid.asPositionedCraftInput();var input=positioned.input();
         net.minecraft.core.NonNullList<ItemStack> remainders;
         net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(player);
-        try{remainders=player.level().getRecipeManager().getRemainingItemsFor(RecipeType.CRAFTING,input,player.level());}
+        try{remainders=player.level().getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING,input,player.level()).map(holder -> holder.value().getRemainingItems(input)).orElseGet(() -> net.minecraft.world.item.crafting.CraftingRecipe.defaultCraftingReminder(input));}
         finally{net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(null);}
         for(int y=0;y<input.height();y++)for(int x=0;x<input.width();x++){
             ItemStack original=grid.getItem(x+positioned.left()+(y+positioned.top())*grid.getWidth());
@@ -349,13 +349,13 @@ public final class NexusMenu extends AbstractContainerMenu {
             if(rest.isEmpty())clearError();else showError("Deposited "+(original.getCount()-rest.getCount())+" of "+original.getCount()+". Check destination capacity and filters.");
             return rest.getCount()==original.getCount()?ItemStack.EMPTY:original;
         }
-        if(slotIndex==0)live.getItem().onCraftedBy(live,player.level(),player);
+        if(slotIndex==0)live.getItem().onCraftedBy(live,player);
         if(!moveItemStackTo(live,10,46,true))return ItemStack.EMPTY;
         if(slotIndex==0)slot.onQuickCraft(live,original);
         if(live.isEmpty())slot.setByPlayer(ItemStack.EMPTY);else slot.setChanged();
         if(live.getCount()==original.getCount())return ItemStack.EMPTY;
         slot.onTake(player,live);if(slotIndex==0)player.drop(live,false);return original;
     }
-    @Override public void removed(Player player) { pendingInteraction=null;deferredRefill=null;super.removed(player); if (!player.level().isClientSide) clearContainer(player,grid); }
+    @Override public void removed(Player player) { pendingInteraction=null;deferredRefill=null;super.removed(player); if (!player.level().isClientSide()) clearContainer(player,grid); }
     @Override public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) { return slot.container!=result && super.canTakeItemForPickAll(stack,slot); }
 }

@@ -76,7 +76,7 @@ public final class ContainerRuneRules {
     public static ResourceProvider wrap(ServerLevel level,BlockPos pos,ResourceProvider delegate){
         var data=RuneSavedData.get(level.getServer());var address=GlobalPos.of(level.dimension(),pos.immutable());
         return new ResourceProvider(){
-        public String id(){return delegate.id();}public Object identity(){return delegate.identity();}public net.minecraft.resources.ResourceLocation resourceType(){return delegate.resourceType();}public boolean valid(){return delegate.valid();}public long capacity(){return delegate.capacity();}public long version(){return delegate.version();}public String unit(){return delegate.unit();}public net.minecraft.resources.ResourceLocation visualization(){return delegate.visualization();}
+        public String id(){return delegate.id();}public Object identity(){return delegate.identity();}public net.minecraft.resources.Identifier resourceType(){return delegate.resourceType();}public boolean valid(){return delegate.valid();}public long capacity(){return delegate.capacity();}public long version(){return delegate.version();}public String unit(){return delegate.unit();}public net.minecraft.resources.Identifier visualization(){return delegate.visualization();}
         public Map<ResourceKey,Long> snapshot(){return delegate.snapshot();}public long extract(ResourceKey key,long amount,boolean simulate){return delegate.extract(key,amount,simulate);}
         public long insert(ResourceKey key,long amount,boolean simulate){return key instanceof FluidKey fluid&&!allowed(level,data,address,fluid.sample(),FilterRules::matches)?0:delegate.insert(key,amount,simulate);}
     };}

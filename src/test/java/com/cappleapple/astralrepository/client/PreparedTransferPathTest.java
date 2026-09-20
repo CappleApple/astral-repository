@@ -45,7 +45,7 @@ class PreparedTransferPathTest {
     @Test void preservesAllRuneNormalsRepeatedNodesAndEachResourceArrival() {
         List<BlockPos> path = List.of(BlockPos.ZERO, BlockPos.ZERO, new BlockPos(0, 24, 0), new BlockPos(24, 25, 0));
         for (Direction face : Direction.values()) {
-            Vec3 normal = Vec3.atLowerCornerOf(face.getNormal());
+            Vec3 normal = Vec3.atLowerCornerOf(face.getUnitVec3i());
             var endpoint = new TransferVisuals.Endpoint(normal.scale(.502), face);
             for (int medium = -4; medium <= -1; medium++) {
                 var packet = packet(path, medium, endpoint, endpoint);

@@ -7,6 +7,8 @@ import com.cappleapple.astralrepository.AstralConfig;
 import com.cappleapple.astralrepository.content.AstralContent;
 import com.cappleapple.astralrepository.network.NetworkPackets;
 import com.mojang.blaze3d.vertex.*;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.util.LightCoordsUtil;
 import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -18,7 +20,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import org.joml.Vector3f;
 import java.util.*;
@@ -65,7 +67,7 @@ public final class WorldVisuals {
             if(AstralConfig.particleDensity.get()<=0||flights.size()-stations>=com.cappleapple.astralrepository.AstralClientConfig.maxActiveTransfers.get()){sampled++;return;}
             if(packet.slot()==-1){detailedItem=movingItems<com.cappleapple.astralrepository.AstralClientConfig.maxItemTransferModels.get();if(detailedItem)movingItems++;}
         }
-        flights.add(new Flight(packet,visualTicks,world.random.nextLong(),detailedItem));admitted++;
+        flights.add(new Flight(packet,visualTicks,world.getRandom().nextLong(),detailedItem));admitted++;
     }
     public static void clearStationDisplays(){flights.removeIf(f->f.packet.slot()>=0);stations=0;}
     public static void diagnostics(NetworkPackets.Diagnostics packet){level(Minecraft.getInstance().level);diagnostics=packet;diagnosticsAt=visualTicks;}
@@ -82,7 +84,7 @@ public final class WorldVisuals {
         double density=AstralConfig.particleDensity.get();if(density<=0){resourceTrails.clear();return;}
         int budget=(int)(com.cappleapple.astralrepository.AstralClientConfig.maxTransferTrailEmissions.get()*density);
         int count=flights.size(),visited=0;
-        Vec3 eye=mc.gameRenderer.getMainCamera().getPosition();double distance=com.cappleapple.astralrepository.AstralClientConfig.transferRenderDistance.get();distance*=distance;
+        Vec3 eye=mc.gameRenderer.mainCamera().position();double distance=com.cappleapple.astralrepository.AstralClientConfig.transferRenderDistance.get();distance*=distance;
         while(visited<count&&budget>0){
             if(trailCursor>=count)trailCursor=0;
             Flight flight=flights.get(trailCursor++);visited++;
@@ -96,9 +98,9 @@ public final class WorldVisuals {
             if(resource){
                 float opacity=resourceOpacity(flight,point,age);if(opacity<=0)continue;
                 Vec3 drift=position(flight,Math.min(1,t+1.0/p.duration())).subtract(point).scale(.12);
-                resourceTrails.add(new ResourceTrail(p,point,drift,released,12+mc.level.random.nextInt(6),.04F+mc.level.random.nextFloat()*.025F,opacity));
+                resourceTrails.add(new ResourceTrail(p,point,drift,released,12+mc.level.getRandom().nextInt(6),.04F+mc.level.getRandom().nextFloat()*.025F,opacity));
             }else{
-                int rgb=p.color();mc.level.addParticle(new DustParticleOptions(new Vector3f((rgb>>16&255)/255f,(rgb>>8&255)/255f,(rgb&255)/255f),.55f),point.x,point.y,point.z,0,.006,0);
+                int rgb=p.color();mc.level.addParticle(new DustParticleOptions(rgb,.55f),point.x,point.y,point.z,0,.006,0);
             }
             budget--;
         }
@@ -111,21 +113,15 @@ public final class WorldVisuals {
     }
     private static Vec3 position(Flight flight,double t){return flight.route==null?position(flight.packet,t):flight.route.position(t);}
     private static Vec3 position(NetworkPackets.Visual p,double t){
-        Vec3 from=p.from().getCenter(),to=p.to().getCenter();
+        Vec3 from=Vec3.atCenterOf(p.from()),to=Vec3.atCenterOf(p.to());
         if(p.slot()>=0){int slot=p.slot();if(slot>=10){slot-=10;return to.add(((slot%3)-1)*.27,.8,((slot/3)-1)*.27);}if(slot==9)return to.add(0,.8,0);double converge=Math.max(0,(t-.65)/.35);return to.add(((slot%3)-1)*.27*(1-converge),.8+Math.sin(t*Math.PI)*.12,((slot/3)-1)*.27*(1-converge));}
         if(from.equals(to))return to.add(Math.cos(t*Math.PI*2)*.25,.4+Math.sin(t*Math.PI)*.5,Math.sin(t*Math.PI*2)*.25);
         return com.cappleapple.astralrepository.network.TransferVisuals.position(p,t);
     }
-    @SubscribeEvent public static void astralCoordinates(RenderLevelStageEvent event) {
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY)
-            AstralPlaneRenderType.beginWorld(event.getModelViewMatrix(), event.getCamera().getPosition());
-        else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL)
-            AstralPlaneRenderType.endWorld();
-    }
-    @SubscribeEvent public static void render(RenderLevelStageEvent event){
-        if(event.getStage()!=RenderLevelStageEvent.Stage.AFTER_PARTICLES)return;
+    public static void render(AstralWorldFrame event){
+        
         var mc=Minecraft.getInstance();if(mc.level==null||mc.player==null)return;
-        PoseStack pose=event.getPoseStack();Vec3 camera=event.getCamera().getPosition();var buffers=mc.renderBuffers().bufferSource();
+        PoseStack pose=event.getPoseStack();Vec3 camera=event.getCamera().position();var buffers=event.buffers();
         boolean profile=Boolean.getBoolean("astral_repository.transferStress");long renderStart=profile?System.nanoTime():0;
         lastRenderedItems=lastRenderedIcons=lastRenderedResources=lastRenderedTrails=0;
         float partial=event.getPartialTick().getGameTimeDeltaPartialTick(false);
@@ -140,7 +136,7 @@ public final class WorldVisuals {
             if(p.slot()<=-2||p.slot()==-1&&!flight.detailedItem){visibleFlights[visible]=flight;visiblePoints[visible]=point;visibleAges[visible++]=age;continue;}
             pose.pushPose();pose.translate(point.x-camera.x,point.y-camera.y,point.z-camera.z);pose.scale(.45f,.45f,.45f);
             pose.mulPose(Axis.YP.rotationDegrees(AnimationTime.rotation(visualTicks,partial,120)));
-            mc.getItemRenderer().renderStatic(p.stack(),ItemDisplayContext.GROUND,LightTexture.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,pose,buffers,mc.level,0);pose.popPose();lastRenderedItems++;
+            AstralItems.render(p.stack(),ItemDisplayContext.GROUND,LightCoordsUtil.FULL_BRIGHT,OverlayTexture.NO_OVERLAY,pose,buffers,mc.level,0);pose.popPose();lastRenderedItems++;
         }
         TransferItemSprites.beginFrame();
         for(int i=0;i<visible;i++){
@@ -166,19 +162,19 @@ public final class WorldVisuals {
         }
         Arrays.fill(visibleFlights,0,visible,null);Arrays.fill(visiblePoints,0,visible,null);
         if(GogglesEquipment.isWearing(mc.player)&&now-diagnosticsAt<60){
-            var lines=buffers.getBuffer(RenderType.lines());
-            for(var edge:diagnostics.edges())line(lines,pose,edge.from().getCenter().subtract(camera),edge.to().getCenter().subtract(camera),edge.color());
+            var lines=buffers.getBuffer(RenderTypes.lines());
+            for(var edge:diagnostics.edges())line(lines,pose,Vec3.atCenterOf(edge.from()).subtract(camera),Vec3.atCenterOf(edge.to()).subtract(camera),edge.color());
             for(var node:diagnostics.nodes()){
-                Vec3 point=node.pos().getCenter();if(point.distanceToSqr(camera)>144)continue;
+                Vec3 point=Vec3.atCenterOf(node.pos());if(point.distanceToSqr(camera)>144)continue;
                 Vec3 look=point.subtract(camera).normalize();if(look.dot(Vec3.directionFromRotation(mc.player.getXRot(),mc.player.getYRot()))<.94)continue;
                 pose.pushPose();pose.translate(point.x-camera.x,point.y-camera.y+1,point.z-camera.z);pose.mulPose(event.getCamera().rotation());pose.scale(-.018f,-.018f,.018f);
-                int y=0;for(String text:node.text().split("\n")){mc.font.drawInBatch(text,-mc.font.width(text)/2f,y,0xFFE4EEE8,false,pose.last().pose(),buffers,Font.DisplayMode.SEE_THROUGH,0x80121B22,LightTexture.FULL_BRIGHT);y+=10;}pose.popPose();
+                int y=0;for(String text:node.text().split("\n")){AstralText.draw(text,-mc.font.width(text)/2f,y,0xFFE4EEE8,false,pose,buffers,Font.DisplayMode.SEE_THROUGH,0x80121B22,LightCoordsUtil.FULL_BRIGHT);y+=10;}pose.popPose();
             }
         }
         buffers.endBatch();
         lastRenderNanos=profile?System.nanoTime()-renderStart:0;
     }
-    private static boolean visible(RenderLevelStageEvent event,Vec3 point,Vec3 camera,double distance,double radius){
+    private static boolean visible(AstralWorldFrame event,Vec3 point,Vec3 camera,double distance,double radius){
         return point.distanceToSqr(camera)<=distance&&event.getFrustum().isVisible(new net.minecraft.world.phys.AABB(point.x-radius,point.y-radius,point.z-radius,point.x+radius,point.y+radius,point.z+radius));
     }
     private static void line(VertexConsumer vertex,PoseStack pose,Vec3 a,Vec3 b,int color){Vec3 n=b.subtract(a).normalize();for(Vec3 p:List.of(a,b))vertex.addVertex(pose.last().pose(),(float)p.x,(float)p.y,(float)p.z).setColor(color>>16&255,color>>8&255,color&255,130).setNormal(pose.last(),(float)n.x,(float)n.y,(float)n.z);}

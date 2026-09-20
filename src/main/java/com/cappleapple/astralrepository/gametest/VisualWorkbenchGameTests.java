@@ -14,7 +14,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.*;
@@ -29,7 +29,7 @@ import net.neoforged.neoforge.gametest.*;
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
 public final class VisualWorkbenchGameTests {
-    private static final ResourceLocation TABLE=ResourceLocation.parse("visualworkbench:minecraft/crafting_table");
+    private static final Identifier TABLE=Identifier.parse("visualworkbench:minecraft/crafting_table");
     private static final ItemKey IRON=new ItemKey(new ItemStack(Items.IRON_INGOT));
     private static final ItemKey OUTPUT=new ItemKey(new ItemStack(Items.IRON_TRAPDOOR));
     private record Fixture(GlobalPos origin,GlobalPos table,Container chest,BlockEntity persistentTable,

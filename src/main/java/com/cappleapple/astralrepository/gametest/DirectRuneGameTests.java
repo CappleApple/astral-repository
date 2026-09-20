@@ -10,7 +10,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.nbt.*;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -24,7 +24,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 @GameTestHolder("astral_repository")
 @PrefixGameTestTemplate(false)
 public final class DirectRuneGameTests {
-    private static final ResourceLocation PUSH=ResourceLocation.parse("astral_repository:push_rune"),PULL=ResourceLocation.parse("astral_repository:pull_rune");
+    private static final Identifier PUSH=Identifier.parse("astral_repository:push_rune"),PULL=Identifier.parse("astral_repository:pull_rune");
     private static RuneLayer layer(RuneSurface rune,RuneLayer.Mode mode){return Objects.requireNonNull(rune.addLayer(mode==RuneLayer.Mode.PUSH?PUSH:PULL,mode));}
     private static GlobalPos at(GameTestHelper h,BlockPos relative){return GlobalPos.of(h.getLevel().dimension(),h.absolutePos(relative));}
     private static ChestBlockEntity chest(GameTestHelper h,BlockPos pos){h.setBlock(pos,Blocks.CHEST);return (ChestBlockEntity)h.getBlockEntity(pos);}

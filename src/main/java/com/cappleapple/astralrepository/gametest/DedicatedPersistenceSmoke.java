@@ -10,7 +10,7 @@ import java.util.*;
 import net.minecraft.core.*;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.*;
@@ -31,7 +31,7 @@ public final class DedicatedPersistenceSmoke {
     private static final String MANIFEST="astral-persistence-fixture-v3.txt";
     private static final String VERSION="astral_repository:independent-rune-persistence-v3";
     private static final BlockPos FIRST=new BlockPos(4,64,4),SECOND=new BlockPos(12,64,4),STORE=new BlockPos(8,64,8),CHEST=new BlockPos(10,64,8),PUSH_TARGET=new BlockPos(4,64,14),PULL_TARGET=new BlockPos(12,64,14);
-    private static final List<ResourceLocation> GLYPHS=List.of(ResourceLocation.parse("astral_repository:push_rune"),ResourceLocation.parse("astral_repository:pull_rune"),ResourceLocation.parse("astral_repository:push_rune"),ResourceLocation.parse("astral_repository:pull_rune"));
+    private static final List<Identifier> GLYPHS=List.of(Identifier.parse("astral_repository:push_rune"),Identifier.parse("astral_repository:pull_rune"),Identifier.parse("astral_repository:push_rune"),Identifier.parse("astral_repository:pull_rune"));
     private static List<String> expectedLayerIds=List.of();
     private static boolean initialized,done;
     private static int ticks;

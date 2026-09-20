@@ -27,7 +27,7 @@ public final class RuneSurfaces {
         for(int x=minX;x<=maxX;x++)for(int z=minZ;z<=maxZ;z++){
             if(!level.hasChunk(x,z))continue;
             for(var surface:data.surfaces(level.dimension(),new net.minecraft.world.level.ChunkPos(x,z)))
-                if(center.distanceToSqr(surface.getBlockPos().getCenter())<=squared&&!surface.isRemoved())result.add(surface);
+                if(center.distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(surface.getBlockPos()))<=squared&&!surface.isRemoved())result.add(surface);
         }
         return result;
     }

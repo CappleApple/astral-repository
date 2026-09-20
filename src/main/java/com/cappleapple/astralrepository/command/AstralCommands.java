@@ -8,7 +8,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 /** Read-only operator diagnostics; all programming remains in-world. */
 public final class AstralCommands {
     public static void register(RegisterCommandsEvent event){
-        event.getDispatcher().register(Commands.literal("astral_repository").requires(s->s.hasPermission(2))
+        event.getDispatcher().register(Commands.literal("astral_repository").requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
             .then(Commands.literal("inspect").then(Commands.argument("position",BlockPosArgument.blockPos()).executes(context->{
                 var source=context.getSource();var pos=BlockPosArgument.getLoadedBlockPos(context,"position");
                 var network=NetworkManager.get(source.getServer()).networkAt(GlobalPos.of(source.getLevel().dimension(),pos));

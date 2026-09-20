@@ -23,7 +23,7 @@ public final class RunePickupClient {
     public static void attack(InputEvent.InteractionKeyMappingTriggered event) {
         if (!event.isAttack()) return;
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null || minecraft.screen != null) return;
+        if (minecraft.player == null || minecraft.level == null || minecraft.gui.screen() != null) return;
         if (level != minecraft.level) {
             attackSeen = false;
             consumed = false;
@@ -36,7 +36,7 @@ public final class RunePickupClient {
             if (selected != null) {
                 consumed = true;
                 if (first) {
-                    PacketDistributor.sendToServer(new RunePickupPackets.Pickup(selected.face().pos(), selected.face().face(), selected.layer().id()));
+                    net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(new RunePickupPackets.Pickup(selected.face().pos(), selected.face().face(), selected.layer().id()));
                     pickupRequests++;
                     minecraft.player.swing(InteractionHand.MAIN_HAND);
                 }

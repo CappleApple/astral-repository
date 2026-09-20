@@ -1,15 +1,9 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    {
-      "item": "minecraft:netherite_ingot"
-    },
-    {
-      "item": "astral_repository:astral_gem"
-    },
-    {
-      "item": "minecraft:diamond"
-    }
+    "minecraft:netherite_ingot",
+    "astral_repository:astral_gem",
+    "minecraft:diamond"
   ],
   "result": {
     "id": "astral_repository:star_attunement",

@@ -22,7 +22,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -36,9 +36,9 @@ import org.lwjgl.opengl.GL13;
 /** Client-development assertions and real render previews. The release JAR excludes gametest classes. */
 public final class MaterialGeometrySmoke {
     private static final float EPSILON = 0.00001F;
-    private static final ResourceLocation WAND = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "item/attunement_wand");
-    private static final ResourceLocation WAND_BITMAP = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/item/attunement_wand.png");
-    private static final ResourceLocation REMOTE_BITMAP = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/item/astral_nexus.png");
+    private static final Identifier WAND = Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID, "item/attunement_wand");
+    private static final Identifier WAND_BITMAP = Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/item/attunement_wand.png");
+    private static final Identifier REMOTE_BITMAP = Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/item/astral_nexus.png");
     private static List<WandProbe> wandBaseline = List.of();
     private static List<RemoteProbe> remoteBaseline = List.of();
     private MaterialGeometrySmoke() {}
@@ -53,7 +53,7 @@ public final class MaterialGeometrySmoke {
         float minimum = Float.POSITIVE_INFINITY, maximum = Float.NEGATIVE_INFINITY;
         Set<String> vertexSets = new HashSet<>();
         EnumSet<Direction> directions = EnumSet.noneOf(Direction.class);
-        Set<ResourceLocation> sprites = new HashSet<>();
+        Set<Identifier> sprites = new HashSet<>();
         for (BakedQuad quad : wandQuads) {
             Geometry geometry = geometry(quad);
             check(vertexSets.add(geometry.vertexSet()), "Wand has coincident duplicate faces: " + geometry.vertexSet());
@@ -74,7 +74,7 @@ public final class MaterialGeometrySmoke {
         check(!remote.isCustomRenderer()&&!remote.isGui3d(),"Remote overlay must retain flat generated underlying geometry");
         var remoteQuads=allQuads(remote,null);EnumSet<Direction> remoteSides=EnumSet.noneOf(Direction.class);
         check(!remoteQuads.isEmpty(),"Remote access item geometry is missing");
-        for(var quad:remoteQuads){remoteSides.add(quad.getDirection());check(quad.getSprite().contents().name().equals(ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"item/astral_nexus")),"Remote must use its original Astral Nexus bitmap");for(var point:geometry(quad).vertices())check(point.z()>=7.5F/16-EPSILON&&point.z()<=8.5F/16+EPSILON,"Remote must stay one pixel thick");}
+        for(var quad:remoteQuads){remoteSides.add(quad.getDirection());check(quad.getSprite().contents().name().equals(Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID,"item/astral_nexus")),"Remote must use its original Astral Nexus bitmap");for(var point:geometry(quad).vertices())check(point.z()>=7.5F/16-EPSILON&&point.z()<=8.5F/16+EPSILON,"Remote must stay one pixel thick");}
         check(remoteSides.equals(EnumSet.allOf(Direction.class)),"Remote tool lacks filled silhouette edges");
         verifyNaturalSprites(client);
         verifyCullState();
@@ -91,7 +91,7 @@ public final class MaterialGeometrySmoke {
                 AstralContent.SMALL_ASTRAL_BUD.get(),AstralContent.MEDIUM_ASTRAL_BUD.get(),
                 AstralContent.LARGE_ASTRAL_BUD.get(),AstralContent.ASTRAL_CLUSTER.get())) {
             var id=net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block);
-            var expected=ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"block/"+id.getPath());
+            var expected=Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID,"block/"+id.getPath());
             var state=block.defaultBlockState();
             var quads=allQuads(client.getBlockRenderer().getBlockModel(state),state);
             check(!quads.isEmpty()&&quads.stream().allMatch(q->q.getSprite().contents().name().equals(expected)),
@@ -99,7 +99,7 @@ public final class MaterialGeometrySmoke {
         }
         var gem=allQuads(client.getModelManager().getModel(AstralMineralClient.GEM_MODEL),null);
         check(!gem.isEmpty()&&gem.stream().allMatch(q->q.getSprite().contents().name().equals(
-                ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID,"item/astral_gem"))),
+                Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID,"item/astral_gem"))),
                 "Astral Gem must use its own item artwork");
     }
 

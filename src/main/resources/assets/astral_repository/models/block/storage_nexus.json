@@ -6,6 +6,10 @@
   "flip_v": true,
   "emissive_ambient": false,
   "textures": {
-    "particle": "astral_repository:block/node_crystal"
+    "particle": "astral_repository:block/node_crystal",
+    "astral_repository:block/node_stone": "astral_repository:block/node_stone",
+    "astral_repository:block/node_trim": "astral_repository:block/node_trim",
+    "astral_repository:block/node_crystal": "astral_repository:block/node_crystal",
+    "astral_repository:block/node_channel": "astral_repository:block/node_channel"
   }
 }

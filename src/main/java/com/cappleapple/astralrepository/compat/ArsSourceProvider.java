@@ -2,7 +2,7 @@ package com.cappleapple.astralrepository.compat;
 
 import com.cappleapple.astralrepository.api.*;
 import java.util.Map;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -13,9 +13,9 @@ final class ArsSourceProvider implements ResourceProvider {
     private final BlockEntity tile;
     ArsSourceProvider(ServerLevel level, BlockEntity tile) { this.level = level; this.tile = tile; }
     static boolean supports(BlockEntity tile) { return tile != null && OptionalApi.type(API).isInstance(tile); }
-    public String id() { return "ars_nouveau:" + level.dimension().location() + ":" + tile.getBlockPos().asLong(); }
+    public String id() { return "ars_nouveau:" + level.dimension().identifier() + ":" + tile.getBlockPos().asLong(); }
     public Object identity() { return tile; }
-    public ResourceLocation resourceType() { return ResourceKinds.SOURCE; }
+    public Identifier resourceType() { return ResourceKinds.SOURCE; }
     public String unit() { return "Source"; }
     public boolean valid() {
         return !tile.isRemoved() && level.hasChunkAt(tile.getBlockPos()) && level.getBlockEntity(tile.getBlockPos()) == tile;

@@ -34,7 +34,7 @@ public final class RuneAggregateGameTests {
             if(level!=h.getLevel()||i<0)return List.of();
             return List.of(new ResourceProvider(){
                 public String id(){return id+i;}public Object identity(){return id+i;}public boolean valid(){return valid[i];}
-                public net.minecraft.resources.ResourceLocation resourceType(){return ResourceKinds.FLUID;}public long capacity(){return 1000;}
+                public net.minecraft.resources.Identifier resourceType(){return ResourceKinds.FLUID;}public long capacity(){return 1000;}
                 public Map<ResourceKey,Long> snapshot(){return Map.of(water,amounts[i]);}
                 public long insert(ResourceKey key,long amount,boolean simulate){long accepted=key.equals(water)?Math.min(amount,1000-amounts[i]):0;if(!simulate)amounts[i]+=accepted;return accepted;}
                 public long extract(ResourceKey key,long amount,boolean simulate){long extracted=key.equals(water)?Math.min(amount,amounts[i]):0;if(!simulate)amounts[i]-=extracted;return extracted;}

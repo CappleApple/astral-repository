@@ -1,29 +1,13 @@
-#version 150
+#version 330
 
-#moj_import <fog.glsl>
+#moj_import <minecraft:dynamictransforms.glsl>
+#moj_import <minecraft:projection.glsl>
+#moj_import <astral_repository:astral_parameters.glsl>
+#ifndef ASTRAL_INTERFACE
+#moj_import <minecraft:fog.glsl>
+#endif
 
 uniform sampler2D Sampler0;
-uniform vec4 ColorModulator;
-uniform mat4 ProjMat;
-uniform float AstralLayerDriftTime;
-uniform float AstralLayerWobbleTime;
-uniform float AstralParticleTime;
-uniform float AstralTwinkleTime;
-uniform float AstralShootingStarTime;
-uniform float AstralMeteorStartTime;
-uniform mat4 AstralMeteorWorldToView;
-uniform vec3 AstralMeteorEyeOffset;
-uniform vec3 AstralCameraPosition;
-uniform float AstralOverlayOpacity;
-uniform float AstralRetintBase;
-uniform float AstralItemMode;
-uniform vec4 AstralSpriteBounds;
-uniform float AstralInterfaceMode;
-uniform float AstralWorldMode;
-uniform float AstralShootingStars;
-uniform float FogStart;
-uniform float FogEnd;
-uniform vec4 FogColor;
 
 in vec2 crystalUV;
 in vec3 viewPosition;
@@ -33,6 +17,7 @@ in vec4 surfaceColor;
 in vec4 overlayColor;
 in vec4 lightColor;
 in float vertexDistance;
+in float vertexCylindricalDistance;
 out vec4 fragColor;
 
 // Repository-owned procedural field. No End sky or End portal texture is sampled.
@@ -254,7 +239,11 @@ void main() {
         color = mix(overlayColor.rgb, color, overlayColor.a);
     }
     vec4 shaded = vec4(color, mineral.a) * surfaceColor * ColorModulator;
-    fragColor = interfaceMode ? shaded : linear_fog(shaded, vertexDistance, FogStart, FogEnd, FogColor);
+    #ifdef ASTRAL_INTERFACE
+    fragColor = shaded;
+    #else
+    fragColor = apply_fog(shaded, vertexDistance, vertexCylindricalDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor);
+    #endif
 }
 
 

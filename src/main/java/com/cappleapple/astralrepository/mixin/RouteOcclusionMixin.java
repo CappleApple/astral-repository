@@ -13,14 +13,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(LevelChunk.class)
 public abstract class RouteOcclusionMixin {
     @Inject(method="setBlockState",at=@At("RETURN"))
-    private void astral$visibility(BlockPos pos,BlockState state,boolean moving,CallbackInfoReturnable<BlockState> ci){
+    private void astral$visibility(BlockPos pos,BlockState state,int flags,CallbackInfoReturnable<BlockState> ci){
         BlockState old=ci.getReturnValue();
         if(old==null||old==state||!(old.canOcclude()||state.canOcclude()))return;
         if(((LevelChunk)(Object)this).getLevel() instanceof ServerLevel level){
             // Lighting a furnace or changing another full cube's visual state does not change sight.
             // Identity equality is deliberately conservative for modded, context-dependent shapes.
             if(old.getBlock()==state.getBlock()&&!state.getBlock().hasDynamicShape()&&old.canOcclude()&&state.canOcclude()
-                    &&old.getOcclusionShape(level,pos)==state.getOcclusionShape(level,pos))return;
+                    &&old.getOcclusionShape()==state.getOcclusionShape())return;
             NetworkManager.visibilityChanged(level,pos);
         }
     }

@@ -18,12 +18,12 @@ class ResourceArrivalTest {
         var path=List.of(new BlockPos(0,8,0),new BlockPos(12,8,0));
         for(int slot=-4;slot<=-2;slot++){
             var packet=packet(path,slot,null);
-            assertEquals(path.getLast().getCenter(),ResourceArrival.create(packet,7,0).endpoint());
+            assertEquals(net.minecraft.world.phys.Vec3.atCenterOf(path.getLast()),ResourceArrival.create(packet,7,0).endpoint());
             assertEquals(ResourceArrival.create(packet,7,.18),ResourceArrival.create(packet,7,.18));
             assertNotEquals(ResourceArrival.create(packet,7,.18).endpoint(),ResourceArrival.create(packet,8,.18).endpoint());
             for(long seed=0;seed<100;seed++){
                 var arrival=ResourceArrival.create(packet,seed,.45);
-                assertTrue(arrival.endpoint().distanceTo(path.getLast().getCenter())<=.45);
+                assertTrue(arrival.endpoint().distanceTo(net.minecraft.world.phys.Vec3.atCenterOf(path.getLast()))<=.45);
                 assertEquals(0,arrival.opacity(arrival.endpoint()));
                 assertEquals(0,arrival.position(TransferVisuals.position(packet,1),1).distanceTo(arrival.endpoint()),1e-10);
             }
@@ -35,8 +35,8 @@ class ResourceArrivalTest {
         var path=List.of(new BlockPos(-400,0,0),BlockPos.ZERO);
         var arrival=ResourceArrival.create(packet(path,-2,null),2,.18);
         for(var face:Direction.values()){
-            var normal=Vec3.atLowerCornerOf(face.getNormal());
-            var boundary=BlockPos.ZERO.getCenter().add(normal.scale(.5));
+            var normal=Vec3.atLowerCornerOf(face.getUnitVec3i());
+            var boundary=net.minecraft.world.phys.Vec3.atCenterOf(BlockPos.ZERO).add(normal.scale(.5));
             assertEquals(1,arrival.opacity(boundary));
             assertEquals(1,arrival.opacity(boundary.add(normal.scale(10))));
             float previous=1;
@@ -53,7 +53,7 @@ class ResourceArrivalTest {
         var path=List.of(BlockPos.ZERO,new BlockPos(8,0,0),new BlockPos(8,0,16));
         double relay=1.0/3,h=1e-6;
         for(var face:Direction.values()){
-            var normal=Vec3.atLowerCornerOf(face.getNormal());
+            var normal=Vec3.atLowerCornerOf(face.getUnitVec3i());
             var packet=packet(path,-2,new TransferVisuals.Endpoint(normal.scale(.502),face));
             var arrival=ResourceArrival.create(packet,3,.18);
             assertEquals(TransferVisuals.position(packet,0),arrival.position(TransferVisuals.position(packet,0),0));

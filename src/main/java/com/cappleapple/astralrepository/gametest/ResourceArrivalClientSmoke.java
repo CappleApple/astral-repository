@@ -11,7 +11,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
@@ -72,7 +72,7 @@ public final class ResourceArrivalClientSmoke {
             for(int i=0;i<TARGETS.size();i++){
                 var target=TARGETS.get(i);
                 WorldVisuals.add(new NetworkPackets.Visual(SOURCE,target,ItemStack.EMPTY,0x9470ee,100,-2-i,
-                        List.of(SOURCE,target),departure,null,i==0?ResourceLocation.withDefaultNamespace("water"):null));
+                        List.of(SOURCE,target),departure,null,i==0?Identifier.withDefaultNamespace("water"):null));
             }
             started=mc.level.getGameTime();checkFlightEndpoints();checkDeparture();next(2);
         }else if(phase==2){

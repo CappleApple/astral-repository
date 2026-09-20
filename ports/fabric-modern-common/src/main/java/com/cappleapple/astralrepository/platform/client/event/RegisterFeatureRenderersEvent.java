@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform.client.event;
-public final class RegisterFeatureRenderersEvent {public <T extends net.minecraft.client.renderer.feature.submit.SubmitNode> void register(net.minecraft.client.renderer.feature.FeatureRendererType<T> type,net.minecraft.client.renderer.feature.FeatureRenderer<T> renderer){net.fabricmc.fabric.api.client.rendering.v1.FeatureRendererRegistry.register(type,()->renderer);}}

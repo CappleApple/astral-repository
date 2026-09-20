@@ -1,15 +1,9 @@
 {
   "type": "minecraft:crafting_shapeless",
   "ingredients": [
-    {
-      "item": "minecraft:book"
-    },
-    {
-      "item": "astral_repository:astral_gem"
-    },
-    {
-      "item": "astral_repository:astral_gem"
-    }
+    "minecraft:book",
+    "astral_repository:astral_gem",
+    "astral_repository:astral_gem"
   ],
   "result": {
     "id": "astral_repository:field_guide",

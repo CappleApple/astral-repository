@@ -1,5 +1,4 @@
 {
-  "parent": "builtin/entity",
   "gui_light": "front",
   "display": {
     "ground": {
@@ -77,5 +76,8 @@
         0
       ]
     }
+  },
+  "textures": {
+    "particle": "astral_repository:block/small_astral_bud"
   }
 }

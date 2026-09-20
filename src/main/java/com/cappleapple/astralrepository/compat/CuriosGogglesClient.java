@@ -6,13 +6,15 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.HeadedModel;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.CustomHeadLayer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.ZombieVillager;
-import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -21,47 +23,32 @@ import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
-@EventBusSubscriber(modid=AstralRepository.MOD_ID, bus=EventBusSubscriber.Bus.MOD, value=Dist.CLIENT)
+@EventBusSubscriber(modid=AstralRepository.MOD_ID,value=Dist.CLIENT)
 public final class CuriosGogglesClient {
-    @SubscribeEvent
-    public static void setup(FMLClientSetupEvent event) {
-        if (ModList.get().isLoaded("curios")) event.enqueueWork(ApiBridge::register);
+    @SubscribeEvent public static void setup(FMLClientSetupEvent event){
+        if(ModList.get().isLoaded("curios"))event.enqueueWork(ApiBridge::register);
     }
-
     private static final class ApiBridge {
-        private static void register() {
-            top.theillusivec4.curios.api.client.CuriosRendererRegistry.register(
-                    AstralContent.RESONANCE_GOGGLES.get(), GogglesRenderer::new);
-        }
+        private static void register(){top.theillusivec4.curios.api.client.ICurioRenderer.register(AstralContent.RESONANCE_GOGGLES.get(),GogglesRenderer::new);}
     }
-
-    /** Shares the item's HEAD model and lens material with vanilla head-slot equipment. */
+    /** Uses the same extracted HEAD item geometry as vanilla equipment. */
     private static final class GogglesRenderer implements top.theillusivec4.curios.api.client.ICurioRenderer {
-        @Override
-        public <T extends LivingEntity, M extends EntityModel<T>> void render(ItemStack stack,
-                top.theillusivec4.curios.api.SlotContext context, PoseStack pose,
-                RenderLayerParent<T, M> parent, MultiBufferSource buffers, int light,
-                float limbSwing, float limbSwingAmount, float partialTicks, float ageInTicks,
-                float netHeadYaw, float headPitch) {
-            LivingEntity wearer = context.entity();
-            if (!context.visible() || wearer.getItemBySlot(EquipmentSlot.HEAD).is(AstralContent.RESONANCE_GOGGLES.get())
-                    || !(parent.getModel() instanceof HeadedModel model)) return;
+        @Override public <S extends LivingEntityRenderState,M extends EntityModel<? super S>> void render(
+                ItemStack stack,top.theillusivec4.curios.api.SlotContext slot,PoseStack pose,SubmitNodeCollector collector,
+                int light,S state,RenderLayerParent<S,M> parent,EntityRendererProvider.Context context,float yaw,float pitch){
+            var wearer=slot.entity();var helmet=wearer.getItemBySlot(EquipmentSlot.HEAD);
+            if(!slot.visible()||helmet.is(AstralContent.RESONANCE_GOGGLES.get())||!(parent.getModel() instanceof HeadedModel head))return;
             pose.pushPose();
-            if (wearer.isBaby() && !(wearer instanceof Villager)) {
-                pose.translate(0, .03125F, 0);
-                pose.scale(.7F, .7F, .7F);
-                pose.translate(0, 1, 0);
-            }
-            model.getHead().translateAndRotate(pose);
-            CustomHeadLayer.translateToHead(pose, wearer instanceof Villager || wearer instanceof ZombieVillager);
-            // Clear vanilla helmet thickness while keeping the lenses centered on the eyes.
-            if(wearer.getItemBySlot(EquipmentSlot.HEAD).getItem() instanceof net.minecraft.world.item.ArmorItem)
-                pose.scale(1.16F,1.16F,1.16F);
-            Minecraft.getInstance().getEntityRenderDispatcher().getItemInHandRenderer()
-                    .renderItem(wearer, stack, ItemDisplayContext.HEAD, false, pose, buffers, light);
+            parent.getModel().root().translateAndRotate(pose);
+            head.translateToHead(pose);
+            CustomHeadLayer.translateToHead(pose,CustomHeadLayer.Transforms.DEFAULT);
+            var equippable=helmet.get(DataComponents.EQUIPPABLE);
+            if(equippable!=null&&equippable.slot()==EquipmentSlot.HEAD&&equippable.assetId().isPresent())pose.scale(1.16F,1.16F,1.16F);
+            var item=new ItemStackRenderState();
+            Minecraft.getInstance().getItemModelResolver().updateForLiving(item,stack,ItemDisplayContext.HEAD,wearer);
+            item.submit(pose,collector,light,OverlayTexture.NO_OVERLAY,state.outlineColor);
             pose.popPose();
         }
     }
-
-    private CuriosGogglesClient() {}
+    private CuriosGogglesClient(){}
 }

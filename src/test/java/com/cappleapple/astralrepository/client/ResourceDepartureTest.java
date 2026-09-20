@@ -17,7 +17,7 @@ class ResourceDepartureTest {
     }
     @Test void everyResourceAndRuneFaceFadesAndGrowsInThreeTicksRegardlessOfRouteDuration(){
         for(int slot=-4;slot<=-2;slot++)for(var face:Direction.values())for(int duration:List.of(20,100,1000)){
-            var endpoint=new TransferVisuals.Endpoint(Vec3.atLowerCornerOf(face.getNormal()).scale(.502),face);
+            var endpoint=new TransferVisuals.Endpoint(Vec3.atLowerCornerOf(face.getUnitVec3i()).scale(.502),face);
             var packet=packet(slot,duration,endpoint);
             assertEquals(0,ResourceDeparture.opacity(packet,-1));
             assertEquals(0,ResourceDeparture.opacity(packet,0));

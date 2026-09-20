@@ -1,13 +1,13 @@
 package com.cappleapple.astralrepository.api;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /** A consumable fuel or a live capacity requirement, such as available Create stress capacity. */
 public interface NetworkPowerProvider {
     String id();
     /** Shared source identity, used to avoid counting one capacity source more than once. */
     default Object identity() { return id(); }
-    ResourceLocation resourceType();
+    Identifier resourceType();
     Mode mode();
     boolean valid();
     double available();

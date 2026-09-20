@@ -1,2 +1,0 @@
-package com.cappleapple.astralrepository.platform.client.extensions.common;
-public final class RegisterClientExtensionsEvent {public void registerItem(IClientItemExtensions extension,net.minecraft.world.item.Item... items){for(var item:items)net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry.INSTANCE.register(item,(stack,mode,poses,buffers,light,overlay)->extension.getCustomRenderer().renderByItem(stack,mode,poses,buffers,light,overlay));}}

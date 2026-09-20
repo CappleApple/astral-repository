@@ -10,10 +10,12 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.IItemHandler;
+import com.cappleapple.astralrepository.port.storage.IItemHandler;
 
 /** Dense virtual positions. Capacity is an exact rational sum, never rounded per individual item. */
-public final class CapacityInventory implements IItemHandler {
+public final class CapacityInventory extends net.neoforged.neoforge.transfer.transaction.SnapshotJournal<CapacityInventory.Snapshot>
+        implements IItemHandler, net.neoforged.neoforge.transfer.ResourceHandler<net.neoforged.neoforge.transfer.item.ItemResource> {
+    record Snapshot(List<ItemStack> entries, List<Fraction> costs, BigInteger numerator, BigInteger denominator, long revision) {}
     private final List<ItemStack> entries = new ArrayList<>();
     private final List<Fraction> costs = new ArrayList<>();
     private final LongSupplier capacity;
@@ -56,7 +58,7 @@ public final class CapacityInventory implements IItemHandler {
         if (accepted <= 0) return stack;
         if (!simulate) {
             if (existing < 0) { entries.add(stack.copyWithCount(accepted)); costs.add(unit); } else entries.get(existing).grow(accepted);
-            charge(unit, accepted); revision++; changed.run();
+            charge(unit, accepted); revision++; notifyChanged();
         }
         return stack.copyWithCount(stack.getCount() - accepted);
     }
@@ -67,26 +69,62 @@ public final class CapacityInventory implements IItemHandler {
         if (!simulate) {
             present.shrink(count); charge(costs.get(slot), -count);
             if (present.isEmpty()) { entries.remove(slot); costs.remove(slot); }
-            revision++; changed.run();
+            revision++; notifyChanged();
         }
         return extracted;
     }
     public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag(); ListTag items = new ListTag();
         for (ItemStack stack : entries) {
-            CompoundTag entry = new CompoundTag(); entry.put("Item", stack.copyWithCount(1).save(registries)); entry.putInt("Count", stack.getCount()); items.add(entry);
+            CompoundTag entry = new CompoundTag(); entry.put("Item", com.cappleapple.astralrepository.port.NbtCodecs.save(stack.copyWithCount(1),registries)); entry.putInt("Count", stack.getCount()); items.add(entry);
         }
         tag.put("Contents", items); return tag;
     }
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
         revision++; entries.clear(); costs.clear(); usedNumerator = BigInteger.ZERO; usedDenominator = BigInteger.ONE;
-        ListTag items = tag.getList("Contents", Tag.TAG_COMPOUND);
+        ListTag items = tag.getListOrEmpty("Contents");
         for (int i = 0; i < items.size(); i++) {
-            CompoundTag entry = items.getCompound(i); ItemStack stack = ItemStack.parseOptional(registries, entry.getCompound("Item"));
-            if (!stack.isEmpty() && entry.getInt("Count") > 0) {
-                stack.setCount(entry.getInt("Count")); entries.add(stack); Fraction unit = cost(stack); costs.add(unit); charge(unit, stack.getCount());
+            CompoundTag entry = items.getCompoundOrEmpty(i); ItemStack stack = com.cappleapple.astralrepository.port.NbtCodecs.item(registries, entry.getCompoundOrEmpty("Item"));
+            if (!stack.isEmpty() && entry.getIntOr("Count",0) > 0) {
+                stack.setCount(entry.getIntOr("Count",0)); entries.add(stack); Fraction unit = cost(stack); costs.add(unit); charge(unit, stack.getCount());
             }
         }
+    }
+
+    private void notifyChanged() { if (!isInTransaction()) changed.run(); }
+    @Override protected Snapshot createSnapshot() {
+        return new Snapshot(entries.stream().map(ItemStack::copy).toList(), List.copyOf(costs), usedNumerator, usedDenominator, revision);
+    }
+    @Override protected void revertToSnapshot(Snapshot snapshot) {
+        entries.clear(); snapshot.entries().forEach(stack -> entries.add(stack.copy()));
+        costs.clear(); costs.addAll(snapshot.costs());
+        usedNumerator = snapshot.numerator(); usedDenominator = snapshot.denominator(); revision = snapshot.revision();
+    }
+    @Override protected void onRootCommit(Snapshot snapshot) { changed.run(); }
+    @Override public int size() { return getSlots(); }
+    @Override public net.neoforged.neoforge.transfer.item.ItemResource getResource(int slot) {
+        return net.neoforged.neoforge.transfer.item.ItemResource.of(getStackInSlot(slot));
+    }
+    @Override public long getAmountAsLong(int slot) { return getStackInSlot(slot).getCount(); }
+    @Override public long getCapacityAsLong(int slot, net.neoforged.neoforge.transfer.item.ItemResource resource) { return isValid(slot, resource) ? getSlotLimit(slot) : 0; }
+    @Override public boolean isValid(int slot, net.neoforged.neoforge.transfer.item.ItemResource resource) {
+        return resource.isEmpty() || isItemValid(slot, resource.toStack());
+    }
+    @Override public int insert(int slot, net.neoforged.neoforge.transfer.item.ItemResource resource, int amount,
+            net.neoforged.neoforge.transfer.transaction.TransactionContext transaction) {
+        net.neoforged.neoforge.transfer.TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+        if (amount == 0) return 0;
+        var stack = resource.toStack(amount);
+        if (insertItem(slot, stack, true).getCount() == amount) return 0;
+        updateSnapshots(transaction);
+        return amount - insertItem(slot, stack, false).getCount();
+    }
+    @Override public int extract(int slot, net.neoforged.neoforge.transfer.item.ItemResource resource, int amount,
+            net.neoforged.neoforge.transfer.transaction.TransactionContext transaction) {
+        net.neoforged.neoforge.transfer.TransferPreconditions.checkNonEmptyNonNegative(resource, amount);
+        if (amount == 0 || !resource.matches(getStackInSlot(slot))) return 0;
+        updateSnapshots(transaction);
+        return extractItem(slot, amount, false).getCount();
     }
 }
 

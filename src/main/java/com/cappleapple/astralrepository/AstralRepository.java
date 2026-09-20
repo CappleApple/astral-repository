@@ -28,7 +28,7 @@ public final class AstralRepository {
         container.registerConfig(ModConfig.Type.COMMON,AstralConfig.SPEC);
         container.registerConfig(ModConfig.Type.SERVER,AstralServerConfig.SPEC,"astral_repository-server.toml");
         container.registerConfig(ModConfig.Type.COMMON,CompatConfig.SPEC,"astral_repository-compat.toml");
-        if (net.neoforged.fml.loading.FMLEnvironment.dist == net.neoforged.api.distmarker.Dist.CLIENT)
+        if (net.neoforged.fml.loading.FMLEnvironment.getDist() == net.neoforged.api.distmarker.Dist.CLIENT)
             container.registerConfig(ModConfig.Type.CLIENT,AstralClientConfig.SPEC,"astral_repository-client.toml");
         AstralContent.setup(bus);MENUS.register(bus);NetworkPackets.setup(bus);RecipeTomePackets.setup(bus);RunePackets.setup(bus);RuneSettingsPackets.setup(bus);RunePickupPackets.setup(bus);WandPackets.setup(bus);RuneProgramming.openSettings=RuneSettingsPackets::open;
         NeoForge.EVENT_BUS.addListener(RunePackets::tick);
@@ -40,7 +40,7 @@ public final class AstralRepository {
         NeoForge.EVENT_BUS.addListener(NetworkManager::chunkLoad);
         NeoForge.EVENT_BUS.addListener(NetworkManager::chunkUnload);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.BlockEvent.EntityPlaceEvent event) -> NetworkManager.blockChanged(event));
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.BlockEvent.BreakEvent event) -> NetworkManager.blockChanged(event));
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.level.block.BreakBlockEvent event) -> NetworkManager.blockChanged(event));
         NeoForge.EVENT_BUS.addListener(NetworkManager::stop);
         NeoForge.EVENT_BUS.addListener(NetworkManager::stopped);
         NeoForge.EVENT_BUS.addListener(NetworkManager::datapacks);

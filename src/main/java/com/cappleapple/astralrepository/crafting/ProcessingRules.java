@@ -4,41 +4,41 @@ import com.google.gson.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
 import java.util.*;
 
 /** Datapack descriptions of real, single-item-input machine inventory boundaries. */
-public final class ProcessingRules extends SimpleJsonResourceReloadListener {
-    public record Rule(String id, ResourceLocation block, ResourceLocation recipeType, ResourceLocation aboveBlock, int aboveOffset,
+public final class ProcessingRules extends SimpleJsonResourceReloadListener<JsonElement> {
+    public record Rule(String id, Identifier block, Identifier recipeType, Identifier aboveBlock, int aboveOffset,
                        Direction inputSide, Direction outputSide, List<Integer> inputSlots, List<Integer> outputSlots,
                        int timeoutTicks, int priority) {}
     private static volatile List<Rule> rules = defaults();
-    private ProcessingRules() { super(new Gson(), "astral_repository/processors"); }
-    public static void registerReload(AddReloadListenerEvent event) { event.addListener(new ProcessingRules()); }
+    private ProcessingRules() { super(net.minecraft.util.ExtraCodecs.JSON, net.minecraft.resources.FileToIdConverter.json("astral_repository/processors")); }
+    public static void registerReload(AddServerReloadListenersEvent event) { event.addListener(Identifier.fromNamespaceAndPath("astral_repository","processors"),new ProcessingRules()); }
     public static List<Rule> rules() { return rules; }
     public static boolean isCandidate(ServerLevel level, BlockPos pos) {
         if (!level.hasChunkAt(pos)) return false;
         var state = level.getBlockState(pos);
-        return rules.stream().anyMatch(rule -> BuiltInRegistries.BLOCK.containsKey(rule.block()) && state.is(BuiltInRegistries.BLOCK.get(rule.block())));
+        return rules.stream().anyMatch(rule -> BuiltInRegistries.BLOCK.containsKey(rule.block()) && state.is(BuiltInRegistries.BLOCK.getValue(rule.block())));
     }
     private static List<Rule> defaults() {
-        return List.of(new Rule("astral_repository:create_pressing", ResourceLocation.parse("create:depot"), ResourceLocation.parse("create:pressing"), ResourceLocation.parse("create:mechanical_press"), 2, Direction.UP, Direction.DOWN, List.of(), List.of(), 2400, 0),
-                new Rule("astral_repository:create_milling", ResourceLocation.parse("create:millstone"), ResourceLocation.parse("create:milling"), null, 1, Direction.UP, Direction.DOWN, List.of(0), List.of(1,2,3,4,5,6,7,8,9), 2400, 0));
+        return List.of(new Rule("astral_repository:create_pressing", Identifier.parse("create:depot"), Identifier.parse("create:pressing"), Identifier.parse("create:mechanical_press"), 2, Direction.UP, Direction.DOWN, List.of(), List.of(), 2400, 0),
+                new Rule("astral_repository:create_milling", Identifier.parse("create:millstone"), Identifier.parse("create:milling"), null, 1, Direction.UP, Direction.DOWN, List.of(0), List.of(1,2,3,4,5,6,7,8,9), 2400, 0));
     }
-    @Override protected void apply(Map<ResourceLocation, JsonElement> json, ResourceManager manager, ProfilerFiller profiler) {
+    @Override protected void apply(Map<Identifier, JsonElement> json, ResourceManager manager, ProfilerFiller profiler) {
         Map<String, Rule> next = new LinkedHashMap<>();
         defaults().forEach(rule -> next.put(rule.id(), rule));
         json.forEach((id, element) -> {
             try {
                 JsonObject object = element.getAsJsonObject();
                 if (object.has("enabled") && !object.get("enabled").getAsBoolean()) { next.remove(id.toString()); return; }
-                next.put(id.toString(), new Rule(id.toString(), ResourceLocation.parse(object.get("block").getAsString()), ResourceLocation.parse(object.get("recipe_type").getAsString()),
-                        object.has("above_block") ? ResourceLocation.parse(object.get("above_block").getAsString()) : null, bounded(object, "above_offset", 1, 1, 8),
+                next.put(id.toString(), new Rule(id.toString(), Identifier.parse(object.get("block").getAsString()), Identifier.parse(object.get("recipe_type").getAsString()),
+                        object.has("above_block") ? Identifier.parse(object.get("above_block").getAsString()) : null, bounded(object, "above_offset", 1, 1, 8),
                         side(object, "input_side", Direction.UP), side(object, "output_side", Direction.DOWN),
                         slots(object, "input_slots"), slots(object, "output_slots"), bounded(object, "timeout_ticks", 2400, 20, 72000), bounded(object, "priority", 0, -10000, 10000)));
             } catch (RuntimeException error) { CraftingService.LOGGER.error("Invalid processing adapter {}", id, error); }

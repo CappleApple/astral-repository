@@ -5,8 +5,8 @@ import com.cappleapple.astralrepository.client.AstralInterfaceRenderer;
 import com.cappleapple.astralrepository.client.NexusScreen;
 import com.cappleapple.astralrepository.client.GhostIngredientScreen;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Pseudo
 @Mixin(targets = "com.cappleapple.bundlednotsiloed.client.InventorySideRail$Rail", remap = false)
 public abstract class BundledInventoryRailMixin {
-    @Unique private static final ResourceLocation astral$tabTexture = ResourceLocation.fromNamespaceAndPath(
+    @Unique private static final Identifier astral$tabTexture = Identifier.fromNamespaceAndPath(
             AstralRepository.MOD_ID, "textures/gui/bundled_tab.png");
 
     @Shadow(remap = false) public abstract int left();
@@ -27,11 +27,13 @@ public abstract class BundledInventoryRailMixin {
     @Shadow(remap = false) public abstract int right();
     @Shadow(remap = false) public abstract int bottom();
 
-    @Inject(method = "renderBackground(Lnet/minecraft/client/gui/GuiGraphics;)V",
+    @Inject(method = "renderBackground(Lnet/minecraft/client/gui/GuiGraphicsExtractor;)V",
             at = @At("HEAD"), cancellable = true, remap = false)
-    private void astral$renderNexusTab(GuiGraphics graphics, CallbackInfo callback) {
-        if (!(Minecraft.getInstance().screen instanceof NexusScreen || Minecraft.getInstance().screen instanceof GhostIngredientScreen)) return;
+    private void astral$renderNexusTab(GuiGraphicsExtractor graphics, CallbackInfo callback) {
+        if (!(Minecraft.getInstance().gui.screen() instanceof NexusScreen || Minecraft.getInstance().gui.screen() instanceof GhostIngredientScreen)) return;
         AstralInterfaceRenderer.blit(graphics, astral$tabTexture, left(), top(), right() - left(), bottom() - top());
         callback.cancel();
     }
 }
+
+

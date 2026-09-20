@@ -8,7 +8,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.*;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
@@ -175,13 +175,13 @@ public final class RuneProgrammingGameTests {
         var tab=AstralContent.CREATIVE_TAB.get();
         tab.buildContents(new CreativeModeTab.ItemDisplayParameters(FeatureFlags.DEFAULT_FLAGS,true,h.getLevel().registryAccess()));
         for (String name : new String[]{"push_rune","pull_rune"}) {
-            var id=ResourceLocation.fromNamespaceAndPath("astral_repository",name);
+            var id=Identifier.fromNamespaceAndPath("astral_repository",name);
             h.assertTrue(h.getLevel().getRecipeManager().byKey(id).isEmpty(),"Rune item recipe removed: "+name);
             h.assertTrue(tab.getDisplayItems().stream().noneMatch(stack->BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(id)),"Rune item hidden from creative: "+name);
             h.assertTrue(!BuiltInRegistries.ITEM.containsKey(id),"Rune items are no longer registered");
         }
         for (String name : AstralContent.REMOVED_IDS) {
-            var id=ResourceLocation.fromNamespaceAndPath("astral_repository",name);
+            var id=Identifier.fromNamespaceAndPath("astral_repository",name);
             h.assertTrue(!BuiltInRegistries.ITEM.containsKey(id),"Retired item ID removed: "+name);
             h.assertTrue(tab.getDisplayItems().stream().noneMatch(stack->BuiltInRegistries.ITEM.getKey(stack.getItem()).equals(id)),"Legacy item is hidden from creative: "+name);
             h.assertTrue(h.getLevel().getRecipeManager().byKey(id).isEmpty(),"Legacy rune recipe is removed: "+name);

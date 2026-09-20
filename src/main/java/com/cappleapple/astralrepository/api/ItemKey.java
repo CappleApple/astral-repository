@@ -2,7 +2,7 @@ package com.cappleapple.astralrepository.api;
 
 import java.util.Objects;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 /** Immutable item identity, including data components but excluding count. */
@@ -17,8 +17,8 @@ public final class ItemKey implements ResourceKey {
     public ItemStack sample() { return sample.copy(); }
     /** Compare live contents without allocating another immutable identity. */
     public boolean matches(ItemStack stack) { return !stack.isEmpty() && ItemStack.isSameItemSameComponents(sample, stack); }
-    public ResourceLocation id() { return BuiltInRegistries.ITEM.getKey(sample.getItem()); }
-    public ResourceLocation type() { return ResourceKinds.ITEM; }
+    public Identifier id() { return BuiltInRegistries.ITEM.getKey(sample.getItem()); }
+    public Identifier type() { return ResourceKinds.ITEM; }
     @Override public boolean equals(Object other) {
         return other instanceof ItemKey key && ItemStack.isSameItemSameComponents(sample, key.sample);
     }

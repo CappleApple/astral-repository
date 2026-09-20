@@ -124,7 +124,7 @@ public final class ContentGameTests {
         h.assertTrue(!resources.isEmpty(), "Packaged crafting recipes are discoverable");
         for (var resource : resources.keySet()) {
             String path = resource.getPath();
-            var id = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(resource.getNamespace(),path.substring("recipe/".length(),path.length()-".json".length()));
+            var id = net.minecraft.resources.Identifier.fromNamespaceAndPath(resource.getNamespace(),path.substring("recipe/".length(),path.length()-".json".length()));
             var loaded = h.getLevel().getRecipeManager().byKey(id);
             if (id.equals(com.cappleapple.astralrepository.compat.PatchouliIntegration.BOOK) && !com.cappleapple.astralrepository.compat.PatchouliIntegration.isLoaded()) {
                 h.assertTrue(loaded.isEmpty(), "The optional guide recipe is absent without Patchouli");

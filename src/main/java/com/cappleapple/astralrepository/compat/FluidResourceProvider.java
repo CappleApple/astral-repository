@@ -4,9 +4,9 @@ import com.cappleapple.astralrepository.api.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import com.cappleapple.astralrepository.port.storage.IFluidHandler;
 
 public final class FluidResourceProvider implements ResourceProvider {
     private final String id;
@@ -19,7 +19,7 @@ public final class FluidResourceProvider implements ResourceProvider {
     public String id() { return id; }
     public Object identity() { return identity; }
     public boolean valid() { return valid.getAsBoolean(); }
-    public ResourceLocation resourceType() { return ResourceKinds.FLUID; }
+    public Identifier resourceType() { return ResourceKinds.FLUID; }
     public String unit() { return "mB"; }
     public Map<ResourceKey, Long> snapshot() {
         Map<ResourceKey, Long> result = new LinkedHashMap<>();

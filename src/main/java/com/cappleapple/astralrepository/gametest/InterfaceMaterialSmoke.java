@@ -15,14 +15,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.*;
 
 /** Actual GPU panel comparisons, available only in the excluded development smoke client. */
 public final class InterfaceMaterialSmoke {
     private static final int SIZE = 384, X = 24, Y = 24, WIDTH = 318, HEIGHT = 266;
-    private static final ResourceLocation PANEL = ResourceLocation.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus.png");
+    private static final Identifier PANEL = Identifier.fromNamespaceAndPath(AstralRepository.MOD_ID, "textures/gui/nexus.png");
     private InterfaceMaterialSmoke() {}
 
     public static void verify() throws Exception {

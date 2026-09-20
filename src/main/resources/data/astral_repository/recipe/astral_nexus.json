@@ -7,18 +7,10 @@
     " G "
   ],
   "key": {
-    "S": {
-      "item": "astral_repository:astral_gem"
-    },
-    "E": {
-      "item": "minecraft:ender_pearl"
-    },
-    "C": {
-      "item": "minecraft:compass"
-    },
-    "G": {
-      "item": "minecraft:gold_ingot"
-    }
+    "S": "astral_repository:astral_gem",
+    "E": "minecraft:ender_pearl",
+    "C": "minecraft:compass",
+    "G": "minecraft:gold_ingot"
   },
   "result": {
     "id": "astral_repository:astral_nexus",

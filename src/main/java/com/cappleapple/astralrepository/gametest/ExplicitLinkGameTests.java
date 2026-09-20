@@ -8,7 +8,7 @@ import java.util.*;
 import net.minecraft.core.*;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
@@ -23,7 +23,7 @@ public final class ExplicitLinkGameTests {
         BlockPos nexus=new BlockPos(4,2,4),hostPos=new BlockPos(10,2,4);
         h.setBlock(nexus,AstralContent.STORAGE_NEXUS.get());h.setBlock(hostPos,Blocks.CHEST);
         var node=(CrystalNodeBlockEntity)h.getBlockEntity(nexus);node.setChannel(5);
-        var rune=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(hostPos),Direction.NORTH);rune.setChannel(5);rune.addGlyph(ResourceLocation.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);
+        var rune=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(hostPos),Direction.NORTH);rune.setChannel(5);rune.addGlyph(Identifier.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);
         var manager=NetworkManager.get(h.getLevel().getServer());manager.toggleLink(node.address(),rune.address());
         h.succeedWhen(()->{
             h.assertTrue(manager.networkAt(rune.address())!=null,"Rune is registered before lifecycle transitions");
@@ -73,7 +73,7 @@ public final class ExplicitLinkGameTests {
         var first=(CrystalNodeBlockEntity)h.getBlockEntity(a);var second=(CrystalNodeBlockEntity)h.getBlockEntity(b);first.setChannel(7);second.setChannel(8);
         var chest=(ChestBlockEntity)h.getBlockEntity(hostPos);chest.setItem(0,new ItemStack(Items.IRON_INGOT,64));
         var north=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(hostPos),Direction.NORTH);var south=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(hostPos),Direction.SOUTH);
-        for(var rune:List.of(north,south)){rune.setChannel(7);rune.addGlyph(ResourceLocation.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);}
+        for(var rune:List.of(north,south)){rune.setChannel(7);rune.addGlyph(Identifier.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);}
         south.setChannel(8);
         var manager=NetworkManager.get(h.getLevel().getServer());manager.toggleLink(first.address(),north.address());manager.toggleLink(second.address(),south.address());
         ItemKey iron=new ItemKey(new ItemStack(Items.IRON_INGOT));boolean[] withdrawn={false};
@@ -98,11 +98,11 @@ public final class ExplicitLinkGameTests {
         CompatibilityRegistry.registerStorage(fixture,(level,pos,side)->level==h.getLevel()&&pos.equals(absolute)&&side==Direction.NORTH
                 ?List.of(new ItemHandlerStorageProvider(fixture,target,target,()->level.getBlockState(pos).is(Blocks.ENCHANTING_TABLE))):List.of());
         RuneSurface destination=RuneSurfaces.getOrCreate(h.getLevel(),absolute,Direction.NORTH);
-        destination.setChannel(9);destination.addGlyph(ResourceLocation.parse("astral_repository:routing_rune"),NodeKind.ROUTING);
-        destination.addGlyph(ResourceLocation.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);destination.addGlyph(ResourceLocation.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);
+        destination.setChannel(9);destination.addGlyph(Identifier.parse("astral_repository:routing_rune"),NodeKind.ROUTING);
+        destination.addGlyph(Identifier.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);destination.addGlyph(Identifier.parse("astral_repository:filter_sigil"),NodeKind.ROUTING);
         var pull=destination.layers().getFirst();pull.filter().add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,ItemStack.EMPTY);pull.filter().setTarget(16);pull.changed();
         h.assertTrue(destination.toggleTarget(pull.id(),GlobalPos.of(h.getLevel().dimension(),h.absolutePos(sourcePos)),Direction.UP).assigned(),"Explicit Pull target assigned to the bare source chest");
-        RuneSurface source=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(sourcePos),Direction.UP);source.setChannel(9);source.addGlyph(ResourceLocation.parse("astral_repository:collection_rune"),NodeKind.COLLECTION);
+        RuneSurface source=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(sourcePos),Direction.UP);source.setChannel(9);source.addGlyph(Identifier.parse("astral_repository:collection_rune"),NodeKind.COLLECTION);
         var manager=NetworkManager.get(h.getLevel().getServer());
         h.assertTrue(manager.toggleLink(node.address(),destination.address()).linked(),"Crystal-to-rune explicit link accepted");
         h.assertTrue(manager.toggleLink(destination.address(),source.address()).linked(),"Rune-to-rune explicit link accepted");

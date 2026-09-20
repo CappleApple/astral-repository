@@ -18,7 +18,7 @@ public final class TransferVisuals {
     }
     public static Endpoint rune(com.cappleapple.astralrepository.content.RuneLayer layer){
         var surface=layer.surface();var cells=com.cappleapple.astralrepository.content.RuneLayout.placed(surface);int i=surface.layers().indexOf(layer);
-        return i>=0&&i<cells.size()?new Endpoint(cells.get(i).center().subtract(surface.getBlockPos().getCenter()),surface.facing()):null;
+        return i>=0&&i<cells.size()?new Endpoint(cells.get(i).center().subtract(net.minecraft.world.phys.Vec3.atCenterOf(surface.getBlockPos())),surface.facing()):null;
     }
     public static Vec3 position(List<BlockPos> path,double progress){return position(path,progress,null,null);}
     public static Vec3 position(NetworkPackets.Visual packet,double progress){return position(packet.path(),progress,packet.departure(),packet.arrival());}
@@ -52,8 +52,8 @@ public final class TransferVisuals {
     private static Vec3 variationOffset(List<BlockPos> path,int knot,long seed,double variation){
         int last=(path.size()-1)*2;if(knot==0||knot==last)return Vec3.ZERO;
         int node=knot/2;
-        Vec3 direction=(knot%2==0?path.get(node+1).getCenter().subtract(path.get(node-1).getCenter())
-                :path.get(node+1).getCenter().subtract(path.get(node).getCenter())).normalize();
+        Vec3 direction=(knot%2==0?net.minecraft.world.phys.Vec3.atCenterOf(path.get(node+1)).subtract(net.minecraft.world.phys.Vec3.atCenterOf(path.get(node-1)))
+                :net.minecraft.world.phys.Vec3.atCenterOf(path.get(node+1)).subtract(net.minecraft.world.phys.Vec3.atCenterOf(path.get(node)))).normalize();
         if(direction.lengthSqr()<1e-6)direction=new Vec3(1,0,0);
         Vec3 side=direction.cross(new Vec3(0,1,0));if(side.lengthSqr()<1e-6)side=direction.cross(new Vec3(1,0,0));
         side=side.normalize();Vec3 up=direction.cross(side).normalize();
@@ -62,9 +62,9 @@ public final class TransferVisuals {
         return side.scale(Math.cos(angle)*radius).add(up.scale(Math.sin(angle)*radius));
     }
     private static Vec3 point(List<BlockPos> path,int i,Endpoint departure,Endpoint arrival){
-        Vec3 p=path.get(i).getCenter();Endpoint e=i==0?departure:i==path.size()-1?arrival:null;if(e!=null)return p.add(e.offset());
+        Vec3 p=net.minecraft.world.phys.Vec3.atCenterOf(path.get(i));Endpoint e=i==0?departure:i==path.size()-1?arrival:null;if(e!=null)return p.add(e.offset());
         if(i>0&&i<path.size()-1){
-            var before=path.get(i-1).getCenter().subtract(p);var after=path.get(i+1).getCenter().subtract(p);
+            var before=net.minecraft.world.phys.Vec3.atCenterOf(path.get(i-1)).subtract(p);var after=net.minecraft.world.phys.Vec3.atCenterOf(path.get(i+1)).subtract(p);
             var bend=before.normalize().add(after.normalize());
             if(bend.lengthSqr()>1e-10)p=p.add(bend.normalize().scale(Math.min(.45,Math.min(before.length(),after.length())*.25)));
         }
@@ -75,7 +75,7 @@ public final class TransferVisuals {
         if(i==0||i==last){
             boolean start=i==0;int other=start?1:last-1;Vec3 delta=point(path,other,departure,arrival).subtract(p);int ticks=legTicks(path.get(i),path.get(other));
             Endpoint e=start?departure:arrival;
-            return e==null?delta.scale((start?1.0:-1.0)/ticks):Vec3.atLowerCornerOf(e.face().getNormal()).scale((start?1:-1)*Math.min(3,Math.max(.75,delta.length()*.35))/ticks);
+            return e==null?delta.scale((start?1.0:-1.0)/ticks):Vec3.atLowerCornerOf(e.face().getUnitVec3i()).scale((start?1:-1)*Math.min(3,Math.max(.75,delta.length()*.35))/ticks);
         }
         Vec3 before=p.subtract(point(path,i-1,departure,arrival)),after=point(path,i+1,departure,arrival).subtract(p);
         int previous=legTicks(path.get(i-1),path.get(i)),next=legTicks(path.get(i),path.get(i+1));
@@ -85,7 +85,7 @@ public final class TransferVisuals {
     }
     public static void send(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style){send(server,route,stack,color,style,null,null);}
     public static void send(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,Endpoint departure,Endpoint arrival){send(server,route,stack,color,style,departure,arrival,null);}
-    public static void send(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,Endpoint departure,Endpoint arrival,net.minecraft.resources.ResourceLocation fluid){
+    public static void send(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,Endpoint departure,Endpoint arrival,net.minecraft.resources.Identifier fluid){
         if(route.size()<2||route.size()>130||AstralConfig.particleDensity.get()<=0)return;
         var level=server.getLevel(route.getFirst().dimension());if(level==null||level.players().isEmpty())return;
         var path=projectedPath(route);
@@ -93,11 +93,11 @@ public final class TransferVisuals {
     }
     /** Suppliers run synchronously on the server thread, only after an observer admits the visual. */
     public static void sendWithEndpoints(MinecraftServer server,List<GlobalPos> route,ItemStack stack,int color,int style,
-            java.util.function.Supplier<Endpoint> departure,java.util.function.Supplier<Endpoint> arrival,net.minecraft.resources.ResourceLocation fluid){
+            java.util.function.Supplier<Endpoint> departure,java.util.function.Supplier<Endpoint> arrival,net.minecraft.resources.Identifier fluid){
         sendWithEndpoints(server,route,()->stack,color,style,departure,arrival,fluid);
     }
     public static void sendWithEndpoints(MinecraftServer server,List<GlobalPos> route,java.util.function.Supplier<ItemStack> stack,int color,int style,
-            java.util.function.Supplier<Endpoint> departure,java.util.function.Supplier<Endpoint> arrival,net.minecraft.resources.ResourceLocation fluid){
+            java.util.function.Supplier<Endpoint> departure,java.util.function.Supplier<Endpoint> arrival,net.minecraft.resources.Identifier fluid){
         if(route.size()<2||route.size()>130||AstralConfig.particleDensity.get()<=0)return;
         var level=server.getLevel(route.getFirst().dimension());if(level==null||level.players().isEmpty())return;
         var path=projectedPath(route);

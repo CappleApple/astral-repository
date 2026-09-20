@@ -27,8 +27,8 @@ public final class RuneFilterSearch {
             namespaces.putIfAbsent(id.getNamespace(), icon);
         });
         BuiltInRegistries.ITEM.getTags().forEach(pair -> {
-            var id = pair.getFirst().location();
-            var icon = pair.getSecond().stream().findFirst().map(holder -> new ItemStack(holder.value())).orElse(new ItemStack(Items.PAPER));
+            var id = pair.key().location();
+            var icon = pair.stream().findFirst().map(holder -> new ItemStack(holder.value())).orElse(new ItemStack(Items.PAPER));
             values.add(new Option("#" + id, readable(id.getPath()), "Item tag #" + id, icon, Category.TAGS));
         });
         BuiltInRegistries.FLUID.forEach(fluid -> {
@@ -39,8 +39,8 @@ public final class RuneFilterSearch {
             namespaces.putIfAbsent(id.getNamespace(), icon);
         });
         BuiltInRegistries.FLUID.getTags().forEach(pair -> {
-            var id = pair.getFirst().location();
-            var icon = pair.getSecond().stream().findFirst().map(holder -> fluidIcon(holder.value())).orElse(new ItemStack(Items.BUCKET));
+            var id = pair.key().location();
+            var icon = pair.stream().findFirst().map(holder -> fluidIcon(holder.value())).orElse(new ItemStack(Items.BUCKET));
             values.add(new Option("fluid:#" + id, readable(id.getPath()), "Fluid tag #" + id, icon, Category.TAGS));
         });
         namespaces.forEach((namespace, icon) -> {
