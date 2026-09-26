@@ -38,16 +38,47 @@ public final class ForgeClientSmoke {
                 AstralMineralClient.REMOTE_MODEL,AstralMineralClient.GOGGLES_MODEL,AstralMineralClient.GOGGLES_ICON_MODEL));
         for(var node:AstralContent.NODES)models.add(CrystalModelRenderer.modelLocation(node.get()));
         for(var id:models)if(manager.getModel(id)==manager.getMissingModel())throw new IllegalStateException("Missing model "+id);
+        NodeMaterialClientCheck.verify();
         client.setScreen(new Gallery());
-        LogUtils.getLogger().info("FORGE_PORT_CLIENT_SMOKE_OK models={} shaders=2 renderedItems=4",models.size());
+        LogUtils.getLogger().info("FORGE_PORT_CLIENT_SMOKE_OK models={} shaders=2 renderedItems=12",models.size());
 
     }
     private static final class Gallery extends net.minecraft.client.gui.screens.Screen {
         Gallery(){super(net.minecraft.network.chat.Component.literal("Astral Repository - Forge 1.20.1"));}
         @Override public void render(GuiGraphics graphics,int mouseX,int mouseY,float partialTick){
             graphics.fill(0,0,width,height,0xff182132);graphics.drawCenteredString(font,title,width/2,20,0xffffffff);
-            var items=java.util.List.of(AstralContent.ASTRAL_GEM.get(),AstralContent.ATTUNEMENT_WAND.get(),AstralContent.RESONANCE_GOGGLES.get(),AstralContent.SEED_STORAGE_CRYSTAL.get().asItem());
-            int x=width/2-items.size()*16;for(var item:items){graphics.renderItem(new ItemStack(item),x,height/2);x+=32;}
+            var items = new java.util.ArrayList<ItemStack>();
+            items.add(new ItemStack(AstralContent.STORAGE_NEXUS.get()));
+            items.add(new ItemStack(AstralContent.SEED_STORAGE_CRYSTAL.get()));
+            items.add(new ItemStack(AstralContent.RELAY_CRYSTAL.get()));
+            items.add(new ItemStack(AstralContent.POWER_NODE.get()));
+            for (int tier : new int[]{2, 3}) {
+                var stack = new ItemStack(AstralContent.SEED_STORAGE_CRYSTAL.get());
+                stack.getOrCreateTagElement("BlockEntityTag").putInt("StorageTier", tier);
+                items.add(stack);
+            }
+            for (boolean dimensional : new boolean[]{false, true}) {
+                var stack = new ItemStack(AstralContent.RELAY_CRYSTAL.get());
+                stack.getOrCreateTagElement("BlockEntityTag").putBoolean("LongRange", true);
+                stack.getOrCreateTagElement("BlockEntityTag").putBoolean("Dimensional", dimensional);
+                items.add(stack);
+            }
+            items.add(new ItemStack(AstralContent.ASTRAL_GEM.get()));
+            items.add(new ItemStack(AstralContent.ATTUNEMENT_WAND.get()));
+            items.add(new ItemStack(AstralContent.RESONANCE_GOGGLES.get()));
+            items.add(new ItemStack(AstralContent.ASTRAL_NEXUS.get()));
+            var labels = java.util.List.of("Storage Nexus", "Seed Storage", "Relay", "Power Node",
+                    "Moon Storage", "Star Storage", "Remote", "Gateway", "Gem", "Wand", "Goggles", "Astral Nexus");
+            for (int i = 0; i < items.size(); i++) {
+                int x = width * (2 * (i % 4) + 1) / 8;
+                int y = 45 + (i / 4) * (height - 50) / 3;
+                graphics.pose().pushPose();
+                graphics.pose().translate(x - 24, y, 0);
+                graphics.pose().scale(3, 3, 3);
+                graphics.renderItem(items.get(i), 0, 0);
+                graphics.pose().popPose();
+                graphics.drawCenteredString(font, labels.get(i), x, y + 51, 0xffffffff);
+            }
         }
     }
 }

@@ -10,3 +10,6 @@ test-libs/
 __pycache__/
 *.pyc
 logs/
+
+# Local architecture context; do not publish.
+/docs/CURRENT_STATE.md
