@@ -11,7 +11,6 @@ import struct
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = re.search(r'^mod_version=(.+)$', (ROOT / 'gradle.properties').read_text(), re.MULTILINE).group(1).strip()
 TARGETS = [
     ('1.21.1', 'neoforge', ROOT, 65),
     ('1.20.1', 'forge', ROOT / 'ports/forge-1.20.1', 61),
@@ -25,7 +24,19 @@ TARGETS = [
 MAIN = 'com/cappleapple/astralrepository/AstralRepository.class'
 
 
-def inspect(source: Path, minecraft: str, loader: str, major: int, original: bool):
+def project_version(project: Path) -> str:
+    build = (project / 'build.gradle').read_text()
+    literal = re.search(r"(?m)^version\s*=\s*['\"]([^'\"]+)['\"]", build)
+    if literal:
+        return literal.group(1)
+    properties = (project / 'gradle.properties').read_text()
+    version = re.search(r'^mod_version=(.+)$', properties, re.MULTILINE)
+    if not version:
+        raise ValueError(f'No mod version in {project}')
+    return version.group(1).strip()
+
+
+def inspect(source: Path, minecraft: str, loader: str, major: int, original: bool, version: str):
     with zipfile.ZipFile(source) as jar:
         names = jar.namelist()
         if jar.read('LICENSE') != (ROOT / 'LICENSE').read_bytes():
@@ -37,7 +48,7 @@ def inspect(source: Path, minecraft: str, loader: str, major: int, original: boo
             raise ValueError(f'{source}: Java class version {actual}, expected {major}')
         if loader == 'fabric':
             metadata = json.loads(jar.read('fabric.mod.json'))
-            if metadata['id'] != 'astral_repository' or metadata['version'] != VERSION:
+            if metadata['id'] != 'astral_repository' or metadata['version'] != version:
                 raise ValueError(f'Unexpected Fabric metadata: {source}')
             if minecraft not in metadata['depends']['minecraft']:
                 raise ValueError(f'Wrong Minecraft dependency: {source}')
@@ -51,6 +62,8 @@ def inspect(source: Path, minecraft: str, loader: str, major: int, original: boo
             metadata = jar.read(path).decode()
             if 'modId="astral_repository"' not in metadata.replace(' ', '') or minecraft not in metadata:
                 raise ValueError(f'Unexpected loader metadata: {source}')
+            if f'version="{version}"' not in metadata.replace(' ', ''):
+                raise ValueError(f'Wrong mod version in {source}: expected {version}')
             if '${' in metadata:
                 raise ValueError(f'Unexpanded loader metadata: {source}')
         if 'CC-BY-NC-SA-4.0' not in str(metadata):
@@ -81,16 +94,17 @@ def main():
         original = project == ROOT
         if args.branch_root and not original:
             project = (args.branch_root / f'{loader}-{minecraft}').resolve()
-        candidates = [path for path in (project / 'build/libs').glob(f'*{VERSION}.jar')
+        version = project_version(project)
+        candidates = [path for path in (project / 'build/libs').glob(f'*-{version}.jar')
                       if not any(part in path.name for part in ('-sources', '-dev', '-javadoc'))]
         if len(candidates) != 1:
             raise ValueError(f'Expected one production JAR for {project}, found {candidates}')
         source = candidates[0]
-        classes = inspect(source, minecraft, loader, major, original)
-        name = f'astral_repository-{VERSION}-{minecraft}-{loader}.jar'
+        classes = inspect(source, minecraft, loader, major, original, version)
+        name = f'astral_repository-{version}-{minecraft}-{loader}.jar'
         target = output / name
         shutil.copyfile(source, target)
-        results.append(dict(minecraft=minecraft, loader=loader, mod_version=VERSION, file=name,
+        results.append(dict(minecraft=minecraft, loader=loader, mod_version=version, file=name,
                             bytes=target.stat().st_size, sha256=hashlib.sha256(target.read_bytes()).hexdigest(),
                             java_class_version=major, classes=classes, source=source.relative_to(project).as_posix(), branch='main' if original else f'CappleApple/{loader}-{minecraft}'))
     manifest = output / 'manifest.json'
@@ -99,7 +113,7 @@ def main():
     hashes.write_text(''.join(f'{row["sha256"]}  {row["file"]}\n' for row in results))
     instructions = output / 'INSTALL.txt'
     instructions.write_text(
-        'Astral Repository ' + VERSION + '\n\n'
+        'Astral Repository editions (versions are listed in manifest.json)\n\n'
         'Install exactly ONE JAR matching both your Minecraft version and loader.\n'
         'Install the matching JAR on both the client and server.\n'
         'Fabric targets require Fabric API. Configuration and energy libraries, plus model libraries where needed, are bundled.\n'
@@ -116,7 +130,9 @@ def main():
         '  Minecraft 26.3 NeoForge: NeoForge 26.3.0.7-beta; no stable 26.3 release was available.\n\n'
         'Optional integrations are not required or bundled; see the matching branch README for tested versions and limits.\n'
         'The manifest records exact artifacts and SHA-256 checksums.\n')
-    archive = output / f'astral_repository-{VERSION}-all-targets.zip' 
+    versions = sorted({row['mod_version'] for row in results})
+    bundle_version = versions[0] if len(versions) == 1 else 'mixed-' + '-'.join(versions)
+    archive = output / f'astral_repository-{bundle_version}-all-targets.zip'
     with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as bundle:
         for row in results:
             bundle.write(output / row['file'], row['file'])

@@ -1,6 +1,6 @@
 # Astral Repository ports
 
-Astral Repository 1.11.11 is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root.
+Astral Repository is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root. The Fabric 1.20.1 project is version 1.11.12; each other edition retains its own version.
 
 ## Installation
 
@@ -44,7 +44,7 @@ python ports/tools/collect_artifacts.py
 
 Use `--branch-root <directory>` to collect the seven port JARs from standalone checkouts named `<loader>-<minecraft>` within that directory. The original NeoForge 1.21.1 JAR still comes from the repository root.
 
-The collector writes `build/ports/`, including a manifest and an archive containing all targets. It checks the loader metadata, Minecraft dependency, main-class bytecode version, and absence of test entrypoints before copying a JAR.
+The collector reads each project's version and writes `build/ports/`, including a manifest and an archive containing all targets. This allows a fix to update one edition without collecting its previous JAR. It checks the loader metadata, Minecraft dependency, main-class bytecode version, and absence of test entrypoints before copying a JAR.
 
 ## Integrations
 
@@ -58,6 +58,8 @@ Optional mods are not required for the core storage and crafting features. The a
 - AE2 and Refined Storage adapters are version-specific. Published API paths were inspected where available, but complete external networks and crafting jobs were not part of the runtime checks.
 
 These checks cover the interactions described in the validation record, not every optional plugin feature or complete modpacks.
+
+On Fabric 1.20.1, an active Iris shader pack switches Astral materials to their ordinary textures. This keeps geodes, crystal surfaces, items, and armor trims visible; the procedural astral interior is disabled while the pack is active. Disabling shaders restores the effect without restarting. Clients using Sodium 0.5.x also need a matching Indium version so the Fabric Rendering API can load Astral's OBJ node models. These rendering mods are optional and are not bundled.
 
 ## Source layout
 

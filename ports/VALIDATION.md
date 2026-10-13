@@ -1,5 +1,26 @@
 # Port validation
 
+## Fabric 1.20.1 shader compatibility - 1.11.12
+
+Validated on 2026-10-13 with Fabric Loader 0.19.5, Fabric API 0.92.12+1.20.1, and Java 17. The packaged client loaded Iris 1.7.6+mc1.20.1, Sodium 0.5.12-beta.2+mc1.20.1, Indium 1.0.36+mc1.20.1, and Complementary Unbound r5.9.3. The test launcher pins LWJGL 3.3.1 for this Sodium release.
+
+The pre-fix client reproduced [issue #1](https://github.com/CappleApple/astral-repository/issues/1): placing a geode changed zero of 8,100 stable center pixels. The fixed client changed 8,096 of those pixels with the same shader pack enabled. Captures were also inspected separately.
+
+All 146 JUnit tests and 12 packaged dedicated-server transit regressions passed. The server checks used a fresh test world; saved recovery data in a reused world can contaminate their fixed fixture coordinates.
+
+The packaged client passed eight placed-world visibility cases with shaders enabled, disabled, re-enabled, and without Iris installed: geode, budding block, three bud sizes, two cluster orientations, and a real baked Storage Crystal model. Each mode also passed opaque-wall occlusion. The fixture checks live material readiness across shader toggles and asserts a hidden window, muted audio, and an ungrabbed mouse. The node pixel check measures the complete model, including its ordinary stone surfaces. Inventory items, armor trims, and interface visuals were not separately pixel-tested in this fixture.
+
+From the repository root, with Java 21 for Gradle and the Java 17 toolchain installed:
+
+```powershell
+.\ports\fabric-1.20.1\gradlew.bat -p ports/fabric-1.20.1 productionGeodeShaderSmoke
+.\ports\fabric-1.20.1\gradlew.bat -p ports/fabric-1.20.1 productionGeodeShaderSmoke -PirisTest
+```
+
+The Iris profile expects these downloaded files in `build/issue-1/dependencies/`: `iris-1.7.6+mc1.20.1.jar`, `sodium-fabric-0.5.12-beta.2+mc1.20.1.jar`, `indium-1.0.36+mc1.20.1.jar`, and `ComplementaryUnbound_r5.9.3.zip`. Test mods and rendering dependencies are excluded from the release JAR.
+
+Ignored local evidence: `build/issue-1/before/`, `build/issue-1/artifact-audit.json`, and `ports/fabric-1.20.1/build/production-geode-shader-{iris,plain}/geode-shader-captures/`. The JAR audit checked loader/version metadata, Java 17 bytecode, license, resources, test exclusion, and absence of bundled or required Iris/Sodium/Indium dependencies.
+
 ## 1.11.11 — 2026-09-20
 
 All eight release builds passed 1,180 JUnit tests with no failures or skipped tests. The standalone branch projects were built independently. Release metadata, Java bytecode, license contents, and exclusion of test fixtures were checked before collecting the JARs.
