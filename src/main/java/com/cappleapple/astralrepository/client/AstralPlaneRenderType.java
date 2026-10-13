@@ -162,6 +162,9 @@ public final class AstralPlaneRenderType extends RenderType {
     public static float appliedInterfaceOverlayOpacity() { return appliedInterfaceOverlayOpacity; }
     public static boolean appliedInterfaceMode() { return appliedInterfaceMode; }
     public static void loaded(ShaderInstance loaded) { shader = loaded; }
-    public static boolean ready() { return shader != null; }
+    public static boolean ready() {
+        // Iris masks custom ShaderInstance writes during world and shadow rendering.
+        return shader != null && !com.cappleapple.astralrepository.compat.IrisShaderCompatibility.isShaderPackInUse();
+    }
     private AstralPlaneRenderType() { super("unused", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 0, false, false, () -> {}, () -> {}); }
 }

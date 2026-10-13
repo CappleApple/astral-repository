@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
-version = '1.11.11'
+version = '1.11.12'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-fabric-1.20.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -131,5 +131,44 @@ tasks.register('productionRuneTransitSmoke', net.fabricmc.loom.task.prod.ServerP
     doLast {
         def result = new File(runDir.get().asFile, 'rune-transit-result.txt')
         if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Production rune transit regression failed: ${result.isFile() ? result.text : 'no result'}")
+    }
+}
+
+// Optional local Iris/Sodium/shaderpack files stay outside the release JAR.
+if (project.hasProperty('irisTest')) {
+    // Loom upgrades legacy LWJGL; this Sodium release requires Minecraft's 3.3.1 runtime.
+    configurations.named('minecraftTestClientRuntimeLibraries') {
+        resolutionStrategy.eachDependency {
+            if (requested.group == 'org.lwjgl') useVersion '3.3.1'
+        }
+    }
+}
+tasks.register('productionGeodeShaderSmoke', net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+    mods.setFrom(tasks.named('remapJar'), remappedGameplayJar, configurations.gameplayApi)
+    def irisTest = project.hasProperty('irisTest')
+    def dependencyDirectory = rootProject.layout.projectDirectory.dir('build/issue-1/dependencies').asFile
+    if (irisTest) mods.from(fileTree(dependencyDirectory) { include 'iris-1.7.6+mc1.20.1.jar', 'sodium-fabric-0.5.12-beta.2+mc1.20.1.jar', 'indium-1.0.36+mc1.20.1.jar' })
+    runDir = layout.buildDirectory.dir(irisTest ? 'production-geode-shader-iris' : 'production-geode-shader-plain')
+    jvmArgs.addAll('-Dastral_repository.testClient=true', '-Dastral_repository.geodeShaderSmoke=true', '-Xmx2G')
+    if (irisTest) jvmArgs.add('-Dastral_repository.geodeShaderIris=true')
+    if (project.hasProperty('geodeVisibilityOnly')) jvmArgs.add('-Dastral_repository.geodeVisibilityOnly=true')
+    doFirst {
+        def directory = runDir.get().asFile
+        directory.mkdirs()
+        new File(directory, 'options.txt').text = 'onboardAccessibility:false\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:3\n'
+        if (irisTest) {
+            ['iris-1.7.6+mc1.20.1.jar', 'sodium-fabric-0.5.12-beta.2+mc1.20.1.jar', 'indium-1.0.36+mc1.20.1.jar', 'ComplementaryUnbound_r5.9.3.zip'].each { name ->
+                if (!new File(dependencyDirectory, name).isFile()) throw new GradleException("Missing shader regression dependency: ${name} in ${dependencyDirectory}")
+            }
+            copy { from new File(dependencyDirectory, 'ComplementaryUnbound_r5.9.3.zip'); into new File(directory, 'shaderpacks') }
+            new File(directory, 'config').mkdirs()
+            new File(directory, 'config/iris.properties').text = 'enableShaders=true\nshaderPack=ComplementaryUnbound_r5.9.3.zip\n'
+        }
+        delete new File(directory, 'geode-shader-captures/result.txt')
+        delete new File(directory, 'geode-shader-captures/measurements.txt')
+    }
+    doLast {
+        def result = new File(runDir.get().asFile, 'geode-shader-captures/result.txt')
+        if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Geode shader regression failed: ${result.isFile() ? result.text : 'no result'}")
     }
 }

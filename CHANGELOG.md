@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.11.12 (Fabric 1.20.1) - 2026-10-13
+
+### Fixed
+
+- Fixed invisible geodes and crystal surfaces with Iris shader packs enabled. Astral materials use their ordinary textures while a shader pack is active and restore the procedural effect when shaders are disabled.
+
 ## 1.11.11 — 2026-09-20
 
 ### Fixed
