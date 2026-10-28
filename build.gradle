@@ -55,6 +55,7 @@ tasks.named('processResources') {
 tasks.named('jar') {
     from('LICENSE')
     exclude 'com/cappleapple/astralrepository/gametest/**'
+    exclude 'com/cappleapple/astralrepository/smoke/**', 'data/astral_repository_recipe_test/**'
     doFirst {
         if (!file('src/main/java/com/cappleapple/astralrepository/AstralRepository.java').exists()) {
             throw new GradleException('Fabric source migration has not been installed; refusing to package an empty port.')
