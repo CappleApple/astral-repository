@@ -48,6 +48,22 @@ public final class AstralJeiPlugin implements IModPlugin {
         registration.addGhostIngredientHandler(RecipeTomeScreen.class,new Handler<>());
         registration.addGhostIngredientHandler(WandScreen.class,new Handler<>());
     }
+    @Override public void registerRecipeTransferHandlers(mezz.jei.api.registration.IRecipeTransferRegistration registration){
+        registration.addRecipeTransferHandler(new RecipeHandler(registration.getTransferHelper()),mezz.jei.api.constants.RecipeTypes.CRAFTING);
+    }
+    public static final class RecipeHandler implements mezz.jei.api.recipe.transfer.IRecipeTransferHandler<com.cappleapple.astralrepository.menu.NexusMenu,net.minecraft.world.item.crafting.RecipeHolder<net.minecraft.world.item.crafting.CraftingRecipe>>{
+        private final mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper helper;
+        public RecipeHandler(mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper helper){this.helper=helper;}
+        @Override public Class<com.cappleapple.astralrepository.menu.NexusMenu> getContainerClass(){return com.cappleapple.astralrepository.menu.NexusMenu.class;}
+        @Override public java.util.Optional<net.minecraft.world.inventory.MenuType<com.cappleapple.astralrepository.menu.NexusMenu>> getMenuType(){return java.util.Optional.of(com.cappleapple.astralrepository.AstralRepository.NEXUS_MENU.get());}
+        @Override public mezz.jei.api.recipe.types.IRecipeType<net.minecraft.world.item.crafting.RecipeHolder<net.minecraft.world.item.crafting.CraftingRecipe>> getRecipeType(){return mezz.jei.api.constants.RecipeTypes.CRAFTING;}
+        @Override public mezz.jei.api.recipe.transfer.IRecipeTransferError transferRecipe(com.cappleapple.astralrepository.menu.NexusMenu menu,net.minecraft.world.item.crafting.RecipeHolder<net.minecraft.world.item.crafting.CraftingRecipe> recipe,mezz.jei.api.gui.ingredient.IRecipeSlotsView slots,net.minecraft.world.entity.player.Player player,boolean maxTransfer,boolean doTransfer){
+            if(!RecipeTransfers.supports(recipe.value()))return helper.createInternalError();
+            if(!RecipeTransfers.canFill(menu,recipe.value()))return helper.createUserErrorWithTooltip(net.minecraft.network.chat.Component.literal("Not enough ingredients in your inventory or Repository."));
+            if(doTransfer)RecipeTransfers.fill(menu,recipe.id().identifier(),maxTransfer?64:1);
+            return null;
+        }
+    }
     public static final class Handler<T extends Screen & GhostIngredientScreen> implements IGhostIngredientHandler<T>{
         @Override public <I> List<Target<I>> getTargetsTyped(T screen,ITypedIngredient<I> ingredient,boolean starting){
             Object value=ingredient.getIngredient();
