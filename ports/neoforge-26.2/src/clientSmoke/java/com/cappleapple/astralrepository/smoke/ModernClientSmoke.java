@@ -45,6 +45,10 @@ public final class ModernClientSmoke {
         mc.options.pauseOnLostFocus=false;
         mc.mouseHandler.releaseMouse();mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0D);
         try {
+            if(phase==2&&Boolean.getBoolean("astral_repository.recipeRuntime")){
+                if(pending!=null){if(!pending.isDone())return;pending.join();pending=null;}
+                if(RecipeRuntimeSmoke.tick()){done=true;mc.stop();}return;
+            }
             if(phase==2){
                 if(ticks%20==0)transferSprites();
                 if(ticks>70&&!advancedTransparency){

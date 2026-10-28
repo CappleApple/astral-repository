@@ -120,6 +120,13 @@ public final class NetworkManager {
     public static GlobalPos location(NetworkAnchor node){return node.address().position();}
     private static String cell(GlobalPos pos,int x,int z){return pos.dimension().identifier()+"/"+x+"/"+z;}
     public static void changed(ServerLevel level,BlockPos pos){var manager=get(level.getServer());if(!manager.stopping){manager.coverage.clear();manager.changedPositions.add(GlobalPos.of(level.dimension(),pos.immutable()));}}
+    /** Block hooks must not create a network manager while a world is generating. */
+    public static void blockIdentityChanged(ServerLevel level,BlockPos pos){
+        if(!level.getServer().isSameThread())return;
+        var manager=SERVERS.get(level.getServer());
+        if(manager==null||manager.stopping)return;
+        manager.coverage.clear();manager.changedPositions.add(GlobalPos.of(level.dimension(),pos.immutable()));
+    }
     private void refresh(GlobalPos pos){
         ServerLevel level=server.getLevel(pos.dimension());if(level==null||!level.hasChunkAt(pos.pos()))return;
         AnchorAddress address=new AnchorAddress(pos,null);

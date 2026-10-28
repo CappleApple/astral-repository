@@ -1,5 +1,19 @@
 # Validation record
 
+## Recipe compatibility fixes (1.11.13)
+
+NeoForge 1.21.1 passes 151 unit tests and all 166 required GameTests with Iron Furnaces 4.3.2 and Polymorph 1.2.0+1.21.1 installed. The normal build and server suite also pass without those optional mods. New cases cover actual fuel-burning smelting, blasting/smoking augments, unsupported furnace modes, cancellation conservation, conflicting furnace/table recipes, Polymorph's selection packet, and Nexus recipe transfer. Transfer cases check ingredient alternatives, full inventory rejection, retaining an already filled grid, maximum-fill fallback when leftovers need space, invalid packets, and bounded availability updates with exact item components.
+
+Two discovery tests wait for the network's initial scan to finish, then place a vanilla or installed Iron Furnace through an ordinary world edit. No fixture machine list or explicit network invalidation is used. The real Nexus service discovers the new machine, consumes stored raw iron and coal, returns the smelted ingot to storage, and releases its claim. Evidence: `build/recipe-cross-loader/original-late-discovery.log` and `original-plain-final.log`.
+
+Separate development clients pass with EMI 1.1.24+1.21.1 and standalone JEI 19.52.0.421. Each receives 81 stored identities, filters the required iron out of the visible storage list, fills a real shaped recipe through the server packet, and verifies all eight iron remain accounted for across storage and grid. JEI's check retrieves the registered transfer handler; EMI's check invokes the plugin's handler against a loaded EMI recipe. Both clients exercise Polymorph's actual Nexus widget and select two conflicting outputs without consuming their input. Clients run hidden, muted, and without capturing the mouse. Screenshots were inspected separately.
+
+Run the server fixture with `runGameTestServer -PrecipeCompatTest`. For clients, use `runClientSmoke -PrecipeCompatTest -PrecipeViewerOnly` with either `-PemiTest` or `-PjeiTest`. The opt-in profile expects the official Iron Furnaces and Polymorph binary JARs under `test-libs/recipe-compat/`; the JEI profile also expects `test-libs/recipe-viewers/jei-1.21.1-neoforge-19.52.0.421.jar`. Test-only conflicting recipes live in `src/testFixtures/recipe-compat-datapack/` and are excluded from release JARs.
+
+Evidence is under ignored `build/recipe-compat/`, `build/recipe-compat-server-final.log`, `build/recipe-compat-jei-attempt3.log`, and `build/recipe-compat-emi-attempt1.log`. Earlier failed fixture runs remain alongside these logs. These checks validate the development client/server paths; they do not cover arbitrary modpacks or Iron Furnaces factory/generator modes.
+
+All other maintained editions also have packaged recipe-transfer and processing checks in the [cross-loader validation matrix](../ports/VALIDATION.md#recipe-compatibility-fixes-11113).
+
 ## 1.11.11 Automatic rune travel (NeoForge 1.21.1)
 
 `test build` passes all 146 unit tests. All 148 required dedicated-server GameTests pass both without Lithium and with Lithium `0.15.4+mc1.21.1`. Evidence: `build/validation-1.11.11-plain.log` and `build/validation-1.11.11-lithium-final.log`.

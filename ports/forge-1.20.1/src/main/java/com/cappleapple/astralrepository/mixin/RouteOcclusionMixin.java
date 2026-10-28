@@ -15,8 +15,10 @@ public abstract class RouteOcclusionMixin {
     @Inject(method="setBlockState",at=@At("RETURN"))
     private void astral$visibility(BlockPos pos,BlockState state,boolean moving,CallbackInfoReturnable<BlockState> ci){
         BlockState old=ci.getReturnValue();
-        if(old==null||old==state||!(old.canOcclude()||state.canOcclude()))return;
+        if(old==null||old==state)return;
         if(((LevelChunk)(Object)this).getLevel() instanceof ServerLevel level){
+            if(old.getBlock()!=state.getBlock())NetworkManager.blockIdentityChanged(level,pos);
+            if(!(old.canOcclude()||state.canOcclude()))return;
             // Lighting a furnace or changing another full cube's visual state does not change sight.
             // Identity equality is deliberately conservative for modded, context-dependent shapes.
             if(old.getBlock()==state.getBlock()&&!state.getBlock().hasDynamicShape()&&old.canOcclude()&&state.canOcclude()

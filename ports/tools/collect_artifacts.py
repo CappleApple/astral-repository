@@ -54,6 +54,14 @@ def inspect(source: Path, minecraft: str, loader: str, major: int, original: boo
                 raise ValueError(f'Wrong Minecraft dependency: {source}')
             if 'smoke' in json.dumps(metadata.get('entrypoints', {})).lower():
                 raise ValueError(f'Development entrypoint in {source}')
+            for key, plugin in (
+                ('emi', 'com.cappleapple.astralrepository.compat.AstralEmiPlugin'),
+                ('jei_mod_plugin', 'com.cappleapple.astralrepository.compat.AstralJeiPlugin'),
+            ):
+                if plugin not in metadata.get('entrypoints', {}).get(key, []):
+                    raise ValueError(f'Missing Fabric {key} entrypoint in {source}')
+                if plugin.replace('.', '/') + '.class' not in names:
+                    raise ValueError(f'Missing recipe-viewer plugin class in {source}: {plugin}')
             for nested in metadata.get('jars', []):
                 if nested['file'] not in names:
                     raise ValueError(f'Missing bundled dependency {nested["file"]}: {source}')

@@ -14,6 +14,8 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import java.util.*;
 
 /** Shared local/handheld menu. Network entries are bounded scrolling records, never phantom inventory slots. */
@@ -21,6 +23,8 @@ public final class NexusMenu extends AbstractContainerMenu {
     public record Entry(ItemStack stack, long count, boolean craftable) {}
     public final CraftingContainer grid = new TransientCraftingContainer(this, 3, 3);
     private final ResultContainer result = new ResultContainer();
+    private RecipeHolder<CraftingRecipe> selectedCraftingRecipe;
+    private net.minecraft.resources.ResourceLocation preferredCraftingRecipe;
     private final Player player;
     public final GlobalPos origin;
     private final boolean remote;
@@ -42,6 +46,10 @@ public final class NexusMenu extends AbstractContainerMenu {
     private boolean committingInteraction, insideClick, handledShiftCraft;
     private List<ItemStack> deferredRefill;
     private PendingInteraction pendingInteraction;
+    private boolean recipeInventorySubscribed;
+    private long recipeInventoryRevision, clientRecipeInventoryRevision;
+    private Map<ItemKey,Long> sentRecipeInventory, pendingRecipeInventory, clientRecipeInventory = Map.of();
+    private final Deque<NetworkPackets.RecipeInventory> recipeInventoryUpdates = new ArrayDeque<>();
     private record PendingInteraction(long due,List<ItemStack> slots,ItemStack carried,Runnable action) {}
     public NexusMenu(int id, Inventory inventory) { this(id, inventory, null, false); }
     public NexusMenu(int id, Inventory inventory, GlobalPos origin, boolean remote) {
@@ -54,7 +62,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         addSlot(new ResultSlot(player, grid, result, 0, 284, 72) {
             @Override public void onTake(Player player,ItemStack stack) {
                 List<ItemStack> pattern=copyGrid();
-                super.onTake(player,stack);
+                takeCraftingResult(player,stack,this::checkTakeAchievements);
                 if(committingInteraction||LogisticsTiming.playerDelayTicks()==0)LogisticsTiming.playerInteraction(()->refillGrid(pattern));
                 else if(deferredRefill==null)deferredRefill=pattern;
             }
@@ -89,13 +97,53 @@ public final class NexusMenu extends AbstractContainerMenu {
     @Override public void slotsChanged(Container container) {
         if (!(player instanceof ServerPlayer sp)) return;
         ItemStack output = ItemStack.EMPTY;
-        var recipe = sp.server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING, grid.asCraftInput(), sp.level());
+        var input=grid.asCraftInput();
+        var recipe=com.cappleapple.astralrepository.compat.PolymorphCompatibility.playerRecipe(this,input,player);
+        if(recipe==null){
+            recipe=sp.server.getRecipeManager().getRecipeFor(RecipeType.CRAFTING,input,sp.level());
+            if(preferredCraftingRecipe!=null){
+                var preferred=sp.server.getRecipeManager().byKey(preferredCraftingRecipe);
+                if(preferred.isPresent()&&preferred.get().value() instanceof CraftingRecipe crafting&&crafting.matches(input,sp.level()))
+                    recipe=Optional.of(new RecipeHolder<>(preferred.get().id(),crafting));
+            }
+        }
+        selectedCraftingRecipe=recipe.orElse(null);
         if (recipe.isPresent() && result.setRecipeUsed(sp.level(),sp,recipe.get())) {
             ItemStack assembled = recipe.get().value().assemble(grid.asCraftInput(),sp.registryAccess());
             if (assembled.isItemEnabled(sp.level().enabledFeatures())) output = assembled;
         }
         result.setItem(0,output); setRemoteSlot(0,output);
         sp.connection.send(new ClientboundContainerSetSlotPacket(containerId,incrementStateId(),0,output));
+    }
+    /** Selects only an existing server recipe that matches the grid after a recipe-viewer fill. */
+    public boolean selectCraftingRecipe(net.minecraft.resources.ResourceLocation id){
+        if(!(player instanceof ServerPlayer sp))return false;
+        var holder=sp.server.getRecipeManager().byKey(id);
+        if(holder.isEmpty()||!(holder.get().value() instanceof CraftingRecipe crafting)||!crafting.matches(grid.asCraftInput(),sp.level()))return false;
+        preferredCraftingRecipe=id;
+        com.cappleapple.astralrepository.compat.PolymorphCompatibility.selectPlayerRecipe(player,holder.get());
+        slotsChanged(grid);return true;
+    }
+    private net.minecraft.core.NonNullList<ItemStack> craftingRemainders(net.minecraft.world.item.crafting.CraftingInput input){
+        if(selectedCraftingRecipe!=null&&selectedCraftingRecipe.value().matches(input,player.level()))return selectedCraftingRecipe.value().getRemainingItems(input);
+        return player.level().getRecipeManager().getRemainingItemsFor(RecipeType.CRAFTING,input,player.level());
+    }
+    private void takeCraftingResult(Player player,ItemStack output,java.util.function.Consumer<ItemStack> achievements){
+        var positioned=grid.asPositionedCraftInput();var input=positioned.input();
+        net.minecraft.core.NonNullList<ItemStack> remainders;
+        net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(player);
+        try{remainders=craftingRemainders(input);}finally{net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(null);}
+        achievements.accept(output);
+        for(int y=0;y<input.height();y++)for(int x=0;x<input.width();x++){
+            int slot=x+positioned.left()+(y+positioned.top())*grid.getWidth();
+            ItemStack present=grid.getItem(slot),remainder=remainders.get(x+y*input.width());
+            if(!present.isEmpty()){grid.removeItem(slot,1);present=grid.getItem(slot);}
+            if(!remainder.isEmpty()){
+                if(present.isEmpty())grid.setItem(slot,remainder);
+                else if(ItemStack.isSameItemSameComponents(present,remainder)){remainder.grow(present.getCount());grid.setItem(slot,remainder);}
+                else if(!player.getInventory().add(remainder))player.drop(remainder,false);
+            }
+        }
     }
     public void action(NetworkPackets.Action action) {
         if (!(player instanceof ServerPlayer sp) || action.menu()!=containerId || !stillValid(player)) return;
@@ -148,6 +196,111 @@ public final class NexusMenu extends AbstractContainerMenu {
             if(inserted<offered)showError("Deposited "+inserted+" of "+offered+". Check destination capacity and filters.");else clearError();
         }
         broadcastChanges();sendPage();
+    }
+    public void fillRecipe(NetworkPackets.FillRecipe packet) {
+        if (!(player instanceof ServerPlayer sp) || sp.isSpectator() || packet.menu()!=containerId
+                || packet.amount()<1 || packet.amount()>64 || !stillValid(player)) return;
+        if (!committingInteraction) { interact(()->fillRecipe(packet)); return; }
+        var holder=sp.server.getRecipeManager().byKey(packet.recipe()).orElse(null);
+        if (holder==null || !(holder.value() instanceof net.minecraft.world.item.crafting.CraftingRecipe recipe)
+                || recipe.isSpecial() || recipe.getIngredients().isEmpty() || !recipe.canCraftInDimensions(3,3)) return;
+        AstralNetwork network=network(); if(network==null)return;
+        boolean alreadyFilled=recipe.matches(grid.asCraftInput(),sp.level());
+        for(int i=0;alreadyFilled&&i<9;i++)if(!grid.getItem(i).isEmpty()&&grid.getItem(i).getCount()<packet.amount())alreadyFilled=false;
+        if(alreadyFilled){
+            if(!payForAccess(network,sp)){showError("The network needs power for this action.");return;}
+            clearError();selectCraftingRecipe(holder.id());broadcastChanges();sendPage();return;
+        }
+        Map<ItemKey,Long> stock=new LinkedHashMap<>();
+        List<ItemStack> ownedInventory=new ArrayList<>();for(int i=10;i<slots.size();i++)ownedInventory.add(slots.get(i).getItem().copy());
+        List<ItemStack> previous=copyGrid();ItemStack ownedCarried=getCarried().copy();
+        for(ItemStack stack:previous)if(!stack.isEmpty())stock.merge(new ItemKey(stack),(long)stack.getCount(),Long::sum);
+        for(ItemStack stack:ownedInventory)if(!stack.isEmpty())stock.merge(new ItemKey(stack),(long)stack.getCount(),Long::sum);
+        if(!ownedCarried.isEmpty())stock.merge(new ItemKey(ownedCarried),(long)ownedCarried.getCount(),Long::sum);
+        // Prefer inputs already owned by the player before introducing another tag alternative.
+        storedItems(network).forEach((key,count)->stock.merge(key,count,Long::sum));
+        List<List<ItemKey>> ingredients=recipeIngredients(recipe,stock);
+        if(ingredients==null){showError("Not enough ingredients in your inventory or Repository.");return;}
+        List<ItemKey> plan=null;Map<ItemKey,Integer> needed=null;List<ItemStack> inventory=null;ItemStack carried=ItemStack.EMPTY;
+        int amount=packet.amount();boolean hasMaterials=false;
+        for(;amount>0;amount--){
+            List<ItemKey> candidate=RecipeTransferPlan.assign(ingredients,stock,amount,key->key.sample().getMaxStackSize());
+            if(candidate==null)continue;hasMaterials=true;
+            List<ItemStack> plannedGrid=new ArrayList<>();for(ItemKey key:candidate)plannedGrid.add(key==null?ItemStack.EMPTY:key.sample().copyWithCount(amount));
+            if(!recipe.matches(net.minecraft.world.item.crafting.CraftingInput.of(3,3,plannedGrid),sp.level()))return;
+            Map<ItemKey,Integer> requirements=new LinkedHashMap<>();for(ItemKey key:candidate)if(key!=null)requirements.merge(key,amount,Integer::sum);
+            List<ItemStack> leftovers=new ArrayList<>();for(ItemStack stack:previous)leftovers.add(consumeRecipeInput(stack,requirements));
+            List<ItemStack> remainingInventory=new ArrayList<>();for(ItemStack stack:ownedInventory)remainingInventory.add(consumeRecipeInput(stack,requirements));
+            ItemStack remainingCarried=consumeRecipeInput(ownedCarried,requirements);
+            boolean fits=true;for(ItemStack stack:leftovers)if(!stack.isEmpty()&&!fitInventory(remainingInventory,stack)){fits=false;break;}
+            if(!fits)continue;
+            plan=candidate;needed=requirements;inventory=remainingInventory;carried=remainingCarried;break;
+        }
+        if(plan==null){showError(hasMaterials?"Make room in your inventory for the current crafting grid.":"Not enough ingredients in your inventory or Repository.");return;}
+        if(!payForAccess(network,sp)){showError("The network needs power for this action.");return;}
+        List<ItemStack> extracted=new ArrayList<>();
+        for(var requirement:needed.entrySet()){
+            int remaining=requirement.getValue();
+            while(remaining>0){
+                ItemStack stack=withdraw(network,requirement.getKey(),remaining);if(stack.isEmpty())break;
+                extracted.add(stack);remaining-=stack.getCount();
+            }
+            if(remaining>0){
+                for(ItemStack stack:extracted){ItemStack rest=deposit(network,stack);if(!rest.isEmpty())sp.getInventory().placeItemBackInInventory(rest);}
+                showError("Ingredients are unavailable. Check source filters and reserved stock.");broadcastChanges();return;
+            }
+        }
+        for(int i=0;i<inventory.size();i++)slots.get(i+10).setByPlayer(inventory.get(i));
+        setCarried(carried);
+        for(int i=0;i<9;i++){ItemKey key=i<plan.size()?plan.get(i):null;grid.setItem(i,key==null?ItemStack.EMPTY:key.sample().copyWithCount(amount));}
+        clearError();selectCraftingRecipe(holder.id());broadcastChanges();sendPage();
+    }
+    private static ItemStack consumeRecipeInput(ItemStack stack,Map<ItemKey,Integer> needed){
+        if(stack.isEmpty())return ItemStack.EMPTY;
+        ItemKey key=new ItemKey(stack);int used=Math.min(stack.getCount(),needed.getOrDefault(key,0));
+        if(used>0)needed.put(key,needed.get(key)-used);
+        return stack.copyWithCount(stack.getCount()-used);
+    }
+    public static List<List<ItemKey>> recipeIngredients(net.minecraft.world.item.crafting.CraftingRecipe recipe,Map<ItemKey,Long> stock){
+        List<List<ItemKey>> result=new ArrayList<>(Collections.nCopies(9,List.of()));
+        var ingredients=recipe.getIngredients();
+        int width=recipe instanceof net.minecraft.world.item.crafting.ShapedRecipe shaped?shaped.getWidth():3;
+        for(int i=0;i<ingredients.size();i++){
+            var ingredient=ingredients.get(i);int target=recipe instanceof net.minecraft.world.item.crafting.ShapedRecipe?i%width+(i/width)*3:i;
+            if(target>=9)return null;
+            if(!ingredient.isEmpty())result.set(target,stock.keySet().stream().filter(key->stock.get(key)>0&&ingredient.test(key.sample())).toList());
+            if(!ingredient.isEmpty()&&result.get(target).isEmpty())return null;
+        }
+        return result;
+    }
+    public void subscribeRecipeInventory(){
+        if(player instanceof ServerPlayer sp&&!sp.isSpectator()&&stillValid(player))recipeInventorySubscribed=true;
+    }
+    /** Exact stored identities for recipe viewers, independent of the current search and scroll. */
+    public Map<ItemKey,Long> recipeInventory(){
+        Map<ItemKey,Long> stock=new LinkedHashMap<>(clientRecipeInventory);
+        for(int i=1;i<slots.size();i++){ItemStack stack=slots.get(i).getItem();if(!stack.isEmpty())stock.merge(new ItemKey(stack),(long)stack.getCount(),Long::sum);}
+        return stock;
+    }
+    public void acceptRecipeInventory(NetworkPackets.RecipeInventory update){
+        if(update.menu()!=containerId||update.revision()<clientRecipeInventoryRevision)return;
+        if(update.reset()){clientRecipeInventoryRevision=update.revision();pendingRecipeInventory=new LinkedHashMap<>(update.clear()?Map.of():clientRecipeInventory);}
+        if(update.revision()!=clientRecipeInventoryRevision||pendingRecipeInventory==null)return;
+        for(Entry entry:update.entries()){ItemKey key=new ItemKey(entry.stack());if(entry.count()==0)pendingRecipeInventory.remove(key);else pendingRecipeInventory.put(key,entry.count());}
+        if(update.complete()){clientRecipeInventory=Map.copyOf(pendingRecipeInventory);pendingRecipeInventory=null;}
+    }
+    private void sendRecipeInventory(){
+        if(!recipeInventorySubscribed||!(player instanceof ServerPlayer sp)||!stillValid(player))return;
+        if(recipeInventoryUpdates.isEmpty()&&!Objects.equals(sentRecipeInventory,cachedItems)){
+            List<Entry> changes=new ArrayList<>();
+            cachedItems.forEach((key,count)->{if(count>0&&(sentRecipeInventory==null||!Objects.equals(sentRecipeInventory.get(key),count)))changes.add(new Entry(key.sample(),count,false));});
+            if(sentRecipeInventory!=null)sentRecipeInventory.keySet().stream().filter(key->cachedItems.getOrDefault(key,0L)<=0).forEach(key->changes.add(new Entry(key.sample(),0,false)));
+            long revision=++recipeInventoryRevision;
+            for(int start=0;start<Math.max(1,changes.size());start+=NetworkPackets.WINDOW_SIZE){int end=Math.min(changes.size(),start+NetworkPackets.WINDOW_SIZE);recipeInventoryUpdates.add(new NetworkPackets.RecipeInventory(containerId,revision,start==0,sentRecipeInventory==null,end==changes.size(),List.copyOf(changes.subList(start,end))));}
+            // cachedItems is a detached snapshot; retaining it makes idle viewer checks constant time.
+            sentRecipeInventory=cachedItems;
+        }
+        for(int i=0;i<4&&!recipeInventoryUpdates.isEmpty();i++)NetworkPackets.sendUpdate(sp,recipeInventoryUpdates.removeFirst());
     }
     public void cancelJob(NetworkPackets.CancelJob packet) {
         if(!(player instanceof ServerPlayer sp)||sp.isSpectator()||packet.menu()!=containerId||!stillValid(player))return;
@@ -233,6 +386,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(player instanceof ServerPlayer sp&&(searchPending||sp.server.getTickCount()>=nextUpdate)){
             nextUpdate=sp.server.getTickCount()+2;sendPage();
         }
+        sendRecipeInventory();
     }
     public void sendPage(){
         CustomPacketPayload update=collectUpdate();
@@ -318,7 +472,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         var positioned=grid.asPositionedCraftInput();var input=positioned.input();
         net.minecraft.core.NonNullList<ItemStack> remainders;
         net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(player);
-        try{remainders=player.level().getRecipeManager().getRemainingItemsFor(RecipeType.CRAFTING,input,player.level());}
+        try{remainders=craftingRemainders(input);}
         finally{net.neoforged.neoforge.common.CommonHooks.setCraftingPlayer(null);}
         for(int y=0;y<input.height();y++)for(int x=0;x<input.width();x++){
             ItemStack original=grid.getItem(x+positioned.left()+(y+positioned.top())*grid.getWidth());

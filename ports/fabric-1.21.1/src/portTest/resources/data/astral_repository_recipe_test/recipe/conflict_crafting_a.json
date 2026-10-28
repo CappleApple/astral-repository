@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "minecraft:dandelion"
+    }
+  ],
+  "result": {
+    "id": "minecraft:gold_nugget",
+    "count": 1
+  }
+}

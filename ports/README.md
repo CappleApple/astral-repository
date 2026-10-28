@@ -1,6 +1,6 @@
 # Astral Repository ports
 
-Astral Repository is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root. The Fabric 1.20.1 project is version 1.11.12; each other edition retains its own version.
+Astral Repository is available for the eight Minecraft and loader combinations below. The original Minecraft 1.21.1 NeoForge edition remains at the repository root. All editions are version 1.11.13.
 
 ## Installation
 
@@ -44,7 +44,7 @@ python ports/tools/collect_artifacts.py
 
 Use `--branch-root <directory>` to collect the seven port JARs from standalone checkouts named `<loader>-<minecraft>` within that directory. The original NeoForge 1.21.1 JAR still comes from the repository root.
 
-The collector reads each project's version and writes `build/ports/`, including a manifest and an archive containing all targets. This allows a fix to update one edition without collecting its previous JAR. It checks the loader metadata, Minecraft dependency, main-class bytecode version, and absence of test entrypoints before copying a JAR.
+The collector reads each project's version and writes `build/ports/`, including a manifest and an archive containing all targets. This allows a fix to update one edition without collecting its previous JAR. It checks the loader metadata, Minecraft dependency, main-class bytecode version, Fabric recipe-viewer entrypoints, and absence of test entrypoints before copying a JAR.
 
 ## Integrations
 

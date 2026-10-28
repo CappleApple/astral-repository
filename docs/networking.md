@@ -28,6 +28,12 @@ Current jobs are limited to 48 active requests per player per network plus 16 br
 
 
 
+## Recipe availability and filling
+
+Recipe viewers subscribe separately to ingredient availability. That stream includes accessible stored identities across the full inventory, independent of the visible window and search. Each packet contains at most 54 changes; a broadcast sends at most four packets. The client publishes a revision only after its final chunk arrives. No availability stream is sent without a subscription. An unchanged cached inventory needs no new delta.
+
+Recipe transfer sends a server recipe ID and a bounded batch count, never an authoritative ingredient list. The server validates the active menu, access, spectator state, recipe, and ingredient assignment before extracting real stock. Existing interaction-delay cancellation rules also apply to fills.
+
 ## Upstream review
 
 

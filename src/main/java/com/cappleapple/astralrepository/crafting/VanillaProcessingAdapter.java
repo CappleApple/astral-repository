@@ -7,8 +7,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.AbstractFurnaceBlock;
-import net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity;
 import java.util.*;
 
 /** Uses recipe assembly on real tables and actual vanilla furnace inventories and server ticks. */
@@ -74,9 +72,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         var state = level.getBlockState(position.pos());
         return switch (node.recipe().process()) {
             case "crafting" -> VisualWorkbenchCompatibility.isCraftingTable(level,position.pos());
-            case "smelting" -> state.is(Blocks.FURNACE);
-            case "blasting" -> state.is(Blocks.BLAST_FURNACE);
-            case "smoking" -> state.is(Blocks.SMOKER);
+            case "smelting", "blasting", "smoking" -> FurnaceAccess.find(level, position.pos(), node.recipe().process()) != null;
             case "stonecutting" -> state.is(Blocks.STONECUTTER);
             default -> false;
         };
@@ -119,18 +115,25 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
                 @Override public Map<ItemKey, Long> recoverable() { return settled ? Map.of() : node.inputs(); }
             };
         }
-        if (!(level.getBlockEntity(position.pos()) instanceof AbstractFurnaceBlockEntity furnace)) return null;
+        FurnaceAccess furnace = FurnaceAccess.find(level, position.pos(), node.recipe().process());
+        if (furnace == null) return null;
         if (!furnace.getItem(0).isEmpty() || !furnace.getItem(2).isEmpty()) return null;
         ItemStack ingredient = node.selected().getFirst().key().sample();
+        if (!furnace.canPlaceItem(0, ingredient)) return null;
         RecipeType<? extends AbstractCookingRecipe> type = cookingType(node.recipe().process());
         var actual = level.getRecipeManager().getRecipeFor(type, new SingleRecipeInput(ingredient), level);
         if (actual.isEmpty()) return null;
-        ItemStack expected = actual.get().value().assemble(new SingleRecipeInput(ingredient), level.registryAccess());
-        if (expected.isEmpty() || !new ItemKey(expected).equals(node.recipe().output()) || expected.getCount() != node.recipe().outputCount()) return null;
-        boolean lit = level.getBlockState(position.pos()).getValue(AbstractFurnaceBlock.LIT);
+        ItemStack expected = assemble(binding.holder().value(), new SingleRecipeInput(ingredient), level);
+        if (expected.isEmpty() || !new ItemKey(expected).equals(node.recipe().output()) || expected.getCount() != node.recipe().outputCount())
+            throw new IllegalStateException("Recipe output changed: " + node.recipe().id());
+        boolean selected = com.cappleapple.astralrepository.compat.PolymorphCompatibility.selectBlockRecipe(furnace.entity(), binding.holder());
+        ItemStack defaultOutput = actual.get().value().assemble(new SingleRecipeInput(ingredient), level.registryAccess());
+        if (!selected && (!ItemStack.isSameItemSameComponents(defaultOutput, expected) || defaultOutput.getCount() != expected.getCount()))
+            throw new IllegalStateException("Furnace cannot select conflicting recipe " + node.recipe().id() + "; Polymorph support is required for this machine");
+        boolean lit = furnace.lit(level);
         FuelDelivery fuel = FuelDelivery.EMPTY;
         if (!lit && furnace.getItem(1).isEmpty()) {
-            fuel = takeFuel(access, type, position);
+            fuel = takeFuel(access, type, position, furnace);
         }
         // Inputs have arrived. Fuel remains operation-owned until its separate flight completes.
         furnace.setItem(0, ingredient.copy());
@@ -148,9 +151,10 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         return switch (process) { case "blasting" -> RecipeType.BLASTING; case "smoking" -> RecipeType.SMOKING; default -> RecipeType.SMELTING; };
     }
     private record FuelDelivery(ItemStack stack,int ticks){static final FuelDelivery EMPTY=new FuelDelivery(ItemStack.EMPTY,0);}
-    private static FuelDelivery takeFuel(CraftingService.NetworkAccess access, RecipeType<?> type, GlobalPos position) {
+    private static FuelDelivery takeFuel(CraftingService.NetworkAccess access, RecipeType<?> type, GlobalPos position, FurnaceAccess furnace) {
         for (var entry : access.snapshot().entrySet().stream().sorted(Comparator.<Map.Entry<ItemKey, Long>>comparingInt(e -> e.getKey().sample().getBurnTime(type)).reversed()).toList()) {
             if (entry.getValue() <= 0 || entry.getKey().sample().getBurnTime(type) <= 0) continue;
+            if (!furnace.canPlaceItem(1, entry.getKey().sample())) continue;
             int[] delay={0};
             ItemStack extracted = access.extractForDelivery(entry.getKey(),1,position,(from,stack)->{
                 delay[0]=Math.max(delay[0],access.travelTicks(from,position));CraftingService.animate(access,from,position,stack,Math.max(1,delay[0]));
@@ -171,7 +175,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         final CraftingService.NetworkAccess access;
         final GlobalPos position;
         final CraftPlan.Node<ItemKey> node;
-        final AbstractFurnaceBlockEntity original;
+        final FurnaceAccess original;
         final ItemStack input;
         final ItemStack expected;
         final RecipeType<?> type;
@@ -179,7 +183,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         int ticks,fuelTicks;
         boolean settled;
         FurnaceOperation(CraftingService.NetworkAccess access, GlobalPos position, CraftPlan.Node<ItemKey> node,
-                         AbstractFurnaceBlockEntity furnace, ItemStack input, ItemStack expected, FuelDelivery fuel, RecipeType<?> type) {
+                         FurnaceAccess furnace, ItemStack input, ItemStack expected, FuelDelivery fuel, RecipeType<?> type) {
             this.access = access; this.position = position; this.node = node; this.original = furnace;
             this.input = input.copy(); this.expected = expected.copy(); this.pendingFuel = fuel.stack().copy(); this.fuelTicks=fuel.ticks(); this.type = type;
             if(fuelTicks==0)acceptFuel();
@@ -187,7 +191,8 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         @Override public Map<ItemKey, Long> poll() {
             ServerLevel level = world(access, position);
             if (level == null || !level.hasChunkAt(position.pos())) return null;
-            if (level.getBlockEntity(position.pos()) != original) throw new IllegalStateException("Processor removed; its physical contents remain in-world");
+            if (level.getBlockEntity(position.pos()) != original.entity()) throw new IllegalStateException("Processor removed; its physical contents remain in-world");
+            if (FurnaceAccess.find(level, position.pos(), node.recipe().process()) == null) throw new IllegalStateException("Processor cooking mode changed");
             if(fuelTicks>0)fuelTicks--;if(fuelTicks==0)acceptFuel();
             ItemStack output = original.getItem(2);
             if (ItemStack.isSameItemSameComponents(output, expected) && output.getCount() >= expected.getCount() && original.getItem(0).isEmpty()) {
@@ -198,8 +203,8 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
                 return results;
             }
             if (++ticks > Math.max(1200, node.recipe().durationTicks() * 8)) throw new IllegalStateException("Processor stalled; check fuel and external extraction at " + position.pos());
-            if (pendingFuel.isEmpty() && original.getItem(1).isEmpty() && !original.getItem(0).isEmpty() && !level.getBlockState(position.pos()).getValue(AbstractFurnaceBlock.LIT)) {
-                FuelDelivery fuel = takeFuel(access, type, position);
+            if (pendingFuel.isEmpty() && original.getItem(1).isEmpty() && !original.getItem(0).isEmpty() && !original.lit(level)) {
+                FuelDelivery fuel = takeFuel(access, type, position, original);
                 pendingFuel=fuel.stack().copy();fuelTicks=fuel.ticks();if(fuelTicks==0)acceptFuel();
             }
             return null;
@@ -210,7 +215,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
             ServerLevel level = world(access, position);
             // Unloaded or broken processors retain/drop their physical contents; never synthesize a refund.
             Map<ItemKey, Long> result = new LinkedHashMap<>();returnPendingFuel(result);
-            if (level == null || !level.hasChunkAt(position.pos()) || level.getBlockEntity(position.pos()) != original) return result;
+            if (level == null || !level.hasChunkAt(position.pos()) || level.getBlockEntity(position.pos()) != original.entity()) return result;
             if (ItemStack.isSameItemSameComponents(original.getItem(0), input)) add(result, original.removeItem(0, input.getCount()));
             if (ItemStack.isSameItemSameComponents(original.getItem(2), expected)) add(result, original.removeItem(2, expected.getCount()));
             reclaimFuel(result);

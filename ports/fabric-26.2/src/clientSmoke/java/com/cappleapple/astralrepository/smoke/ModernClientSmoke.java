@@ -39,6 +39,7 @@ public final class ModernClientSmoke implements net.fabricmc.api.ClientModInitia
         var mc=Minecraft.getInstance();
         mc.options.pauseOnLostFocus=false;mc.mouseHandler.releaseMouse();mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0D);
         try {
+            if(Boolean.getBoolean("astral_repository.recipeCompatRuntime")){ModernRecipeChecks.tick(mc);return;}
             if(phase==2){
                 if(ticks%20==0)transferSprites();
                 if(ticks>70&&!advancedTransparency){

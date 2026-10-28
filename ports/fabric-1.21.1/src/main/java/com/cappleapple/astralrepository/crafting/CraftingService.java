@@ -98,7 +98,7 @@ public final class CraftingService {
     /** Craft results return to storage without filling idle machines with unrelated outputs. */
     public boolean isProcessingPosition(GlobalPos position){
         var world=access.level().getServer().getLevel(position.dimension());if(world==null||!world.hasChunkAt(position.pos()))return false;
-        if(world.getBlockEntity(position.pos()) instanceof net.minecraft.world.level.block.entity.AbstractFurnaceBlockEntity
+        if(FurnaceAccess.isCandidate(world.getBlockEntity(position.pos()))
                 || com.cappleapple.astralrepository.compat.VisualWorkbenchCompatibility.isCraftingTable(world,position.pos())
                 || world.getBlockState(position.pos()).is(net.minecraft.world.level.block.Blocks.STONECUTTER)
                 || ProcessingRules.isCandidate(world,position.pos()))return true;

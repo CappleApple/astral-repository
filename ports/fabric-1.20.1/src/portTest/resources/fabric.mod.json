@@ -12,7 +12,8 @@
     "client": [
       "com.cappleapple.astralrepository.porttest.FabricClientSmoke",
       "com.cappleapple.astralrepository.porttest.FabricGameplaySmoke",
-      "com.cappleapple.astralrepository.porttest.GeodeShaderClientSmoke"
+      "com.cappleapple.astralrepository.porttest.GeodeShaderClientSmoke",
+      "com.cappleapple.astralrepository.porttest.FabricRecipeCompatSmoke"
     ]
   },
   "depends": {

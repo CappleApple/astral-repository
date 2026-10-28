@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "ingredient": {
+    "item": "minecraft:dirt"
+  },
+  "result": {
+    "id": "minecraft:gold_nugget"
+  },
+  "experience": 0.0,
+  "cookingtime": 20
+}

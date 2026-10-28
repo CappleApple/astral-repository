@@ -68,6 +68,7 @@ public final class ClientNexusSmoke {
                 if(Boolean.getBoolean("astral_repository.feedbackOnly")){if(BindingFeedbackClientSmoke.tick()){done=true;mc.stop();}return;}
                 if(Boolean.getBoolean("astral_repository.crystalStorageOnly")){if(StorageCrystalClientSmoke.tick()){done=true;mc.stop();}return;}
                 if(Boolean.getBoolean("astral_repository.furnaceOnly")){if(FurnaceRoutingSmoke.tick()){done=true;mc.stop();}return;}
+                if(Boolean.getBoolean("astral_repository.recipeViewerOnly")){if(RecipeCompatClientSmoke.tick()){done=true;mc.stop();}return;}
                 if(Boolean.getBoolean("astral_repository.bindingOnly")){if(BindingClientSmoke.tick()){done=true;mc.stop();}return;}
                 if(Boolean.getBoolean("astral_repository.editorOnly")){
                     if(InventoryEditorSmoke.tick()){Files.writeString(OUT.resolve("result.txt"),"PASS: inventory rune and tome editors, unlimited stepping, binding glint, optional recipe-viewer drops.\n");done=true;mc.stop();}return;

@@ -10,6 +10,10 @@ The Nexus accepts 1–4,096 additional final items per request, with up to 48 ac
 
 ## Manual crafting grid
 
+EMI and JEI recipe transfer fills the Nexus grid from its current ingredients, player inventory, cursor, and accessible Repository storage. Availability includes stored items outside the current search and visible page. Normal transfer supplies one batch when needed and retains an already filled matching grid. Maximum transfer fills as many batches as fit in each ingredient slot. Unused grid items must fit in player inventory before a replacement proceeds. The server resolves the recipe again and checks access, power, actual extraction, and the configured interaction delay.
+
+On Minecraft 1.20.1 and 1.21.1, Polymorph's recipe selector works in the Nexus grid. Recipe transfer selects the requested recipe when several recipes match the same ingredients. Taking a result uses that recipe's own remaining items.
+
 The Nexus grid uses actual vanilla crafting recipes. Taking a result refills consumed ingredients from network storage using the same item components. Container remainders occupying an emptied ingredient slot, such as empty milk buckets, return to storage before replacement ingredients enter that slot. A rejected remainder stays in the grid. Remainders from a slot that still holds ingredients follow vanilla inventory handling.
 
 Shift-clicking the result crafts at most one maximum stack of output. Each complete recipe batch and any remainders that need inventory space must fit; insufficient space leaves that batch's ingredients untouched. The clear-grid control returns ingredients to network storage and leaves any rejected items in their original slots. Clearing an empty grid is silent.
@@ -18,10 +22,13 @@ Player transactions are immediate by default. With `instantPlayerInteractions=fa
 
 ## Available processors
 
+Placing or replacing a workstation inside coverage refreshes discovery even after the initial scan has finished. Ordinary block changes from commands and mods follow the same path. Changes to a furnace's lit state retain its processor and running job.
+
 | Processor | Execution |
 | --- | --- |
 | Crafting table, including Visual Workbench | Validates the selected recipe, arranges its ingredients on the visible 3x3 positions, and uses the recipe's actual assembly and remaining-item methods. |
 | Furnace, blast furnace, smoker | Inserts actual ingredients and available fuel, waits for vanilla processing, and extracts the actual output. Existing burn time remains useful for later jobs. |
+| Iron Furnaces in normal furnace mode | Uses the actual furnace inventory and fuel. Blasting and smoking augments select their respective recipe types. Factory and generator modes are excluded. |
 | Stonecutter | Validates and assembles a stonecutting recipe at a discovered stonecutter. |
 | Create depot with mechanical press | Inserts a single ingredient into the depot. A mechanical press two blocks above it must perform the real pressing operation. |
 | Create millstone | Inserts into its input slot and retrieves real results from its output slots. The millstone needs its normal rotational power. |

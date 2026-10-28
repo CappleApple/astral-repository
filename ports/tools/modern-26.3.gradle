@@ -44,6 +44,8 @@ def generator = tasks.register('generateMinecraft263Sources', Sync) {
             line = line.replace('draw.material().drawFromBuffer(info);', 'if(stage==null)draw.material().drawFromBuffer(info,renderPass);else draw.material().drawFromBufferOit(info,stage,renderPass);')
             if(line.contains('submit.geometry().render(')) line += '\n            context.stagedVertexBuffer().requestIndexCount(draw);'
             line = line.replace('player.drop(live,false)', 'player.drop(live,false,net.minecraft.util.Prediction.SERVER_ONLY)')
+            line = line.replace('placeItemBackInInventory(rest)', 'placeItemBackInInventory(rest,net.minecraft.util.Prediction.SERVER_ONLY)')
+            line = line.replace('player.drop(remainder,false)', 'player.drop(remainder,false,net.minecraft.util.Prediction.SERVER_ONLY)')
             if(line.contains('ContextMap')) line = line.replace('new net.minecraft.util.context.ContextMap.Builder()', 'net.minecraft.util.context.ContextMap.builder()').replace('.withParameter(', '.set(').replace('.create(net.minecraft.world.item.crafting.display.SlotDisplayContext.CONTEXT)', '.buildAndValidate(net.minecraft.world.item.crafting.display.SlotDisplayContext.CONTEXT)')
             line = line.replace('new ContextMap.Builder()', 'ContextMap.builder()').replace('.create(SlotDisplayContext.CONTEXT)', '.buildAndValidate(SlotDisplayContext.CONTEXT)')
             line = line.replace('.mulPose(Axis.', '.rotate(Axis.').replace('.mulPose(camera)', '.rotate(camera)').replace('.mulPose(event.getCamera().rotation())', '.rotate(event.getCamera().rotation())')

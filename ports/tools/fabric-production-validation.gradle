@@ -55,3 +55,37 @@ tasks.register('productionGameplay', project.plugins.findPlugin('fabric-loom').c
         if (!result.exists() || !result.text.startsWith('PASS:')) throw new GradleException('Packaged gameplay failed: ' + (result.exists() ? result.text : 'no result file'))
     }
 }
+
+configurations { recipeCompatJei { transitive = false } }
+dependencies { recipeCompatJei "maven.modrinth:jei:${minecraft_version == '26.2' ? 'dXcNHWfE' : '8F0DZdvW'}" }
+
+tasks.register('recipeCompatFixtureJar', Jar) {
+    dependsOn tasks.named('classes'), tasks.named('gameplayFixtureMetadata')
+    archiveFileName = 'astral-repository-recipe-compat-fixture.jar'
+    destinationDirectory = layout.buildDirectory.dir('recipe-compat-fixture')
+    from(sourceSets.main.output) { include 'com/cappleapple/astralrepository/smoke/**' }
+    from(fixtureMetadata)
+    from('../testFixtures/recipe-compat-modern')
+    doFirst { if (!project.hasProperty('clientSmoke')) throw new GradleException('Build the recipe fixture with -PclientSmoke first.') }
+}
+
+tasks.register('productionRecipeCompat', project.plugins.findPlugin('fabric-loom').class.classLoader.loadClass('net.fabricmc.loom.task.prod.ClientProductionRunTask')) {
+    dependsOn tasks.named('jar')
+    mods.setFrom(tasks.named('jar').flatMap { it.archiveFile }, configurations.gameplayFabricApi,
+        layout.buildDirectory.file('recipe-compat-fixture/astral-repository-recipe-compat-fixture.jar'))
+    if (project.hasProperty('optionalRuntime')) mods.from(configurations.recipeCompatJei)
+    runDir = layout.buildDirectory.dir((project.hasProperty('optionalRuntime') ? 'production-recipe-compat-jei' : 'production-recipe-compat-absent')+(project.hasProperty('fullWorkshopDiagnostic') ? '-full-workshop' : ''))
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    jvmArgs.addAll('-Xmx3G', '-XX:StackShadowPages=32', '--sun-misc-unsafe-memory-access=allow', '--enable-native-access=ALL-UNNAMED', '--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED')
+    jvmArgs.addAll('-Dastral_repository.testClient=true', '-Dastral_repository.modernClientSmoke=true', '-Dastral_repository.recipeCompatRuntime=true', "-Dastral_repository.recipeCompatJei=${project.hasProperty('optionalRuntime')}")
+    doFirst {
+        if (project.hasProperty('clientSmoke')) throw new GradleException('Run the production recipe gate without -PclientSmoke.')
+        def directory=runDir.get().asFile;directory.mkdirs()
+        new File(directory,'options.txt').text='onboardAccessibility:false\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:3\nmaxFps:30\nmaxAnisotropyBit:1\ntextureFiltering:1\n'
+        new File(directory,'captures/result.txt').delete()
+    }
+    doLast {
+        def result=new File(runDir.get().asFile,'captures/result.txt')
+        if(!result.exists()||!result.text.startsWith('PASS:'))throw new GradleException('Packaged recipe compatibility failed: '+(result.exists()?result.text:'no result file'))
+    }
+}

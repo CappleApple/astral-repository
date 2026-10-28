@@ -56,3 +56,4 @@ ext.modernCommonSource = "../neoforge-modern-common/src/main/java"
 apply from: "../tools/modern-26.3.gradle"
 
 tasks.named('jar') { from('LICENSE') }
+apply from: '../tools/neoforge-recipe-runtime.gradle'

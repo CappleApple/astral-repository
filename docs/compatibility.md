@@ -13,6 +13,8 @@ Astral Repository runs without the optional mods below. `astral_repository-compa
 | Refined Storage 2 | Root item storage and real autocrafting tasks | Public network-node container and storage/crafting components |
 | Create | Sided item/fluid capabilities; pressing and milling processing adapters; optional spare-stress operating requirement | Existing capabilities and a running kinetic network adjacent to a Power Node |
 | Visual Workbench | Network autocrafting at persistent tables without using their saved player grid or preview as storage | Block entity type `visualworkbench:crafting_table` |
+| Iron Furnaces | Physical smelting and blasting/smoking augments in normal furnace mode | Verified three-slot input/fuel/output contract; factory and generator modes excluded |
+| Polymorph (1.20.1 and 1.21.1) | Nexus recipe selection and exact recipe selection in supported furnaces | Optional public player/block recipe-data APIs for each game version |
 | Patchouli | Optional mod-owned Field Guide item, recipe, creative entry, and book screens | `custom_book_item` and `PatchouliAPI.openBookGUI` |
 | Jade | Shift-only rune icons and amounts in Jade's tooltip | Client block-component and Element APIs |
 
@@ -89,13 +91,21 @@ See [Provider API](providers.md) for contracts, registration, simulation, chunk 
 - [Refined Storage 2.x public network API](https://github.com/refinedmods/refinedstorage2/tree/support/2.x/refinedstorage-network-api/src/main/java/com/refinedmods/refinedstorage/api/network)
 
 
-## Recipe-viewer ingredient drops
+## Recipe viewers and conflicting recipes
 
-EMI and JEI are optional client integrations. Their ghost-ingredient handlers accept items in the Recipe Tome, and items or fluids in rune filter editors. Dropping an ingredient copies a selection; it never grants, removes, or transfers inventory contents. Tome outputs are resolved against server recipes before inscription.
+EMI and JEI can fill crafting recipes in the local or handheld Nexus using actual accessible storage, player inventory, cursor, and existing grid ingredients. Availability is independent of the storage search and visible page. Normal transfer supplies one batch when needed and retains an already filled matching grid; maximum transfer uses the available ingredients up to each slot's stack limit. This fills the grid; taking the output uses the normal crafting controls.
+
+Their ghost-ingredient handlers also accept items in the Recipe Tome, and items or fluids in rune filter editors. Dropping an ingredient copies a selection without moving inventory contents. Tome outputs are resolved against server recipes before inscription.
+
+On Forge/Fabric 1.20.1 and NeoForge/Fabric 1.21.1, the Nexus uses Polymorph's player recipe API, allowing its selector to choose between recipes with matching inputs. Automatic furnace jobs select their planned recipe through Polymorph when that furnace exposes Polymorph recipe data. If a furnace cannot select the planned conflicting output, the job fails with an explanation before inserting its input. Other versions retain the exact recipe chosen by a viewer, but do not have a Polymorph API adapter.
+
+Iron Furnaces recognition supports normal fuel-burning operation and its blasting/smoking augments. It waits for an augment's recipe type to update before accepting input. Factory and generator modes require a separate adapter. A generic inventory capability alone does not establish machine processing support; other machines need an existing adapter or a [datapack processing rule](crafting.md#datapack-machine-boundaries).
 
 The placed-rune editor and tome expose ordinary player slots so BNS can project its inventory browser. Normal clicks move inventory items; Shift-click copies a filter or tome output, and ingredient drops never consume the cursor stack. BNS sidebar backgrounds use the astral interface shader while these editors are open.
 
-Client checks used EMI 1.1.24+1.21.1, JEI 19.21.0.247, and BNS 1.4.5. See the [validation record](validation.md) for the tested boundaries.
+Ingredient-drop checks used EMI 1.1.24+1.21.1, JEI 19.21.0.247, and BNS 1.4.5. The new NeoForge 1.21.1 transfer checks ran EMI 1.1.24+1.21.1 and standalone JEI 19.52.0.421 separately with Polymorph 1.2.0+1.21.1. Current Polymorph requires JEI 19.52.0.421 or newer when JEI is installed. See the [validation record](validation.md) for the tested boundaries.
+
+The [cross-loader validation matrix](../ports/VALIDATION.md#recipe-compatibility-fixes-11113) records the additional packaged checks. As checked on 2026-10-28, the upstream EMI, Polymorph, and Qelifern Iron Furnaces projects have no matching 26.2/26.3 releases. JEI is tested on those editions. Iron Furnaces also has no matching upstream Fabric release for 1.20.1 or 1.21.1; Fabric furnace checks use actual vanilla furnaces.
 
 ## Astral Goggles and Curios
 

@@ -106,6 +106,12 @@ public final class NetworkManager {
         var manager=SERVERS.get(level.getServer());
         if(manager!=null&&!manager.stopping&&manager.sightChunks.contains(cell(GlobalPos.of(level.dimension(),pos),pos.getX()>>4,pos.getZ()>>4)))manager.invalidateSight();
     }
+    /** Rediscover ordinary block replacements without creating managers during world generation. */
+    public static void blockIdentityChanged(ServerLevel level,BlockPos pos){
+        if(!level.getServer().isSameThread())return;
+        var manager=SERVERS.get(level.getServer());
+        if(manager!=null&&!manager.stopping){manager.coverage.clear();manager.changedPositions.add(GlobalPos.of(level.dimension(),pos.immutable()));}
+    }
     private void invalidateSight(){coverage.clear();sight.clear();routes.clear();routeTrees.clear();preparedRouteTrees.invalidate();sightChunks.clear();topologyDirty=true;}
     private boolean visible(GlobalPos from,GlobalPos to){
         if(!from.dimension().equals(to.dimension()))return true; // Explicit dimensional bridges have no physical intervening blocks.

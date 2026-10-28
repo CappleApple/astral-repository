@@ -1,5 +1,40 @@
 # Port validation
 
+## Recipe compatibility fixes (1.11.13)
+
+All eight editions pass their normal builds and unit suites. The reported recipe-transfer and processing paths were also exercised in Minecraft on every edition, using matching published optional mods and separate profiles without those mods.
+
+| Target | Unit tests | Recipe viewers run separately | Polymorph / Iron Furnaces |
+| --- | ---: | --- | --- |
+| NeoForge 1.21.1 | 151 | EMI 1.1.24; JEI 19.52.0.421 | Polymorph 1.2.0; Iron Furnaces 4.3.2 |
+| Forge 1.20.1 | 151 | EMI 1.1.24; JEI 15.74.0.230 | Polymorph 0.49.11; Iron Furnaces 4.1.8 |
+| Fabric 1.20.1 | 151 | EMI 1.1.24; JEI 15.74.0.230 | Polymorph 0.49.11; no matching upstream Iron Furnaces release |
+| Fabric 1.21.1 | 151 | EMI 1.1.24; JEI 19.70.0.462 | Polymorph 1.2.0; no matching upstream Iron Furnaces release |
+| Fabric 26.2 | 152 | JEI 30.48.0.242 | No matching upstream Polymorph or Iron Furnaces releases |
+| Fabric 26.3 | 152 | JEI 31.17.0.95 | No matching upstream Polymorph or Iron Furnaces releases |
+| NeoForge 26.2 | 156 | JEI 30.48.0.242 | No matching upstream Polymorph or Iron Furnaces releases |
+| NeoForge 26.3 | 156 | JEI 31.17.0.95 | No matching upstream Polymorph or Iron Furnaces releases |
+
+Upstream availability was checked on 2026-10-28. EMI also has no matching 26.2/26.3 release. Required MezzConfig dependencies and exact downloaded files/hashes are recorded in the evidence manifests. No test substitutes a mod for a different Minecraft version.
+
+Packaged client checks receive 81 exact stored identities, hide the required ingredient with a search, retrieve the viewer's registered Nexus transfer handler, fill a real shaped recipe, and check ingredient conservation. Matching legacy profiles use Polymorph's actual widget and selection packets. Native result clicks and real furnace processing are checked with optional mods present and absent. Conflicting furnace recipes either use the installed Polymorph API or fail explicitly and return unconsumed inputs.
+
+Late-workstation tests wait for the initial coverage scan to finish, then place a furnace through ordinary world edits. Actual Nexus requests must discover it and consume real inputs and fuel. Modern Fabric retains a crafting table in the workshop and asserts that smelting, blasting, and smoking use the correct physical processor. This catches a missing refresh that previously let a table conversion be selected while the new furnace remained undiscovered. Furnace lit-state changes retain the running network and service.
+
+The expanded checks fixed missing `jei_mod_plugin` metadata on all Fabric editions, added the 1.20.1 Polymorph API bridge, corrected Forge's vanilla fuel fallback, and added guarded block-identity discovery notifications. The artifact collector now rejects missing Fabric recipe-viewer entrypoints. Test classes, conflict recipes, and optional test binaries are excluded from release JARs.
+
+Fabric checks use Loom production launches. Forge uses an installed Forge distribution with the reobfuscated release and a separate test mod. Modern NeoForge loads the release JAR through ModDev with production source folders removed; these are not retail-installer launches. Loaded class locations are checked against the release JAR. Original NeoForge uses development clients and 166 server GameTests; see its [validation record](../docs/validation.md#recipe-compatibility-fixes-11113). All clients run hidden, muted, and without capturing the mouse. These checks do not establish arbitrary-modpack compatibility or support Iron Furnaces factory/generator modes.
+
+Ignored local evidence:
+
+- `ports/forge-1.20.1/build/recipe-runtime/successful-manifest.json`
+- `build/recipe-runtime-legacy-fabric/matrix.json`
+- `build/modern-fabric-compat/matrix.json`
+- `build/recipe-cross-loader/neoforge-matrix.json`
+- `build/recipe-cross-loader/original-late-discovery.log` and `original-plain-final.log`
+
+The manifests include successful receipts, exact optional-mod versions, loaded-JAR provenance, hashes, normal build results, and exclusion audits. Failed attempts remain alongside the successful evidence. Forge's offline build used its existing cached mapped Curios artifact through an ignored local init script after the normal offline resolver failed.
+
 ## Fabric 1.20.1 shader compatibility - 1.11.12
 
 Validated on 2026-10-13 with Fabric Loader 0.19.5, Fabric API 0.92.12+1.20.1, and Java 17. The packaged client loaded Iris 1.7.6+mc1.20.1, Sodium 0.5.12-beta.2+mc1.20.1, Indium 1.0.36+mc1.20.1, and Complementary Unbound r5.9.3. The test launcher pins LWJGL 3.3.1 for this Sodium release.

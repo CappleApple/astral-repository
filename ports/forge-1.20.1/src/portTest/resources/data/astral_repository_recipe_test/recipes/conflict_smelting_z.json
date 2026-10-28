@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "ingredient": {
+    "item": "minecraft:dirt"
+  },
+  "result": {
+    "item": "minecraft:iron_nugget"
+  },
+  "experience": 0.0,
+  "cookingtime": 20
+}

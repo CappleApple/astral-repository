@@ -15,6 +15,7 @@ neoForge {
     }
     runs {
         configureEach {
+            if (project.hasProperty('recipeCompatTest')) systemProperty 'astral_repository.recipeCompatTest', 'true'
             if (project.hasProperty("curiosTest")) systemProperty "astral_repository.curiosTest", "true"
             if (project.hasProperty("patchouliTest") || project.hasProperty("compatTest")) systemProperty "astral_repository.patchouliTest", "true"
         }
@@ -36,6 +37,7 @@ neoForge {
             if (project.hasProperty('feedbackOnly')) systemProperty 'astral_repository.feedbackOnly', 'true'
             if (project.hasProperty('crystalStorageOnly')) systemProperty 'astral_repository.crystalStorageOnly', 'true'
             if (project.hasProperty('furnaceOnly')) systemProperty 'astral_repository.furnaceOnly', 'true'
+            if (project.hasProperty('recipeViewerOnly')) systemProperty 'astral_repository.recipeViewerOnly', 'true'
             if (project.hasProperty('bindingOnly')) systemProperty 'astral_repository.bindingOnly', 'true'
             if (project.hasProperty('editorOnly')) systemProperty 'astral_repository.editorOnly', 'true'
             if (project.hasProperty('wandOnly')) systemProperty 'astral_repository.wandOnly', 'true'
@@ -109,7 +111,7 @@ neoForge {
         }
         gameTestServer {
             type = 'gameTestServer'
-            gameDirectory = project.layout.projectDirectory.dir(project.hasProperty('compatTest') ? 'run-gametest-compat' : 'run-gametest')
+            gameDirectory = project.layout.projectDirectory.dir(project.hasProperty('recipeCompatTest') ? 'build/recipe-compat/gametest' : project.hasProperty('compatTest') ? 'run-gametest-compat' : 'run-gametest')
             if (project.hasProperty('compatTest')) systemProperty 'astral_repository.compatTest', 'true'
             systemProperty 'neoforge.enabledGameTestNamespaces', 'astral_repository,minecraft'
         }
@@ -124,6 +126,8 @@ repositories {
     maven { url = "https://maven.terraformersmc.com/releases" }
 }
 dependencies {
+    if (project.hasProperty('recipeCompatTest'))
+        runtimeOnly fileTree(dir: 'test-libs/recipe-compat', include: ['*.jar'], exclude: ['*-sources.jar'])
     if (project.hasProperty('lithiumTest') || project.hasProperty('performanceClientTest'))
         runtimeOnly fileTree(dir: 'test-libs/performance', include: ['lithium-*.jar'])
     if (project.hasProperty('performanceClientTest'))
@@ -134,7 +138,10 @@ dependencies {
     compileOnly "mezz.jei:jei-1.21.1-common-api:19.21.0.247"
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:19.21.0.247"
     compileOnly "dev.emi:emi-neoforge:1.1.24+1.21.1:api"
-    if(project.hasProperty("jeiTest")) runtimeOnly "mezz.jei:jei-1.21.1-neoforge:19.21.0.247"
+    if(project.hasProperty('jeiTest')) {
+        if(project.hasProperty('recipeCompatTest')) runtimeOnly files('test-libs/recipe-viewers/jei-1.21.1-neoforge-19.52.0.421.jar')
+        else runtimeOnly 'mezz.jei:jei-1.21.1-neoforge:19.21.0.247'
+    }
     if(project.hasProperty("emiTest")) runtimeOnly "dev.emi:emi-neoforge:1.1.24+1.21.1"
 
     compileOnly "vazkii.patchouli:Patchouli:1.21.1-93-NEOFORGE"
@@ -158,6 +165,8 @@ tasks.named('processResources').configure {
     filesMatching('META-INF/neoforge.mods.toml') { expand version: buildVersion }
 }
 tasks.named('jar', Jar).configure { exclude 'com/cappleapple/astralrepository/gametest/**'; exclude 'data/astral_repository/structure/empty_workshop.nbt'; exclude 'data/astral_repository/structure/empty_geode.nbt' }
+if (project.hasProperty('recipeCompatTest')) sourceSets.main.resources.srcDir 'src/testFixtures/recipe-compat-datapack'
+tasks.named('jar', Jar).configure { exclude 'data/astral_repository_recipe_test/**' }
 
 
 
