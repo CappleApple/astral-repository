@@ -7,3 +7,8 @@ run*/
 *.log
 __pycache__/
 *.pyc
+
+test-libs/
+logs/
+# Local architecture context; do not publish.
+/docs/CURRENT_STATE.md

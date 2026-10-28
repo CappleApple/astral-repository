@@ -2,7 +2,10 @@
 
 A magical storage and automation network: place crystals around a workshop, teach a bookshelf the products you want, and let the network find storage, route resources, and coordinate ordinary workstations.
 
-This branch builds Astral Repository **1.11.11** for **Minecraft 26.2**, **NeoForge 26.2.0.88 or newer within Minecraft 26.2**, and **Java 25**. Install the matching JAR on both the client and server. No additional mod is required.
+This branch builds Astral Repository **1.11.13** for **Minecraft 26.2**, **NeoForge 26.2.0.88 or newer within Minecraft 26.2**, and **Java 25**. Install the matching JAR on both the client and server. No additional mod is required.
+
+
+JEI recipe fills include stored ingredients outside the current page or search. Workstations placed after the initial scan are discovered without restarting the network. See the [changelog](CHANGELOG.md) for this release's fixes.
 
 ## Building
 
@@ -14,13 +17,13 @@ Use Java 25 to run the included Gradle wrapper:
 
 On Linux or macOS, use `./gradlew test build`.
 
-The installable JAR is `build/libs/astral_repository-26.2-neoforge-1.11.11.jar`.
+The installable JAR is `build/libs/astral_repository-26.2-neoforge-1.11.13.jar`.
 
 ## Source and validation
 
 The Java implementation and tests are in `src/main/java` and `src/test/java`. Resources are in `src/main/resources`.
 
-The project contains 151 unit tests. Development runtime checks are available as `runServer -PsmokeTest` and `runClientSmoke -PclientSmoke`; the client fixture is compiled only when requested. Test fixtures are excluded from the release JAR. Server runs require accepting Minecraft's EULA in `run-server/eula.txt`.
+The project contains 156 unit tests. Development runtime checks are available as `runServer -PsmokeTest` and `runClientSmoke -PclientSmoke`; the client fixture is compiled only when requested. Test fixtures are excluded from the release JAR. Server runs require accepting Minecraft's EULA in `run-server/eula.txt`.
 
 The [packaged validation launcher](tools/neoforge-packaged-validation.gradle) runs the built release JAR with a separate fixture directory and removes the production source output directories from the runtime classpath. For a background client run, first disable NeoForge's early startup window:
 
