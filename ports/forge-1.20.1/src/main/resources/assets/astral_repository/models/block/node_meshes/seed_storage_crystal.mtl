@@ -2,9 +2,11 @@
 
 newmtl node_stone
 map_Kd astral_repository:block/node_stone
+forge_TintIndex -1
 
 newmtl node_trim
 map_Kd astral_repository:block/node_trim
+forge_TintIndex -1
 
 newmtl node_crystal
 map_Kd astral_repository:block/node_crystal

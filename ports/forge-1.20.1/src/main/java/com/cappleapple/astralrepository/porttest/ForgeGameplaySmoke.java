@@ -31,7 +31,7 @@ public final class ForgeGameplaySmoke {
     private static final BlockPos NEXUS=new BlockPos(0,-60,0), STORAGE=new BlockPos(2,-60,0), CHEST=new BlockPos(4,-60,2);
     private static int phase,ticks;
     private static long craftingLogs;
-    private static boolean done;
+    private static boolean done, cloudDepthChecked;
     private static CompletableFuture<Void> pending;
     @net.minecraftforge.eventbus.api.SubscribeEvent public static void event(net.minecraftforge.event.TickEvent.ClientTickEvent event){if(event.phase==net.minecraftforge.event.TickEvent.Phase.END)tick(Minecraft.getInstance());}
     private static void tick(Minecraft mc){
@@ -45,7 +45,14 @@ public final class ForgeGameplaySmoke {
                 next(1);mc.createWorldOpenFlows().createFreshLevel("astral-gameplay-"+System.currentTimeMillis(),new LevelSettings("Astral gameplay",GameType.CREATIVE,false,Difficulty.PEACEFUL,true,new GameRules(),WorldDataConfiguration.DEFAULT),new WorldOptions(42,false,false),r->r.registryOrThrow(Registries.WORLD_PRESET).getHolderOrThrow(WorldPresets.FLAT).value().createWorldDimensions());
             }else if(phase==1&&mc.player!=null&&mc.level!=null&&mc.getSingleplayerServer()!=null&&mc.getOverlay()==null){mc.setScreen(null);server(ForgeGameplaySmoke::workshop);next(2);
             }else if(phase==2&&ticks>100){
-                CloudDepthClientSmoke.verify();
+                if (!cloudDepthChecked) {
+                    CloudDepthClientSmoke.verify();
+                    NodeMaterialClientCheck.verify();
+                    cloudDepthChecked = true;
+                    // Let the world render again after the synthetic GPU fixture.
+                    ticks = 0;
+                    return;
+                }
                 for(var entry:AstralContent.ITEMS.getEntries()){
                     var stack=new ItemStack(entry.get());String key=stack.getDescriptionId();
                     check(net.minecraft.client.resources.language.I18n.exists(key)&&!stack.getHoverName().getString().equals(key),"Untranslated item "+entry.getId()+": "+key);

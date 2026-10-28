@@ -7,6 +7,13 @@
 - Fixed invisible geodes and crystal surfaces with Iris shader packs enabled. Astral materials use their ordinary textures while a shader pack is active and restore the procedural effect when shaders are disabled.
 - Artifact collection now selects each edition's declared version, so a fix for one edition includes its updated JAR.
 
+## 1.11.12 - 2026-09-26
+
+### Fixed
+
+- Forge 1.20.1 now applies the astral shader only to crystal surfaces on network blocks and their items, preserving stone, trim, and channel accents.
+- Restored missing Forge 1.20.1 node mesh parts caused by OBJ object names overwriting one another.
+
 ## 1.11.11 - 2026-09-20
 
 ### Fixed
