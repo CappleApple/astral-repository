@@ -396,7 +396,7 @@ public final class AstralNetwork implements NetworkAccess {
         if(!movingVisualsObserved(from))return;
         var route=manager.route(from,to,nodes.get(0).channel(),range);
         // Fuel and recipe inputs arrive together. A separate fuel port keeps both visible.
-        TransferVisuals.Endpoint arrival=!stack.isEmpty()&&stack.getBurnTime(net.minecraft.world.item.crafting.RecipeType.SMELTING)>0?furnacePort(to):null;
+        TransferVisuals.Endpoint arrival=!stack.isEmpty()&&net.minecraftforge.common.ForgeHooks.getBurnTime(stack,net.minecraft.world.item.crafting.RecipeType.SMELTING)>0?furnacePort(to):null;
         TransferVisuals.send(server,route,stack,color(nodes.get(0)),style,furnacePort(from),arrival,fluid);
     }
     private boolean movingVisualsObserved(GlobalPos from){
