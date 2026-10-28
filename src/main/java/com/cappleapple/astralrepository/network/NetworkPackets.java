@@ -28,6 +28,23 @@ public final class NetworkPackets {
         public static final StreamCodec<FriendlyByteBuf,Action> CODEC=StreamCodec.of((b,p)->{b.writeVarInt(p.menu);b.writeVarLong(p.request);b.writeVarInt(p.kind);com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.encode(b,p.stack);b.writeVarInt(p.amount);b.writeVarInt(p.row);b.writeUtf(p.query,128);},b->{int menu=b.readVarInt();long request=b.readVarLong();return new Action(menu,b.readVarInt(),com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.decode(b),b.readVarInt(),b.readVarInt(),b.readUtf(128),request);});
         @Override public Type<Action> type(){return TYPE;}
     }
+    public record FillRecipe(int menu,ResourceLocation recipe,int amount) implements CustomPacketPayload {
+        public static final Type<FillRecipe> TYPE=NetworkPackets.type("fill_recipe");
+        public static final StreamCodec<FriendlyByteBuf,FillRecipe> CODEC=StreamCodec.of((b,p)->{b.writeVarInt(p.menu);b.writeResourceLocation(p.recipe);b.writeVarInt(p.amount);},b->new FillRecipe(b.readVarInt(),b.readResourceLocation(),b.readVarInt()));
+        @Override public Type<FillRecipe> type(){return TYPE;}
+    }
+    public record RecipeInventoryRequest(int menu) implements CustomPacketPayload {
+        public static final Type<RecipeInventoryRequest> TYPE=NetworkPackets.type("recipe_inventory_request");
+        public static final StreamCodec<FriendlyByteBuf,RecipeInventoryRequest> CODEC=StreamCodec.of((b,p)->b.writeVarInt(p.menu),b->new RecipeInventoryRequest(b.readVarInt()));
+        @Override public Type<RecipeInventoryRequest> type(){return TYPE;}
+    }
+    /** A bounded inventory delta; the client publishes a revision after its final chunk. */
+    public record RecipeInventory(int menu,long revision,boolean reset,boolean clear,boolean complete,List<NexusMenu.Entry> entries) implements CustomPacketPayload {
+        public RecipeInventory {entries=List.copyOf(entries);if(entries.size()>WINDOW_SIZE||entries.stream().anyMatch(e->e.stack().isEmpty()||e.count()<0))throw new IllegalArgumentException("Invalid recipe inventory chunk");}
+        public static final Type<RecipeInventory> TYPE=NetworkPackets.type("recipe_inventory");
+        public static final StreamCodec<FriendlyByteBuf,RecipeInventory> CODEC=StreamCodec.of((b,p)->{b.writeVarInt(p.menu);b.writeVarLong(p.revision);b.writeBoolean(p.reset);b.writeBoolean(p.clear);b.writeBoolean(p.complete);b.writeVarInt(p.entries.size());for(var e:p.entries){com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.encode(b,e.stack());b.writeVarLong(e.count());}},b->{int menu=b.readVarInt();long revision=b.readVarLong();boolean reset=b.readBoolean(),clear=b.readBoolean(),complete=b.readBoolean();int count=size(b,WINDOW_SIZE);List<NexusMenu.Entry> entries=new ArrayList<>();for(int i=0;i<count;i++)entries.add(new NexusMenu.Entry(com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.decode(b),b.readVarLong(),false));return new RecipeInventory(menu,revision,reset,clear,complete,entries);});
+        @Override public Type<RecipeInventory> type(){return TYPE;}
+    }
     public enum JobState { WAITING, RUNNING, EXTERNAL, COMPLETE, FAILED, CANCELLED, CALCULATING, MISSING;
         public boolean terminal(){return this==COMPLETE||this==FAILED||this==CANCELLED;}
     }
@@ -134,8 +151,11 @@ public final class NetworkPackets {
     }
     public static void setup(IEventBus bus) { register(new RegisterPayloadHandlersEvent()); }
     private static void register(RegisterPayloadHandlersEvent event) {
-        var r=event.registrar("8");
+        var r=event.registrar("9");
         r.playToServer(Action.TYPE,Action.CODEC,(payload,context)-> { if(context.player() instanceof ServerPlayer p && p.containerMenu instanceof NexusMenu menu && menu.containerId==payload.menu) menu.action(payload); });
+        r.playToServer(FillRecipe.TYPE,FillRecipe.CODEC,(payload,context)-> { if(context.player() instanceof ServerPlayer p && p.containerMenu instanceof NexusMenu menu && menu.containerId==payload.menu) menu.fillRecipe(payload); });
+        r.playToServer(RecipeInventoryRequest.TYPE,RecipeInventoryRequest.CODEC,(payload,context)-> { if(context.player() instanceof ServerPlayer p && p.containerMenu instanceof NexusMenu menu && menu.containerId==payload.menu) menu.subscribeRecipeInventory(); });
+        r.playToClient(RecipeInventory.TYPE,RecipeInventory.CODEC,(payload,context)-> { if(context.player().containerMenu instanceof NexusMenu menu)menu.acceptRecipeInventory(payload); });
         r.playToServer(CancelJob.TYPE,CancelJob.CODEC,(payload,context)-> { if(context.player() instanceof ServerPlayer p && p.containerMenu instanceof NexusMenu menu && menu.containerId==payload.menu) menu.cancelJob(payload); });
         r.playToClient(Page.TYPE,Page.CODEC,(payload,context)->{if(context.player().containerMenu instanceof NexusMenu menu&&menu.acceptPage(payload))pageReceiver.accept(payload);});
         r.playToClient(Delta.TYPE,Delta.CODEC,(payload,context)->{if(context.player().containerMenu instanceof NexusMenu menu){Page page=reconstruct(menu.currentPage(),payload);if(page!=null&&menu.acceptPage(page))pageReceiver.accept(page);}});

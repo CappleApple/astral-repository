@@ -17,12 +17,28 @@ public final class AstralEmiPlugin implements EmiPlugin {
         registered=true;registry.addDragDropHandler(RuneSettingsScreen.class,new Handler<>());
         registry.addDragDropHandler(RecipeTomeScreen.class,new Handler<>());
         registry.addDragDropHandler(WandScreen.class,new Handler<>());
+        registry.addRecipeHandler(com.cappleapple.astralrepository.AstralRepository.NEXUS_MENU.get(),new RecipeHandler());
     }
     public static void refreshPowerVisibility(){
         if(!registered)return;
         // EMI 1.1.24 exposes filtering during registration but no public runtime reload API.
         try{OptionalApi.call(null,"dev.emi.emi.runtime.EmiReloadManager","reload");}
         catch(RuntimeException failure){com.cappleapple.astralrepository.AstralRepository.LOGGER.warn("Could not refresh EMI after the server power setting changed",failure);}
+    }
+    public static final class RecipeHandler implements dev.emi.emi.api.recipe.handler.EmiRecipeHandler<com.cappleapple.astralrepository.menu.NexusMenu>{
+        @Override public dev.emi.emi.api.recipe.EmiPlayerInventory getInventory(net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<com.cappleapple.astralrepository.menu.NexusMenu> screen){
+            return new dev.emi.emi.api.recipe.EmiPlayerInventory(RecipeTransfers.inventory(screen.getMenu()).entrySet().stream().map(entry->EmiStack.of(entry.getKey().sample()).setAmount(entry.getValue())).toList());
+        }
+        @Override public boolean supportsRecipe(dev.emi.emi.api.recipe.EmiRecipe recipe){
+            var backing=recipe.getBackingRecipe();return backing!=null&&backing instanceof net.minecraft.world.item.crafting.CraftingRecipe crafting&&RecipeTransfers.supports(crafting);
+        }
+        @Override public boolean canCraft(dev.emi.emi.api.recipe.EmiRecipe recipe,dev.emi.emi.api.recipe.handler.EmiCraftContext<com.cappleapple.astralrepository.menu.NexusMenu> context){
+            var backing=recipe.getBackingRecipe();return supportsRecipe(recipe)&&RecipeTransfers.canFill(context.getScreenHandler(),(net.minecraft.world.item.crafting.CraftingRecipe)backing);
+        }
+        @Override public boolean craft(dev.emi.emi.api.recipe.EmiRecipe recipe,dev.emi.emi.api.recipe.handler.EmiCraftContext<com.cappleapple.astralrepository.menu.NexusMenu> context){
+            if(!canCraft(recipe,context))return false;
+            RecipeTransfers.fill(context.getScreenHandler(),recipe.getBackingRecipe().getId(),context.getAmount());return true;
+        }
     }
     public static final class Handler<T extends Screen & GhostIngredientScreen> implements EmiDragDropHandler<T>{
         @Override public boolean dropStack(T screen,EmiIngredient ingredient,int x,int y){
