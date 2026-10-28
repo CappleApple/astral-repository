@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
-version = '1.11.11'
+version = '1.11.13'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-fabric-1.21.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -130,3 +130,5 @@ tasks.register('productionRuneTransitSmoke', net.fabricmc.loom.task.prod.ServerP
         if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException("Production rune transit regression failed: ${result.isFile() ? result.text : 'no result'}")
     }
 }
+
+apply from: 'tools/fabric-legacy-recipe-validation.gradle'

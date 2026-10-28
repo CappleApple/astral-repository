@@ -16,6 +16,9 @@
     ],
     "jade": [
       "com.cappleapple.astralrepository.compat.AstralJadePlugin"
+    ],
+    "jei_mod_plugin": [
+      "com.cappleapple.astralrepository.compat.AstralJeiPlugin"
     ]
   },
   "mixins": [
