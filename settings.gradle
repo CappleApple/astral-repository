@@ -2,4 +2,4 @@ pluginManagement {
     repositories { gradlePluginPortal(); maven { url = 'https://maven.neoforged.net/releases' } }
 }
 plugins { id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0' }
-rootProject.name = 'astral-repository-26.3-neoforge'
+rootProject.name = 'astral-repository-neoforge-26.3'

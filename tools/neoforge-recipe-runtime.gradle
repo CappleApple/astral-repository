@@ -1,0 +1,23 @@
+// Isolated fixture for the actual release JAR, with and without the installed recipe viewer.
+if (project.hasProperty('recipeRuntime')) {
+    if (!project.hasProperty('clientSmoke')) throw new GradleException('recipeRuntime requires clientSmoke to compile the separate fixture.')
+    if (project.hasProperty('recipeViewer')) dependencies {
+        runtimeOnly fileTree(dir: 'build/recipe-runtime-mods', include: ['*.jar'])
+    }
+    def recipeDirectory = layout.projectDirectory.dir(project.hasProperty('recipeViewer') ? 'build/recipe-runtime-jei' : 'build/recipe-runtime-plain')
+    neoForge.runs.named('clientSmoke').configure { gameDirectory = recipeDirectory }
+    tasks.named('runClientSmoke').configure {
+        systemProperty 'astral_repository.recipeRuntime', 'true'
+        systemProperty 'astral_repository.expectJei', project.hasProperty('recipeViewer').toString()
+        doFirst {
+            def directory = recipeDirectory.asFile
+            new File(directory, 'config').mkdirs()
+            new File(directory, 'config/fml.toml').text = 'earlyWindowControl=false\n'
+            new File(directory, 'options.txt').text = 'onboardAccessibility:false\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:3\nmaxAnisotropyBit:1\ntextureFiltering:1\n'
+        }
+        doLast {
+            def result = new File(recipeDirectory.asFile, 'captures/recipe-runtime-result.txt')
+            if (!result.isFile() || !result.text.startsWith('PASS:')) throw new GradleException('Recipe runtime failed: ' + (result.isFile() ? result.text : 'no result'))
+        }
+    }
+}

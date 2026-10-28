@@ -7,6 +7,7 @@ group = 'com.cappleapple.astralrepository'
 base { archivesName = "astral_repository-${minecraft_version}-neoforge" }
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 sourceSets {
+    if(project.hasProperty('clientSmoke')) main.java.srcDir('src/clientSmoke/java')
     test { java.srcDirs = ['src/test/java'] }
     main {
         java.srcDirs = ['src/main/java']
@@ -52,7 +53,7 @@ tasks.named('jar', Jar).configure { exclude 'com/cappleapple/astralrepository/sm
 tasks.named('test', Test).configure { useJUnitPlatform(); maxHeapSize = '2G' }
 
 ext.modernCommonSource = "src/main/java"
-ext.modernClientSmokeSource = "src/clientSmoke/java"
 apply from: "tools/modern-26.3.gradle"
 
 tasks.named('jar') { from('LICENSE') }
+apply from: 'tools/neoforge-recipe-runtime.gradle'
