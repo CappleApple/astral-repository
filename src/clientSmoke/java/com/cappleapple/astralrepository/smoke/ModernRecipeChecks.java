@@ -198,6 +198,30 @@ final class ModernRecipeChecks {
             var runtime=runtime();var category=runtime.getRecipeManager().getRecipeCategory(mezz.jei.api.constants.RecipeTypes.CRAFTING);
             var handler=runtime.getRecipeTransferManager().getRecipeTransferHandler(screen.getMenu(),category).orElseThrow();check(handler instanceof com.cappleapple.astralrepository.compat.AstralJeiPlugin.RecipeHandler,"Actual JEI runtime did not register the Nexus handler");
             var recipe=runtime.getRecipeManager().createRecipeLookup(mezz.jei.api.constants.RecipeTypes.CRAFTING).get().filter(r->r.id().identifier().equals(Identifier.withDefaultNamespace("iron_trapdoor"))).findFirst().orElseThrow();
+            var menu=screen.getMenu();var stock=RecipeTransfers.inventory(menu);
+            for(int i=0;i<1000;i++){
+                check(handler.transferRecipe(menu,recipe,null,Minecraft.getInstance().player,false,false)==null,"Repeated JEI availability changed");
+                check(RecipeTransfers.inventory(menu)==stock,"Unchanged JEI availability rebuilt client stock");
+            }
+            var previous=menu.slots.get(10).getItem().copy();var carried=menu.getCarried().copy();
+            try{
+                menu.slots.get(10).set(new ItemStack(Items.GOLD_INGOT,3));
+                var local=RecipeTransfers.inventory(menu);check(local!=stock&&local.getOrDefault(key(Items.GOLD_INGOT),0L)==3,"Local slot did not invalidate cached stock");
+                menu.slots.get(10).getItem().setCount(2);
+                var counted=RecipeTransfers.inventory(menu);check(counted!=local&&counted.getOrDefault(key(Items.GOLD_INGOT),0L)==2,"In-place local count did not invalidate cached stock");
+                menu.slots.get(10).getItem().set(DataComponents.CUSTOM_NAME,Component.literal("Availability identity"));
+                var named=new ItemKey(menu.slots.get(10).getItem());var components=RecipeTransfers.inventory(menu);
+                check(components!=counted&&components.getOrDefault(named,0L)==2&&components.getOrDefault(key(Items.GOLD_INGOT),0L)==0,"Local components were merged into a different exact identity");
+                var blocks=runtime.getRecipeManager().createRecipeLookup(mezz.jei.api.constants.RecipeTypes.CRAFTING).get().filter(r->r.id().identifier().equals(Identifier.withDefaultNamespace("gold_block"))).findFirst().orElseThrow();
+                check(handler.transferRecipe(menu,blocks,null,Minecraft.getInstance().player,false,false)!=null,"Two local ingots unexpectedly satisfied nine slots");
+                menu.setCarried(new ItemStack(Items.GOLD_INGOT,6));
+                var cursor=RecipeTransfers.inventory(menu);check(cursor!=components&&cursor.getOrDefault(key(Items.GOLD_INGOT),0L)==0,"Cursor was counted inside EMI constructor input stock");
+                check(handler.transferRecipe(menu,blocks,null,Minecraft.getInstance().player,false,false)!=null,"Cursor counted twice in JEI availability");
+                menu.getCarried().setCount(7);
+                check(handler.transferRecipe(menu,blocks,null,Minecraft.getInstance().player,false,false)==null,"Cursor count change did not invalidate a cached negative recipe answer");
+                check(RecipeTransfers.inventory(menu)!=cursor,"Cursor count change reused stale stock");
+            }finally{menu.slots.get(10).set(previous);menu.setCarried(carried);}
+            pass("registered JEI handler reuses stock for 1000 checks; local counts, exact components, and cursor changes invalidate availability without double counting");
             check(handler.transferRecipe(screen.getMenu(),recipe,null,Minecraft.getInstance().player,false,false)==null,"JEI reported stored ingredients missing");check(handler.transferRecipe(screen.getMenu(),recipe,null,Minecraft.getInstance().player,false,true)==null,"JEI rejected actual recipe transfer");
         }
     }
