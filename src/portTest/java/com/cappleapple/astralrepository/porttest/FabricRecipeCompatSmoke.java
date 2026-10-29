@@ -25,8 +25,13 @@ import java.util.function.Consumer;
 
 /** Real client/server transfer check; run separately with EMI and standalone JEI. */
 public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientModInitializer {
-    private static boolean worldStarting,transferDone,completed,manualClicked,manualVerified;
+    private static boolean worldStarting,transferDone,completed,manualClicked;
+    private static volatile boolean manualVerified;
     private static int runtimeTicks;
+    private static int cacheNetworkStep;
+    private static java.util.Map<ItemKey,Long> cacheNetworkBefore;
+    private static Object cacheViewerBefore;
+    private static ItemStack cacheHeldIron=ItemStack.EMPTY;
     private static volatile boolean jobsDone;
     private static com.cappleapple.astralrepository.crafting.CraftingService service;
     private static JobAccess jobAccess;
@@ -52,6 +57,8 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
                     }else if(manualClicked&&!manualVerified&&mc.player.containerMenu.getCarried().is(FabricLoader.getInstance().isModLoaded("polymorph")?Items.IRON_NUGGET:Items.IRON_TRAPDOOR)){
                         manualVerified=true;server(p->{
                             var menu=(com.cappleapple.astralrepository.menu.NexusMenu)p.containerMenu;
+                            // The local click predicts the cursor before its packet runs on the server.
+                            if(menu.getCarried().isEmpty()){manualVerified=false;return;}
                             check(menu.getCarried().getCount()==1,"Native result pickup has the wrong count");
                             if(FabricLoader.getInstance().isModLoaded("polymorph"))check(menu.grid.isEmpty(),"Selected conflicting native craft did not consume the dandelion");
                             else check(menu.network().snapshot().getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)),0L)==0,"Native recipe refill did not withdraw the four remaining real iron");
@@ -208,9 +215,12 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
             next(3);
         } else if (phase == 3 && mc.screen instanceof NexusScreen screen && ticks > 20) {
             var stock = screen.getMenu().recipeInventory();
-            if (stock.size() < 81) return false;
-            check(stock.getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)), 0L) == 8, "Off-page iron is absent from recipe availability");
+            if (cacheNetworkStep==0) {
+                if (stock.size() < 81) return false;
+                check(stock.getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)), 0L) == 8, "Off-page iron is absent from recipe availability");
+            }
             check(screen.getMenu().entries.stream().noneMatch(e -> e.stack().is(Items.IRON_INGOT)), "Search did not hide the ingredient");
+            if (!checkCacheNetworkChanges(screen)) return false;
             if (FabricLoader.getInstance().isModLoaded("emi")) Emi.fill(screen);
             else if (FabricLoader.getInstance().isModLoaded("jei")) Jei.fill(screen);
             else RecipeTransfers.fill(screen.getMenu(),RECIPE,1);
@@ -262,12 +272,61 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
         return false;
     }
 
+    private static boolean checkCacheNetworkChanges(NexusScreen screen)throws Exception {
+        var menu=screen.getMenu();var iron=new ItemKey(new ItemStack(Items.IRON_INGOT));
+        var recipe=(CraftingRecipe)Minecraft.getInstance().level.getRecipeManager().byKey(RECIPE).orElseThrow();
+        if(cacheNetworkStep==0){
+            var initial=RecipeTransfers.inventory(menu);
+            for(int repeat=0;repeat<200;repeat++)check(RecipeTransfers.inventory(menu)==initial&&RecipeTransfers.canFill(menu,recipe),"Stable availability changed or rebuilt its inventory");
+            try{initial.put(iron,0L);throw new AssertionError("Cached stock must be immutable");}catch(UnsupportedOperationException expected){}
+            menu.grid.setItem(0,new ItemStack(Items.IRON_INGOT));
+            var localOne=RecipeTransfers.inventory(menu);check(localOne!=initial&&localOne.get(iron)==9,"Local stack did not invalidate stock");
+            Object first=viewerInventory(screen);
+            menu.grid.getItem(0).setCount(2);
+            var localTwo=RecipeTransfers.inventory(menu);check(localTwo!=localOne&&localTwo.get(iron)==10,"In-place local count change did not invalidate stock");
+            changedViewer(screen,first,"local count");first=viewerInventory(screen);
+            nameProbe(menu.grid.getItem(0));
+            var localNamed=RecipeTransfers.inventory(menu);check(localNamed!=localTwo&&localNamed.get(iron)==8,"In-place local components did not invalidate stock");
+            changedViewer(screen,first,"local components");menu.grid.setItem(0,ItemStack.EMPTY);
+            menu.setCarried(new ItemStack(Items.IRON_INGOT));
+            var cursorOne=RecipeTransfers.inventory(menu);check(cursorOne.get(iron)==8,"Cursor was double-counted in the viewer stock map");first=viewerInventory(screen);
+            menu.getCarried().setCount(2);
+            var cursorTwo=RecipeTransfers.inventory(menu);check(cursorTwo!=cursorOne&&cursorTwo.get(iron)==8,"In-place cursor count did not invalidate stock");
+            changedViewer(screen,first,"cursor count");first=viewerInventory(screen);nameProbe(menu.getCarried());
+            check(RecipeTransfers.inventory(menu)!=cursorTwo,"In-place cursor components did not invalidate stock");changedViewer(screen,first,"cursor components");
+            menu.setCarried(ItemStack.EMPTY);
+            cacheNetworkBefore=RecipeTransfers.inventory(menu);cacheViewerBefore=viewerInventory(screen);cacheNetworkStep=1;
+            server(p->{
+                var storage=(CrystalNodeBlockEntity)p.serverLevel().getBlockEntity(STORE);
+                for(int slot=0;slot<storage.inventory().getSlots();slot++)if(storage.inventory().getStackInSlot(slot).is(Items.IRON_INGOT)){
+                    cacheHeldIron=storage.inventory().extractItem(slot,8,false);break;
+                }
+                check(cacheHeldIron.is(Items.IRON_INGOT)&&cacheHeldIron.getCount()==8,"Cache fixture did not retain exactly eight real iron");
+            });return false;
+        }
+        if(cacheNetworkStep==1){
+            var current=RecipeTransfers.inventory(menu);if(current.getOrDefault(iron,0L)!=0)return false;
+            check(current!=cacheNetworkBefore&&cacheNetworkBefore.get(iron)==8,"Committed removal failed snapshot replacement/detachment");
+            check(!RecipeTransfers.canFill(menu,recipe),"Removed real ingredients stayed craftable in cache");changedViewer(screen,cacheViewerBefore,"committed network removal");
+            cacheNetworkBefore=current;cacheViewerBefore=viewerInventory(screen);cacheNetworkStep=2;
+            server(p->{var storage=(CrystalNodeBlockEntity)p.serverLevel().getBlockEntity(STORE);check(com.cappleapple.astralrepository.platform.items.ItemHandlerHelper.insertItem(storage.inventory(),cacheHeldIron,false).isEmpty(),"Cache fixture could not restore the original iron");cacheHeldIron=ItemStack.EMPTY;});return false;
+        }
+        if(cacheNetworkStep==2){
+            var current=RecipeTransfers.inventory(menu);if(current.getOrDefault(iron,0L)!=8)return false;
+            check(current!=cacheNetworkBefore&&RecipeTransfers.canFill(menu,recipe),"Restored real ingredients stayed uncraftable in cache");changedViewer(screen,cacheViewerBefore,"committed network restoration");cacheNetworkStep=3;
+        }
+        return true;
+    }
+    private static void nameProbe(ItemStack stack){stack.setHoverName(net.minecraft.network.chat.Component.literal("cache probe"));}
+    private static Object viewerInventory(NexusScreen screen)throws Exception{return FabricLoader.getInstance().isModLoaded("emi")?Emi.handler(screen).getInventory(screen):null;}
+    private static void changedViewer(NexusScreen screen,Object before,String reason)throws Exception {if(before!=null)check(viewerInventory(screen)!=before,"EMI retained stale inventory after "+reason);}
+
     private static boolean finish() throws Exception {
             var mc = Minecraft.getInstance();
             check(!mc.mouseHandler.isMouseGrabbed(), "Test client grabbed the mouse");
             check(mc.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER) == 0, "Test client audio is not muted");
             Files.createDirectories(OUT);
-            Files.writeString(OUT.resolve("result.txt"), "PASS: " + viewer() + " availability includes 81 stored identities beyond the 54-entry page; hidden iron fills an actual shaped recipe through the server packet, preserving all eight iron across storage/grid."
+            Files.writeString(OUT.resolve("result.txt"), "PASS: " + viewer() + " availability includes 81 stored identities beyond the 54-entry page; hidden iron fills an actual shaped recipe through the server packet, preserving all eight iron across storage/grid. Stable cached checks and local count, component, cursor and real committed network removal/restoration invalidation pass."
                     + (FabricLoader.getInstance().isModLoaded("polymorph") ? " Polymorph's actual Nexus widget selects both conflicting outputs without consuming ingredients." : "") + "\n");
             return true;
     }
@@ -289,10 +348,13 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
     }
 
     private static final class Emi {
-        static void fill(NexusScreen screen) throws Exception {
+        static com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler handler(NexusScreen screen)throws Exception {
             var registry=Class.forName("dev.emi.emi.registry.EmiRecipeFiller");
             var handlers=(java.util.List<?>)registry.getMethod("getAllHandlers",net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class).invoke(null,screen);
-            var handler=(com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler)handlers.stream().filter(h->h instanceof com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler).findFirst().orElseThrow(()->new AssertionError("EMI did not register the Nexus handler"));
+            return (com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler)handlers.stream().filter(h->h instanceof com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler).findFirst().orElseThrow(()->new AssertionError("EMI did not register the Nexus handler"));
+        }
+        static void fill(NexusScreen screen) throws Exception {
+            var handler=handler(screen);
             var recipe = dev.emi.emi.api.EmiApi.getRecipeManager().getRecipes().stream()
                     .filter(r -> r.getBackingRecipe() != null && r.getBackingRecipe().getId().equals(RECIPE)).findFirst().orElseThrow();
             var inventory = handler.getInventory(screen);
@@ -300,6 +362,7 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
                     dev.emi.emi.api.recipe.handler.EmiCraftContext.Type.FILL_BUTTON,
                     dev.emi.emi.api.recipe.handler.EmiCraftContext.Destination.NONE, 1);
             check(handler.supportsRecipe(recipe) && handler.canCraft(recipe, context), "EMI disabled quick fill despite available network ingredients");
+            for(int repeat=0;repeat<200;repeat++)check(handler.getInventory(screen)==inventory&&inventory.isEqual(inventory)&&handler.canCraft(recipe,context),"Registered EMI handler did not reuse stable inventory/availability");
             check(handler.craft(recipe, context), "EMI quick-fill handler rejected recipe");
         }
     }
@@ -319,6 +382,7 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
             var recipe = (CraftingRecipe) Minecraft.getInstance().level.getRecipeManager().byKey(RECIPE).orElseThrow();
             check(handler.transferRecipe(screen.getMenu(), recipe, null, Minecraft.getInstance().player, false, false) == null,
                     "JEI disabled quick fill despite available network ingredients");
+            for(int repeat=0;repeat<200;repeat++)check(handler.transferRecipe(screen.getMenu(),recipe,null,Minecraft.getInstance().player,false,false)==null,"Registered JEI stable availability changed");
             check(handler.transferRecipe(screen.getMenu(), recipe, null, Minecraft.getInstance().player, false, true) == null,
                     "JEI quick-fill handler rejected recipe");
         }
