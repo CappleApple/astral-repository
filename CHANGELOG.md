@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.14 - 2026-10-29
+
+### Fixed
+
+- Fixed severe Nexus screen lag with large Repository inventories and EMI or JEI installed. Recipe availability now reuses indexed stock and unchanged recipe results instead of repeatedly scanning and copying every stored item.
+- Recipe availability still updates when network contents, crafting ingredients, player inventory, or the cursor change. Custom ingredient predicates continue to check their current state.
+
 ## 1.11.13 - 2026-10-28
 
 ### Fixed

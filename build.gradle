@@ -38,6 +38,10 @@ neoForge {
             if (project.hasProperty('crystalStorageOnly')) systemProperty 'astral_repository.crystalStorageOnly', 'true'
             if (project.hasProperty('furnaceOnly')) systemProperty 'astral_repository.furnaceOnly', 'true'
             if (project.hasProperty('recipeViewerOnly')) systemProperty 'astral_repository.recipeViewerOnly', 'true'
+            if (project.hasProperty('recipePerformanceTest')) {
+                systemProperty 'astral_repository.recipePerformanceTest', 'true'
+                systemProperty 'astral_repository.recipePerformanceIdentities', project.findProperty('recipePerformanceIdentities') ?: '10000'
+            }
             if (project.hasProperty('bindingOnly')) systemProperty 'astral_repository.bindingOnly', 'true'
             if (project.hasProperty('editorOnly')) systemProperty 'astral_repository.editorOnly', 'true'
             if (project.hasProperty('wandOnly')) systemProperty 'astral_repository.wandOnly', 'true'

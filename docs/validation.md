@@ -1,5 +1,28 @@
 # Validation record
 
+## Nexus recipe availability performance (1.11.14)
+
+The reported client profile samples only the Render thread on Minecraft 1.21.1, NeoForge 21.1.265, Astral Repository 1.11.13, EMI 1.1.24 and JEI 19.64.0.455. `RecipeTransfers.canFill` accounts for 79.33% of sampled render time; its ingredient candidate construction accounts for 72.89%. These inclusive percentages overlap. Repeated full-inventory scans and copied item stacks dominate; the assignment solver accounts for 0.08%.
+
+The fix keeps one detached item index for each exact client inventory state, caches ordinary recipe answers, and reuses EMI's inventory object. A completed network revision or a local slot/count/component/cursor change replaces that state. Custom recipe classes and custom ingredient predicates retain direct matching because they can depend on external mutable state. Server recipe validation and extraction are unchanged.
+
+The hidden, muted, mouse-free NeoForge client receives 10,081 real stored identities, including 10,000 named stone variants, through the existing network stream. It compares 512 supported crafting recipes against the 1.11.13 availability algorithm and measures three passes on the same thread and stock. The fixed measurements use the actual EMI handler or registered JEI handler after availability warmup.
+
+| Viewer | 1.11.13 algorithm, median | Cached handler, median | Baseline allocations | Cached allocations |
+| --- | ---: | ---: | ---: | ---: |
+| EMI 1.1.24 | 292.87 ms | 0.42 ms | 858.69 MB | 0.73 MB |
+| JEI 19.52.0.421 | 316.86 ms | 0.59 ms | 858.95 MB | 0.81 MB |
+
+MB uses decimal bytes. This compares the retained old algorithm inside the fixed development client, rather than separate release binaries. It measures recipe checks, not whole-frame FPS. EMI's actual initial `getCraftables()` call took 12.72 ms on this fixture. The old algorithm remains only in an opt-in test class excluded from release JARs.
+
+Both clients complete a real off-search recipe fill and conserve the eight iron ingots. A third client passes with EMI and JEI installed together. Additional checks cover atomic packet completion, positive and negative cached answers, network count/removal deltas, in-place local count/component changes, cursor addition/removal, and a changing custom component predicate. Six shared unit tests include 10,000 identities, 1,000 recipe objects and 100 repeated passes: unchanged answers perform no further indexing or ingredient matching. The [port record](../ports/VALIDATION.md#nexus-recipe-availability-performance-11114) describes cross-loader coverage.
+
+All eight normal builds pass 1,268 unit tests in total. NeoForge 1.21.1 also passes all 166 required server GameTests with Iron Furnaces and Polymorph installed. The original client checks above use the development runtime; the seven port editions use packaged release JARs.
+
+Run `runClientSmoke -PrecipeCompatTest -PrecipeViewerOnly -PrecipePerformanceTest` with either `-PemiTest` or `-PjeiTest`. `-PrecipePerformanceIdentities=<count>` changes the number of named fixture identities. Dependencies and conflict datapack paths are the same as the 1.11.13 fixture below. Evidence is ignored under `build/nexus-performance/`, including `profile-analysis.json`, `runtime-emi.json`, `runtime-jei.json` and the final runtime logs. Failed fixture attempts remain alongside successful runs. The raw recording contains user metadata and is not published.
+
+The recording provides no server samples. Server snapshots and initial/delta packet construction still scale with the network's inventory size; this change addresses the measured client availability path.
+
 ## Recipe compatibility fixes (1.11.13)
 
 NeoForge 1.21.1 passes 151 unit tests and all 166 required GameTests with Iron Furnaces 4.3.2 and Polymorph 1.2.0+1.21.1 installed. The normal build and server suite also pass without those optional mods. New cases cover actual fuel-burning smelting, blasting/smoking augments, unsupported furnace modes, cancellation conservation, conflicting furnace/table recipes, Polymorph's selection packet, and Nexus recipe transfer. Transfer cases check ingredient alternatives, full inventory rejection, retaining an already filled grid, maximum-fill fallback when leftovers need space, invalid packets, and bounded availability updates with exact item components.

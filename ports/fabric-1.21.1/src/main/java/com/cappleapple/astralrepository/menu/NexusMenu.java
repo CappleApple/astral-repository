@@ -276,6 +276,8 @@ public final class NexusMenu extends AbstractContainerMenu {
     public void subscribeRecipeInventory(){
         if(player instanceof ServerPlayer sp&&!sp.isSpectator()&&stillValid(player))recipeInventorySubscribed=true;
     }
+    /** Immutable committed network snapshot; partial recipe-inventory packets never replace it. */
+    public Map<ItemKey,Long> committedRecipeInventory(){return clientRecipeInventory;}
     /** Exact stored identities for recipe viewers, independent of the current search and scroll. */
     public Map<ItemKey,Long> recipeInventory(){
         Map<ItemKey,Long> stock=new LinkedHashMap<>(clientRecipeInventory);

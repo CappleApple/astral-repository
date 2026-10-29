@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
-version = '1.11.13'
+version = '1.11.14'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-fabric-1.21.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
@@ -41,7 +41,11 @@ loom { mods { astral_repository {sourceSet sourceSets.main}; astral_repository_p
 
 loom { runs { clientSmoke {client(); name 'Fabric background client smoke'; runDir 'run-client-smoke'; source sourceSets.portTest; vmArg '-Dastral_repository.testClient=true'; vmArg '-Dastral_repository.portClientSmoke=true' } } }
 
-tasks.named('jar') { from('LICENSE') }
+tasks.named('jar') {
+    from('LICENSE')
+    exclude 'data/astral_repository/structure/empty_workshop.nbt'
+    exclude 'data/astral_repository/structure/empty_geode.nbt'
+}
 
 
 loom { runs { gameplaySmoke {client(); name 'Fabric gameplay regression'; runDir 'run-gameplay-smoke'; source sourceSets.portTest; vmArg '-Dastral_repository.testClient=true'; vmArg '-Dastral_repository.portGameplay=true' } } }

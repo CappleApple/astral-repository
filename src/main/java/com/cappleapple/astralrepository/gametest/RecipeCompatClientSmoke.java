@@ -54,6 +54,15 @@ public final class RecipeCompatClientSmoke {
                     if (slot == 80) break;
                 }
                 check(storage.inventory().insertItem(slot, new ItemStack(Items.IRON_INGOT, 8), false).isEmpty(), "Fixture storage rejected iron");
+                if (Boolean.getBoolean("astral_repository.recipePerformanceTest")) {
+                    slot++;
+                    for (int i = 0; i < Integer.getInteger("astral_repository.recipePerformanceIdentities", 10000); i++) {
+                        ItemStack variant = new ItemStack(Items.STONE);
+                        variant.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                                net.minecraft.network.chat.Component.literal("Recipe availability " + i));
+                        check(storage.inventory().insertItem(slot++, variant, false).isEmpty(), "Fixture storage rejected component identity " + i);
+                    }
+                }
                 p.getInventory().clearContent();
                 p.connection.teleport(27.5, -59, 17, 180, 20);
             });
@@ -71,6 +80,10 @@ public final class RecipeCompatClientSmoke {
         } else if (phase == 3 && mc.screen instanceof NexusScreen screen && ticks > 20) {
             var stock = screen.getMenu().recipeInventory();
             if (stock.size() < 81) return false;
+            if (Boolean.getBoolean("astral_repository.recipePerformanceTest")) {
+                if (stock.size() < 81 + Integer.getInteger("astral_repository.recipePerformanceIdentities", 10000)) return false;
+                RecipeAvailabilityPerformanceCheck.verify(screen);
+            }
             check(stock.getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)), 0L) == 8, "Off-page iron is absent from recipe availability");
             check(screen.getMenu().entries.stream().noneMatch(e -> e.stack().is(Items.IRON_INGOT)), "Search did not hide the ingredient");
             if (ModList.get().isLoaded("emi")) Emi.fill(screen);

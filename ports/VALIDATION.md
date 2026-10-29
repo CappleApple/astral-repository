@@ -1,5 +1,21 @@
 # Port validation
 
+## Nexus recipe availability performance (1.11.14)
+
+All eight normal builds and unit suites pass: 157 tests each for NeoForge 1.21.1, Forge 1.20.1 and both legacy Fabric editions; 158 each for Fabric 26.2/26.3; 162 each for NeoForge 26.2/26.3. The six maintained source families share the same detached availability index and regression tests. `python ports/tools/check_recipe_availability_sources.py` verifies those shared files remain identical. Modern 26.3 builds use their normal generated-source paths.
+
+The new tests cover 10,000 identities, 1,000 recipe objects and 100 repeated passes with exact operation counters, as well as overlapping ingredients, exact component identities, negative answers, recipe replacement and inventory replacement. This establishes cache/index work bounds; the real-client fixtures establish menu invalidation and viewer integration. The original [large-network client comparison](../docs/validation.md#nexus-recipe-availability-performance-11114) runs separately with EMI and JEI.
+
+Packaged Fabric 26.2/26.3 clients pass with their matching JEI versions. The registered handler retains the same availability stock across 1,000 unchanged queries and updates after local count/component/cursor changes. A nine-ingot recipe with two named local ingots and seven cursor ingots succeeds; six cursor ingots fail, checking that cursor stock is counted once. Existing off-search fills, physical cooking, conflicting-recipe failure/refunds and workstation replacement checks also pass.
+
+NeoForge 26.2/26.3 packaged clients pass the same 1,000-query cache checks with JEI, alongside their existing processing, cancellation, conflict and late-workstation checks. All four modern editions also pass separate profiles without optional mods. Modern NeoForge runs the release JAR through ModDev without production source directories; Fabric uses Loom production launches.
+
+Both legacy Fabric editions pass separate EMI, JEI and optional-mod absence profiles. The installed Forge 1.20.1 loader passes with standalone EMI and standalone JEI. These clients check at least 200 unchanged queries, in-place local count/components, cursor changes, real network ingredient removal/restoration, off-search recipe fill and exact conservation. Forge also checks a custom ingredient whose external state changes without an inventory update. Matching Polymorph widgets retain their selected outputs. Exact versions and final JAR provenance are in `build/nexus-performance/legacy-fabric/validation-matrix.json`, `build/nexus-performance/forge/successful-manifest.json`, `build/nexus-performance/NFmodern/matrix.json` and `build/recipe-performance/fabric-modern-runtime.json`.
+
+Fabric 1.21.1's two empty GameTest structure templates are excluded from the release JAR and copied into the separate test mod's resources.
+
+Evidence is under ignored `build/recipe-performance/` and `build/nexus-performance/`. Availability caches are client-only; server-authoritative recipe fill, power, access and extraction rules are unchanged. No matching 26.2/26.3 EMI release was available in the earlier integration check, so modern runtime claims remain limited to JEI.
+
 ## Recipe compatibility fixes (1.11.13)
 
 All eight editions pass their normal builds and unit suites. The reported recipe-transfer and processing paths were also exercised in Minecraft on every edition, using matching published optional mods and separate profiles without those mods.
