@@ -35,8 +35,7 @@ public final class AstralEmiPlugin implements EmiPlugin {
             if(method.getName().equals("supportsRecipe"))return supportsTransfer(args[0]);
             if(method.getName().equals("getInventory")){
                 var screen=(net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>)args[0];
-                var stacks=RecipeTransfers.inventory((com.cappleapple.astralrepository.menu.NexusMenu)screen.getMenu()).entrySet().stream().map(entry->EmiStack.of(entry.getKey().sample()).setAmount(entry.getValue())).toList();
-                return OptionalApi.type("dev.emi.emi.api.recipe.EmiPlayerInventory").getConstructor(java.util.List.class).newInstance(stacks);
+                return RecipeTransfers.cachedInventory((com.cappleapple.astralrepository.menu.NexusMenu)screen.getMenu(),CachedInventory::new);
             }
             if(method.getName().equals("canCraft")||method.getName().equals("craft")){
                 if(!supportsTransfer(args[0]))return false;
@@ -49,6 +48,12 @@ public final class AstralEmiPlugin implements EmiPlugin {
             if(method.isDefault())return java.lang.reflect.InvocationHandler.invokeDefault(proxy,method,args);
             return null;
         });
+    }
+    private static final class CachedInventory extends dev.emi.emi.api.recipe.EmiPlayerInventory {
+        private CachedInventory(java.util.Map<com.cappleapple.astralrepository.api.ItemKey,Long> stock){
+            super(stock.entrySet().stream().map(entry->EmiStack.of(entry.getKey().sample()).setAmount(entry.getValue())).toList());
+        }
+        @Override public boolean isEqual(dev.emi.emi.api.recipe.EmiPlayerInventory other){return this==other||super.isEqual(other);}
     }
     public static void refreshPowerVisibility(){
         if(!registered)return;
