@@ -28,6 +28,10 @@ public final class RecipeCompatClientSmoke {
     private static final ResourceLocation RECIPE = new ResourceLocation("minecraft", "iron_trapdoor");
     private static final Path OUT = Path.of("recipe-captures");
     private static int phase, ticks;
+    private static int cacheNetworkStep;
+    private static java.util.Map<ItemKey,Long> cacheNetworkBefore;
+    private static Object cacheViewerBefore;
+    private static ItemStack cacheHeldIron = ItemStack.EMPTY;
     private static volatile boolean ready;
     private static volatile Throwable failure;
 
@@ -69,9 +73,12 @@ public final class RecipeCompatClientSmoke {
             next(3);
         } else if (phase == 3 && mc.screen instanceof NexusScreen screen && ticks > 20) {
             var stock = screen.getMenu().recipeInventory();
-            if (stock.size() < 81) return false;
-            check(stock.getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)), 0L) == 8, "Off-page iron is absent from recipe availability");
+            if (cacheNetworkStep == 0) {
+                if (stock.size() < 81) return false;
+                check(stock.getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)), 0L) == 8, "Off-page iron is absent from recipe availability");
+            }
             check(screen.getMenu().entries.stream().noneMatch(e -> e.stack().is(Items.IRON_INGOT)), "Search did not hide the ingredient");
+            if (!checkCacheNetworkChanges(screen)) return false;
             if (ModList.get().isLoaded("emi")) Emi.fill(screen);
             else if (ModList.get().isLoaded("jei")) Jei.fill(screen);
             else throw new AssertionError("Recipe viewer fixture needs EMI or JEI");
@@ -123,12 +130,128 @@ public final class RecipeCompatClientSmoke {
         return false;
     }
 
+    private static boolean checkCacheNetworkChanges(NexusScreen screen) throws Exception {
+        var menu = screen.getMenu();
+        var iron = new ItemKey(new ItemStack(Items.IRON_INGOT));
+        var recipe = (CraftingRecipe) Minecraft.getInstance().level.getRecipeManager().byKey(RECIPE).orElseThrow();
+        if (cacheNetworkStep == 0) {
+            var initial = RecipeTransfers.inventory(menu);
+            for (int repeat = 0; repeat < 200; repeat++)
+                check(RecipeTransfers.inventory(menu) == initial && RecipeTransfers.canFill(menu, recipe), "Stable checks rebuilt or changed client stock");
+            try { initial.put(iron, 0L); throw new AssertionError("Cached stock must be immutable"); }
+            catch (UnsupportedOperationException expected) {}
+            menu.grid.setItem(0, new ItemStack(Items.IRON_INGOT));
+            var localOne = RecipeTransfers.inventory(menu);
+            check(localOne != initial && localOne.get(iron) == 9, "Local stack did not invalidate stock");
+            Object first = viewerInventory(screen);
+            menu.grid.getItem(0).setCount(2);
+            var localTwo = RecipeTransfers.inventory(menu);
+            check(localTwo != localOne && localTwo.get(iron) == 10, "In-place local count did not invalidate stock");
+            changedViewer(screen, first, "local count");
+            first = viewerInventory(screen);
+            menu.grid.getItem(0).setHoverName(net.minecraft.network.chat.Component.literal("cache probe"));
+            var named = new ItemKey(menu.grid.getItem(0));
+            var localNamed = RecipeTransfers.inventory(menu);
+            check(localNamed != localTwo && localNamed.get(iron) == 8 && localNamed.get(named) == 2,
+                    "In-place local NBT was merged with another exact identity");
+            changedViewer(screen, first, "local NBT");
+            checkCustomPredicate(menu, menu.grid.getItem(0).copy());
+            menu.grid.setItem(0, ItemStack.EMPTY);
+            menu.setCarried(new ItemStack(Items.IRON_INGOT));
+            var cursorOne = RecipeTransfers.inventory(menu);
+            check(cursorOne.get(iron) == 8, "Cursor was double-counted in the viewer input stock");
+            first = viewerInventory(screen);
+            menu.getCarried().setCount(2);
+            var cursorTwo = RecipeTransfers.inventory(menu);
+            check(cursorTwo != cursorOne && cursorTwo.get(iron) == 8, "In-place cursor count did not invalidate stock");
+            changedViewer(screen, first, "cursor count");
+            first = viewerInventory(screen);
+            menu.getCarried().setHoverName(net.minecraft.network.chat.Component.literal("cursor cache probe"));
+            check(RecipeTransfers.inventory(menu) != cursorTwo, "In-place cursor NBT did not invalidate stock");
+            changedViewer(screen, first, "cursor NBT");
+            menu.setCarried(ItemStack.EMPTY);
+            cacheNetworkBefore = RecipeTransfers.inventory(menu);
+            cacheViewerBefore = viewerInventory(screen);
+            cacheNetworkStep = 1;
+            server(p -> {
+                var storage = (CrystalNodeBlockEntity) p.serverLevel().getBlockEntity(STORE);
+                for (int slot = 0; slot < storage.inventory().getSlots(); slot++)
+                    if (storage.inventory().getStackInSlot(slot).is(Items.IRON_INGOT)) {
+                        cacheHeldIron = storage.inventory().extractItem(slot, 8, false);
+                        break;
+                    }
+                check(cacheHeldIron.is(Items.IRON_INGOT) && cacheHeldIron.getCount() == 8, "Fixture did not retain eight real iron");
+            });
+            return false;
+        }
+        if (cacheNetworkStep == 1) {
+            var current = RecipeTransfers.inventory(menu);
+            if (current.getOrDefault(iron, 0L) != 0) return false;
+            check(current != cacheNetworkBefore && cacheNetworkBefore.get(iron) == 8, "Committed removal did not replace a detached snapshot");
+            check(!RecipeTransfers.canFill(menu, recipe), "Removed real ingredients stayed craftable");
+            changedViewer(screen, cacheViewerBefore, "committed network removal");
+            menu.setCarried(new ItemStack(Items.IRON_INGOT, 3));
+            check(!RecipeTransfers.canFill(menu, recipe), "Three cursor iron were counted twice for a four-iron recipe");
+            var cursorThree = RecipeTransfers.inventory(menu);
+            check(cursorThree.getOrDefault(iron, 0L) == 0, "Cursor leaked into viewer constructor input");
+            menu.getCarried().setCount(4);
+            check(RecipeTransfers.canFill(menu, recipe) && RecipeTransfers.inventory(menu) != cursorThree,
+                    "Cursor count edit retained a stale negative result");
+            menu.setCarried(ItemStack.EMPTY);
+            check(!RecipeTransfers.canFill(menu, recipe), "Cursor removal retained a stale positive result");
+            cacheNetworkBefore = RecipeTransfers.inventory(menu);
+            cacheViewerBefore = viewerInventory(screen);
+            cacheNetworkStep = 2;
+            server(p -> {
+                var storage = (CrystalNodeBlockEntity) p.serverLevel().getBlockEntity(STORE);
+                check(net.minecraftforge.items.ItemHandlerHelper.insertItem(storage.inventory(), cacheHeldIron, false).isEmpty(),
+                        "Fixture could not restore the original iron");
+                cacheHeldIron = ItemStack.EMPTY;
+            });
+            return false;
+        }
+        if (cacheNetworkStep == 2) {
+            var current = RecipeTransfers.inventory(menu);
+            if (current.getOrDefault(iron, 0L) != 8) return false;
+            check(current != cacheNetworkBefore && RecipeTransfers.canFill(menu, recipe), "Restored real ingredients stayed uncraftable");
+            changedViewer(screen, cacheViewerBefore, "committed network restoration");
+            cacheNetworkStep = 3;
+        }
+        return true;
+    }
+
+    private static void checkCustomPredicate(com.cappleapple.astralrepository.menu.NexusMenu menu, ItemStack selected) {
+        boolean[] enabled = { false };
+        var ingredient = new net.minecraft.world.item.crafting.Ingredient(
+                java.util.stream.Stream.of(new net.minecraft.world.item.crafting.Ingredient.ItemValue(selected))) {
+            @Override public boolean test(ItemStack stack) { return enabled[0] && ItemStack.isSameItemSameTags(stack, selected); }
+            @Override public boolean isSimple() { return false; }
+        };
+        var recipe = new net.minecraft.world.item.crafting.ShapelessRecipe(new ResourceLocation("astral_repository_recipe_test", "dynamic_cache"),
+                "", net.minecraft.world.item.crafting.CraftingBookCategory.MISC,
+                new ItemStack(Items.GOLD_INGOT), net.minecraft.core.NonNullList.of(net.minecraft.world.item.crafting.Ingredient.EMPTY, ingredient));
+        check(!RecipeTransfers.canFill(menu, recipe), "Disabled custom predicate matched");
+        enabled[0] = true;
+        check(RecipeTransfers.canFill(menu, recipe), "Custom predicate change was cached without an inventory change");
+        menu.grid.getItem(0).resetHoverName();
+        check(!RecipeTransfers.canFill(menu, recipe), "Custom NBT predicate accepted another exact identity");
+    }
+
+    private static Object viewerInventory(NexusScreen screen) throws Exception {
+        return ModList.get().isLoaded("emi") ? Emi.handler(screen).getInventory(screen) : null;
+    }
+
+    private static void changedViewer(NexusScreen screen, Object before, String reason) throws Exception {
+        if (before != null) check(viewerInventory(screen) != before, "EMI retained stale inventory after " + reason);
+    }
+
     private static boolean finish() throws Exception {
             var mc = Minecraft.getInstance();
             check(!mc.mouseHandler.isMouseGrabbed(), "Test client grabbed the mouse");
             check(mc.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER) == 0, "Test client audio is not muted");
             Files.createDirectories(OUT);
             Files.writeString(OUT.resolve("result.txt"), "PASS: " + viewer() + " availability includes 81 stored identities beyond the 54-entry page; hidden iron fills an actual shaped recipe through the server packet, preserving all eight iron across storage/grid."
+                    + " Stable inventory/viewer reuse, in-place count/NBT/cursor edits, cursor capacity, dynamic custom predicate, and real network removal/restoration invalidation pass."
                     + (ModList.get().isLoaded("polymorph") ? " Polymorph's actual Nexus widget selects both conflicting outputs without consuming ingredients." : "") + "\n");
             return true;
     }
@@ -149,12 +272,16 @@ public final class RecipeCompatClientSmoke {
     }
 
     private static final class Emi {
-        static void fill(NexusScreen screen) {
+        static com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler handler(NexusScreen screen) {
             com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler handler;
             try {
                 var handlers = (java.util.List<?>)Class.forName("dev.emi.emi.registry.EmiRecipeFiller").getMethod("getAllHandlers", net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class).invoke(null, screen);
                 handler = (com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler)handlers.stream().filter(com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler.class::isInstance).findFirst().orElseThrow();
             } catch (ReflectiveOperationException failure) { throw new AssertionError("Cannot inspect registered EMI handlers", failure); }
+            return handler;
+        }
+        static void fill(NexusScreen screen) {
+            var handler = handler(screen);
             var recipe = dev.emi.emi.api.EmiApi.getRecipeManager().getRecipes().stream()
                     .filter(r -> r.getBackingRecipe() != null && r.getBackingRecipe().getId().equals(RECIPE)).findFirst().orElseThrow();
             var inventory = handler.getInventory(screen);
@@ -162,6 +289,9 @@ public final class RecipeCompatClientSmoke {
                     dev.emi.emi.api.recipe.handler.EmiCraftContext.Type.FILL_BUTTON,
                     dev.emi.emi.api.recipe.handler.EmiCraftContext.Destination.NONE, 1);
             check(handler.supportsRecipe(recipe) && handler.canCraft(recipe, context), "EMI disabled quick fill despite available network ingredients");
+            for (int repeat = 0; repeat < 200; repeat++)
+                check(handler.getInventory(screen) == inventory && inventory.isEqual(inventory) && handler.canCraft(recipe, context),
+                        "Registered EMI handler rebuilt stable inventory or changed availability");
             check(handler.craft(recipe, context), "EMI quick-fill handler rejected recipe");
         }
     }
@@ -181,6 +311,9 @@ public final class RecipeCompatClientSmoke {
             var recipe = (CraftingRecipe) Minecraft.getInstance().level.getRecipeManager().byKey(RECIPE).orElseThrow();
             check(handler.transferRecipe(screen.getMenu(), recipe, null, Minecraft.getInstance().player, false, false) == null,
                     "JEI disabled quick fill despite available network ingredients");
+            for (int repeat = 0; repeat < 200; repeat++)
+                check(handler.transferRecipe(screen.getMenu(), recipe, null, Minecraft.getInstance().player, false, false) == null,
+                        "Registered JEI handler changed stable availability");
             check(handler.transferRecipe(screen.getMenu(), recipe, null, Minecraft.getInstance().player, false, true) == null,
                     "JEI quick-fill handler rejected recipe");
         }

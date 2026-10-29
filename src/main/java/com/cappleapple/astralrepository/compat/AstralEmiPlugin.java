@@ -19,6 +19,12 @@ public final class AstralEmiPlugin implements EmiPlugin {
         registry.addDragDropHandler(WandScreen.class,new Handler<>());
         registry.addRecipeHandler(com.cappleapple.astralrepository.AstralRepository.NEXUS_MENU.get(),new RecipeHandler());
     }
+    private static final class CachedInventory extends dev.emi.emi.api.recipe.EmiPlayerInventory {
+        private CachedInventory(java.util.Map<com.cappleapple.astralrepository.api.ItemKey,Long> stock){
+            super(stock.entrySet().stream().map(entry->EmiStack.of(entry.getKey().sample()).setAmount(entry.getValue())).toList());
+        }
+        @Override public boolean isEqual(dev.emi.emi.api.recipe.EmiPlayerInventory other){return this==other||super.isEqual(other);}
+    }
     public static void refreshPowerVisibility(){
         if(!registered)return;
         // EMI 1.1.24 exposes filtering during registration but no public runtime reload API.
@@ -27,7 +33,7 @@ public final class AstralEmiPlugin implements EmiPlugin {
     }
     public static final class RecipeHandler implements dev.emi.emi.api.recipe.handler.EmiRecipeHandler<com.cappleapple.astralrepository.menu.NexusMenu>{
         @Override public dev.emi.emi.api.recipe.EmiPlayerInventory getInventory(net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<com.cappleapple.astralrepository.menu.NexusMenu> screen){
-            return new dev.emi.emi.api.recipe.EmiPlayerInventory(RecipeTransfers.inventory(screen.getMenu()).entrySet().stream().map(entry->EmiStack.of(entry.getKey().sample()).setAmount(entry.getValue())).toList());
+            return RecipeTransfers.cachedInventory(screen.getMenu(),CachedInventory::new);
         }
         @Override public boolean supportsRecipe(dev.emi.emi.api.recipe.EmiRecipe recipe){
             var backing=recipe.getBackingRecipe();return backing!=null&&backing instanceof net.minecraft.world.item.crafting.CraftingRecipe crafting&&RecipeTransfers.supports(crafting);

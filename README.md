@@ -2,10 +2,9 @@
 
 Astral Repository connects workshop inventories through crystal networks, moves items, fluids, and energy, and crafts products from recipes taught to the network.
 
-The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.11.13. It builds independently of the other Minecraft and loader branches.
+The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.11.14. It builds independently of the other Minecraft and loader branches.
 
-
-EMI and JEI recipe fills include stored ingredients outside the current page or search. Workstations placed after the initial scan are discovered without restarting the network. See the [changelog](CHANGELOG.md) for this release's fixes.
+Version 1.11.14 fixes severe Nexus screen lag with EMI or JEI and large Repository inventories. Recipe availability updates when stock, local slots, or the cursor change. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
@@ -40,7 +39,7 @@ Set `JAVA_HOME` to a JDK 17 installation and run:
 .\gradlew.bat -PgameplaySmoke -PoptionalRuntime runClient
 ```
 
-The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.13.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
+The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.14.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
 
 The earlier port audit passed 146 JUnit tests and 22 native Forge GameTests. Runtime checks cover all ten blocks placed through their items on all six faces, storage recovery after breaking and replacement, Nexus withdrawal/deposit and vanilla crafting/refill, Recipe Tome inscription and bookshelf discovery, completed automatic crafting with ingredient conservation, item/fluid/energy rune transfers with stock limits, capability invalidation, all thirteen base recipes, and worldgen registration. This is a focused port suite; it does not claim the original NeoForge edition's complete GameTest coverage.
 

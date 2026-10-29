@@ -15,6 +15,7 @@ public final class ItemKey implements ResourceKey {
         hash = com.cappleapple.astralrepository.platform.Backport.itemHash(sample);
     }
     public ItemStack sample() { return sample.copy(); }
+    public net.minecraft.world.item.Item item() { return sample.getItem(); }
     /** Compare live contents without allocating another immutable identity. */
     public boolean matches(ItemStack stack) { return !stack.isEmpty() && ItemStack.isSameItemSameTags(sample, stack); }
     public ResourceLocation id() { return BuiltInRegistries.ITEM.getKey(sample.getItem()); }
