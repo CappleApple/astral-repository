@@ -1,5 +1,17 @@
 # Port validation
 
+## Custom ingredient and tag invalidation checks (1.11.15)
+
+All eight normal builds pass: 161 unit tests for each legacy/original edition, 162 each for modern Fabric, and 166 each for modern NeoForge, totalling 1,300. The four new shared cases cover cold item-domain lookup, dense same-item component variants, dynamic predicates, and incomplete custom display domains. A complete current item domain does not imply an immutable result: unknown custom-simple ingredients use the index but recompute answers. Non-simple tests reuse detached samples. Client tag callbacks clear cached answers and advance the epoch used by EMI inventory equality.
+
+Moonlight's exact tested item-only implementations are `1.21.1-3.7.2` on NeoForge/Fabric and `1.20-2.16.38B` on Forge/Fabric. Other versions/classes keep generic matching. Forge's domain can be invalidated without replacing the recipe, so its adapter recomputes answers; its live fixture changes the domain with unchanged stock and verifies the updated result. The official Modrinth API returned no matching Moonlight release for Fabric/NeoForge 26.2/26.3 during this check. Modern tests exercise the generic APIs, not an installed Moonlight release.
+
+The original [cold-transition fixture](../docs/validation.md#nexus-and-recipe-screen-transitions-11115) uses three development clients with the reported optional-mod versions. The seven port editions use packaged JARs. Legacy viewer fixtures compare actual Moonlight matching against exhaustive matching, preserve named-component/cursor behavior, and test tag-update invalidation. Forge also verifies a changing custom-simple domain with the same recipe and inventory, an incomplete non-simple display list, prototype reuse, and server-cause tag events leaving the client epoch unchanged.
+
+The legacy custom differential cases use programmatically constructed recipes. Their separate registered-viewer fill checks use the existing vanilla recipe fixture. The original NeoForge fixture additionally verifies registered Moonlight recipes through actual client-to-server fill and crafting packets. Both legacy Fabric editions and all four modern editions also pass separate optional-mod absence profiles.
+
+The modern Fabric fixture tests 1,024 cold custom-simple recipes through Fabric's public API, a live non-simple predicate accepting an item absent from its display list, reused prototype identities, and natural client tag callbacks. Existing registered JEI availability, off-search packet fill, conservation, physical cooking and late-workstation fixtures remain in use. Exact binaries, source contracts, logs and preserved preliminary attempts are under ignored `build/nexus-transitions/`.
+
 ## Nexus recipe availability performance (1.11.14)
 
 All eight normal builds and unit suites pass: 157 tests each for NeoForge 1.21.1, Forge 1.20.1 and both legacy Fabric editions; 158 each for Fabric 26.2/26.3; 162 each for NeoForge 26.2/26.3. The six maintained source families share the same detached availability index and regression tests. `python ports/tools/check_recipe_availability_sources.py` verifies those shared files remain identical. Modern 26.3 builds use their normal generated-source paths.

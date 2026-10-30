@@ -4,6 +4,7 @@ public final class FabricClient implements net.fabricmc.api.ClientModInitializer
  @Override public void onInitializeClient(){
   io.github.fabricators_of_create.porting_lib.config.ConfigRegistry.registerConfig("astral_repository",io.github.fabricators_of_create.porting_lib.config.ModConfig.Type.CLIENT,com.cappleapple.astralrepository.AstralClientConfig.SPEC,"astral_repository-client.toml");
   com.cappleapple.astralrepository.platform.network.registration.PayloadRegistrar.registerClient();
+  net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents.TAGS_LOADED.register((registries,client)->{if(client)RecipeTransfers.recipesReloaded();});
   com.cappleapple.astralrepository.compat.TrinketsGogglesClient.register();
   AstralClient.screens(new RegisterMenuScreensEvent());AstralClient.tooltips(new RegisterClientTooltipComponentFactoriesEvent());AstralClient.blockColors(new RegisterColorHandlersEvent.Block());AstralClient.itemColors(new RegisterColorHandlersEvent.Item());AstralClient.reload(new RegisterClientReloadListenersEvent());AstralClient.renderers(new EntityRenderersEvent.RegisterRenderers());AstralMineralClient.renderers(new EntityRenderersEvent.RegisterRenderers());AstralMineralClient.items(new com.cappleapple.astralrepository.platform.client.extensions.common.RegisterClientExtensionsEvent());
   CoreShaderRegistrationCallback.EVENT.register(AstralMineralClient::shaders);

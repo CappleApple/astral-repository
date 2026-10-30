@@ -53,7 +53,7 @@ public final class RecipeAvailabilityPerformanceCheck {
         Files.writeString(out, new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(result));
     }
 
-    private static void verifyInvalidation() {
+    static void verifyInvalidation() {
         var mc = Minecraft.getInstance();
         var menu = new NexusMenu(32000, new net.minecraft.world.entity.player.Inventory(mc.player));
         var recipe = (CraftingRecipe) mc.level.getRecipeManager().byKey(

@@ -156,6 +156,9 @@ public final class RecipeCompatClientSmoke {
                     "In-place local NBT was merged with another exact identity");
             changedViewer(screen, first, "local NBT");
             checkCustomPredicate(menu, menu.grid.getItem(0).copy());
+            if (ModList.get().isLoaded("moonlight")) checkMoonlightDomainInvalidation();
+            checkSimpleDomainChanges();
+            checkTagReloadEvent(screen);
             menu.grid.setItem(0, ItemStack.EMPTY);
             menu.setCarried(new ItemStack(Items.IRON_INGOT));
             var cursorOne = RecipeTransfers.inventory(menu);
@@ -222,9 +225,17 @@ public final class RecipeCompatClientSmoke {
 
     private static void checkCustomPredicate(com.cappleapple.astralrepository.menu.NexusMenu menu, ItemStack selected) {
         boolean[] enabled = { false };
+        ItemStack[] observedPrototype = { null };
         var ingredient = new net.minecraft.world.item.crafting.Ingredient(
-                java.util.stream.Stream.of(new net.minecraft.world.item.crafting.Ingredient.ItemValue(selected))) {
-            @Override public boolean test(ItemStack stack) { return enabled[0] && ItemStack.isSameItemSameTags(stack, selected); }
+                java.util.stream.Stream.of(new net.minecraft.world.item.crafting.Ingredient.ItemValue(new ItemStack(Items.STONE)))) {
+            @Override public boolean test(ItemStack stack) {
+                boolean exact = ItemStack.isSameItemSameTags(stack, selected);
+                if (exact) {
+                    if (observedPrototype[0] == null) observedPrototype[0] = stack;
+                    else check(observedPrototype[0] == stack, "Custom predicate copied the same unchanged identity again");
+                }
+                return enabled[0] && exact;
+            }
             @Override public boolean isSimple() { return false; }
         };
         var recipe = new net.minecraft.world.item.crafting.ShapelessRecipe(new ResourceLocation("astral_repository_recipe_test", "dynamic_cache"),
@@ -232,13 +243,88 @@ public final class RecipeCompatClientSmoke {
                 new ItemStack(Items.GOLD_INGOT), net.minecraft.core.NonNullList.of(net.minecraft.world.item.crafting.Ingredient.EMPTY, ingredient));
         check(!RecipeTransfers.canFill(menu, recipe), "Disabled custom predicate matched");
         enabled[0] = true;
-        check(RecipeTransfers.canFill(menu, recipe), "Custom predicate change was cached without an inventory change");
+        check(RecipeTransfers.canFill(menu, recipe), "Custom predicate was cached or restricted to incomplete display samples");
+        check(observedPrototype[0] != null && observedPrototype[0] != menu.grid.getItem(0), "Custom predicate saw the mutable live input stack");
         menu.grid.getItem(0).resetHoverName();
         check(!RecipeTransfers.canFill(menu, recipe), "Custom NBT predicate accepted another exact identity");
+        check(ItemStack.isSameItemSameTags(observedPrototype[0], selected), "Live NBT mutation changed the retained predicate prototype");
     }
 
     private static Object viewerInventory(NexusScreen screen) throws Exception {
         return ModList.get().isLoaded("emi") ? Emi.handler(screen).getInventory(screen) : null;
+    }
+
+    private static void checkMoonlightDomainInvalidation() throws Exception {
+        var json = com.google.gson.JsonParser.parseString("{\"type\":\"moonlight:block_type_swap\",\"block_type\":\"wood_type\","
+                + "\"from\":\"minecraft:oak\",\"to\":\"minecraft:birch\",\"ingredient\":{\"item\":\"minecraft:oak_planks\"}}");
+        var ingredient = net.minecraft.world.item.crafting.Ingredient.fromJson(json);
+        check(ingredient.getClass().getName().equals("net.mehvahdjukaar.moonlight.api.resources.recipe.forge.BlockTypeSwapIngredientImpl"),
+                "Moonlight did not deserialize the actual reported ingredient implementation");
+        check(!ingredient.isSimple(), "Moonlight fixture no longer exercises its non-simple flag");
+        check(com.cappleapple.astralrepository.compat.MoonlightRecipeCompatibility.isItemOnly(ingredient), "Verified Forge Moonlight domain was not recognized");
+        check(!com.cappleapple.astralrepository.compat.MoonlightRecipeCompatibility.isStableItemOnly(ingredient),
+                "Forge Moonlight domain must retain its invalidation behavior");
+        check(ingredient.getItems().length == 1 && ingredient.getItems()[0].is(Items.BIRCH_PLANKS), "Moonlight did not swap oak to birch planks");
+        var probe = new com.cappleapple.astralrepository.menu.NexusMenu(32001, new net.minecraft.world.entity.player.Inventory(Minecraft.getInstance().player));
+        probe.grid.setItem(0, new ItemStack(Items.BIRCH_PLANKS));
+        var recipe = new net.minecraft.world.item.crafting.ShapelessRecipe(new ResourceLocation("astral_repository_recipe_test", "moonlight_cache"),
+                "", net.minecraft.world.item.crafting.CraftingBookCategory.MISC, new ItemStack(Items.STICK),
+                net.minecraft.core.NonNullList.of(net.minecraft.world.item.crafting.Ingredient.EMPTY, ingredient));
+        check(RecipeTransfers.canFill(probe, recipe), "Actual Moonlight indexed candidate was unavailable");
+        var before = RecipeTransfers.inventory(probe);
+        var inner = (net.minecraft.world.item.crafting.Ingredient) ingredient.getClass().getMethod("getInner").invoke(ingredient);
+        inner.getItems()[0] = new ItemStack(Items.OAK_LOG);
+        var invalidate = ingredient.getClass().getDeclaredMethod("invalidate");
+        invalidate.setAccessible(true);
+        invalidate.invoke(ingredient);
+        check(ingredient.getItems().length == 1 && ingredient.getItems()[0].is(Items.BIRCH_LOG), "Actual Moonlight invalidation retained its old domain");
+        check(RecipeTransfers.inventory(probe) == before, "Moonlight fixture unexpectedly changed its inventory epoch");
+        check(!RecipeTransfers.canFill(probe, recipe), "Forge Moonlight cached an answer after its domain was invalidated");
+        probe.grid.setItem(0, new ItemStack(Items.BIRCH_LOG));
+        check(RecipeTransfers.canFill(probe, recipe), "New Moonlight domain did not accept the matching local ingredient");
+    }
+
+    private static void checkSimpleDomainChanges() {
+        net.minecraft.world.item.Item[] domain = { Items.IRON_INGOT };
+        var ingredient = new net.minecraft.world.item.crafting.Ingredient(
+                java.util.stream.Stream.of(new net.minecraft.world.item.crafting.Ingredient.ItemValue(new ItemStack(Items.IRON_INGOT)))) {
+            @Override public ItemStack[] getItems() { return new ItemStack[] { new ItemStack(domain[0]) }; }
+            @Override public boolean test(ItemStack stack) { return stack.is(domain[0]); }
+            @Override public boolean isSimple() { return true; }
+        };
+        var probe = new com.cappleapple.astralrepository.menu.NexusMenu(32002, new net.minecraft.world.entity.player.Inventory(Minecraft.getInstance().player));
+        probe.grid.setItem(0, new ItemStack(Items.IRON_INGOT));
+        var recipe = new net.minecraft.world.item.crafting.ShapelessRecipe(new ResourceLocation("astral_repository_recipe_test", "simple_dynamic_cache"),
+                "", net.minecraft.world.item.crafting.CraftingBookCategory.MISC, new ItemStack(Items.STICK),
+                net.minecraft.core.NonNullList.of(net.minecraft.world.item.crafting.Ingredient.EMPTY, ingredient));
+        check(RecipeTransfers.canFill(probe, recipe), "Custom simple item-domain recipe did not match");
+        var stock = RecipeTransfers.inventory(probe);
+        domain[0] = Items.GOLD_INGOT;
+        check(RecipeTransfers.inventory(probe) == stock && !RecipeTransfers.canFill(probe, recipe), "Custom simple domain retained a stale positive answer");
+        domain[0] = Items.IRON_INGOT;
+        check(RecipeTransfers.inventory(probe) == stock && RecipeTransfers.canFill(probe, recipe), "Custom simple domain retained a stale negative answer");
+    }
+
+    private static void checkTagReloadEvent(NexusScreen screen) throws Exception {
+        var menu = screen.getMenu();
+        var stock = RecipeTransfers.inventory(menu);
+        Object viewer = viewerInventory(screen);
+        long epoch = RecipeTransfers.recipeEpoch();
+        var subscriptions = RecipeTransfers.class.getDeclaredField("subscribed");
+        subscriptions.setAccessible(true);
+        var subscribed = (java.util.Set<?>) subscriptions.get(null);
+        check(subscribed.contains(menu), "Recipe inventory fixture was not subscribed before reload");
+        com.cappleapple.astralrepository.client.RecipeTagReloadEvents.tagsUpdated(
+                new net.minecraftforge.event.TagsUpdatedEvent(Minecraft.getInstance().level.registryAccess(), false, true));
+        check(RecipeTransfers.recipeEpoch() == epoch && RecipeTransfers.inventory(menu) == stock, "Server-cause tag update changed client recipe state");
+        var event = new net.minecraftforge.event.TagsUpdatedEvent(Minecraft.getInstance().level.registryAccess(), true, true);
+        check(!event.shouldUpdateStaticData(), "Tag fixture must exercise the integrated client case");
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(event);
+        check(RecipeTransfers.recipeEpoch() == epoch + 1, "Actual client tag event did not advance the recipe epoch once");
+        var updated = RecipeTransfers.inventory(menu);
+        check(updated != stock && updated.equals(stock), "Tag-only update did not replace equal-count cached stock");
+        check(subscriptions.get(null) == subscribed && subscribed.contains(menu), "Recipe reload lost the existing availability subscription");
+        if (viewer != null) Emi.checkReloadedInventory(screen, viewer);
     }
 
     private static void changedViewer(NexusScreen screen, Object before, String reason) throws Exception {
@@ -252,6 +338,8 @@ public final class RecipeCompatClientSmoke {
             Files.createDirectories(OUT);
             Files.writeString(OUT.resolve("result.txt"), "PASS: " + viewer() + " availability includes 81 stored identities beyond the 54-entry page; hidden iron fills an actual shaped recipe through the server packet, preserving all eight iron across storage/grid."
                     + " Stable inventory/viewer reuse, in-place count/NBT/cursor edits, cursor capacity, dynamic custom predicate, and real network removal/restoration invalidation pass."
+                    + " Unknown simple-domain changes and actual client tag-event cache/EMI epoch invalidation pass."
+                    + (ModList.get().isLoaded("moonlight") ? " Actual Moonlight indexed-domain selection and same-recipe/same-inventory domain invalidation pass." : "")
                     + (ModList.get().isLoaded("polymorph") ? " Polymorph's actual Nexus widget selects both conflicting outputs without consuming ingredients." : "") + "\n");
             return true;
     }
@@ -272,6 +360,11 @@ public final class RecipeCompatClientSmoke {
     }
 
     private static final class Emi {
+        static void checkReloadedInventory(NexusScreen screen, Object previous) {
+            var current = handler(screen).getInventory(screen);
+            check(current != previous && !current.isEqual((dev.emi.emi.api.recipe.EmiPlayerInventory) previous),
+                    "EMI treated an older recipe epoch as equal despite tag-only invalidation");
+        }
         static com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler handler(NexusScreen screen) {
             com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler handler;
             try {

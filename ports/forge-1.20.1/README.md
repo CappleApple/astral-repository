@@ -2,7 +2,7 @@
 
 Astral Repository connects workshop inventories through crystal networks, moves items, fluids, and energy, and crafts products from recipes taught to the network.
 
-This directory builds the Forge edition, version 1.11.14. The original Minecraft 1.21.1 NeoForge edition remains at the repository root. See the [project README](../../README.md) for the full gameplay guide.
+This directory builds the Forge edition, version 1.11.15. The original Minecraft 1.21.1 NeoForge edition remains at the repository root. See the [project README](../../README.md) for the full gameplay guide.
 
 ## Installation
 
@@ -37,7 +37,7 @@ Set `JAVA_HOME` to a JDK 17 installation and run:
 .\gradlew.bat -PgameplaySmoke -PoptionalRuntime runClient
 ```
 
-The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.14.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
+The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.15.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
 
 The port audit passed 146 JUnit tests and 22 native Forge GameTests. Runtime checks cover all ten blocks placed through their items on all six faces, storage recovery after breaking and replacement, Nexus withdrawal/deposit and vanilla crafting/refill, Recipe Tome inscription and bookshelf discovery, completed automatic crafting with ingredient conservation, item/fluid/energy rune transfers with stock limits, capability invalidation, all thirteen base recipes, and worldgen registration. This is a focused port suite; it does not claim the original NeoForge edition's complete GameTest coverage.
 

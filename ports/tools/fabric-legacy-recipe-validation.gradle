@@ -2,15 +2,18 @@
 tasks.register('productionRecipeCompatSmoke', project.plugins.findPlugin('fabric-loom').class.classLoader.loadClass('net.fabricmc.loom.task.prod.ClientProductionRunTask')) {
     def viewer=project.findProperty('recipeViewer') ?: 'plain'
     def polymorph=project.hasProperty('withPolymorph')
+    def moonlight=project.hasProperty('withMoonlight')
     def game=project.name.contains('1.20.1') ? '1.20.1' : '1.21.1'
     def dependencies=rootProject.file('../../test-libs/recipe-compat/fabric-runtime/'+game)
     mods.setFrom(tasks.named('remapJar'),tasks.named('remapGameplayTestJar'),configurations.gameplayApi)
     if(viewer=='emi')mods.from(fileTree(dependencies){include 'emi-*.jar'})
     if(viewer=='jei')mods.from(fileTree(dependencies){include 'jei-*.jar','mezz_config-*.jar'})
     if(polymorph)mods.from(fileTree(dependencies){include 'polymorph-*.jar';exclude '*-sources.jar'})
-    runDir=layout.buildDirectory.dir('production-recipe-'+viewer+(polymorph?'-polymorph':'-plain'))
+    if(moonlight)mods.from(fileTree(dependencies){include 'moonlight-*.jar';exclude '*-sources.jar'})
+    runDir=layout.buildDirectory.dir('production-recipe-'+viewer+(polymorph?'-polymorph':'-plain')+(moonlight?'-moonlight':''))
     javaLauncher=javaToolchains.launcherFor{languageVersion=JavaLanguageVersion.of(game=='1.20.1'?17:21)}
     jvmArgs.addAll('-Dastral_repository.testClient=true','-Dastral_repository.recipeRuntime=true',"-Dastral_repository.recipeViewer=${viewer}","-Dastral_repository.expectPolymorph=${polymorph}",'-Xmx2G')
+    jvmArgs.add("-Dastral_repository.expectMoonlight=${moonlight}")
     doFirst{
         def directory=runDir.get().asFile;directory.mkdirs()
         new File(directory,'options.txt').text='onboardAccessibility:false\nsoundCategory_master:0.0\npauseOnLostFocus:false\nrenderDistance:3\nmaxFps:30\n'
@@ -19,5 +22,6 @@ tasks.register('productionRecipeCompatSmoke', project.plugins.findPlugin('fabric
     doLast{
         def result=new File(runDir.get().asFile,'recipe-runtime-captures/result.txt')
         if(!result.isFile()||!result.text.startsWith('PASS:')||result.text.contains('FAIL:')||!result.text.contains('actual normal furnace consumes raw iron and fuel')||!result.text.contains('Real Nexus request discovers a furnace'))throw new GradleException('Packaged recipe compatibility failed: '+(result.isFile()?result.text:'no result'))
+        if(moonlight&&!result.text.contains('Actual Moonlight custom ingredient differential checks'))throw new GradleException('Moonlight differential check receipt missing')
     }
 }

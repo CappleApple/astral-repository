@@ -15,10 +15,13 @@ Astral Repository runs without the optional mods below. `astral_repository-compa
 | Visual Workbench | Network autocrafting at persistent tables without using their saved player grid or preview as storage | Block entity type `visualworkbench:crafting_table` |
 | Iron Furnaces | Physical smelting and blasting/smoking augments in normal furnace mode | Verified three-slot input/fuel/output contract; factory and generator modes excluded |
 | Polymorph (1.20.1 and 1.21.1) | Nexus recipe selection and exact recipe selection in supported furnaces | Optional public player/block recipe-data APIs for each game version |
+| Moonlight (verified legacy releases) | Indexed matching for its item-only block-type swap ingredient | Exact implementation and version guards; other releases retain generic predicate matching |
 | Patchouli | Optional mod-owned Field Guide item, recipe, creative entry, and book screens | `custom_book_item` and `PatchouliAPI.openBookGUI` |
 | Jade | Shift-only rune icons and amounts in Jade's tooltip | Client block-component and Element APIs |
 
 The storage and processing adapter API names and contracts were checked against local Stacks Not Slots 1.x source, the installed Create 6.0.10 JAR, and the upstream sources listed below. Create 6.0.10 pressing, milling, and stress leases, plus Stacks Not Slots 1.0 exact capacity, passed the [installed-mod runtime gate](optional-runtime-validation.md). AE2, Refined Storage, and Ars Nouveau runtime integration has not yet been exercised in a loaded modded game. Version drift disables the affected provider and logs a diagnostic.
+
+Moonlight recipe matching is optional and has no configuration switch. The verified releases are `1.21.1-3.7.2` for NeoForge/Fabric and `1.20-2.16.38B` for Forge/Fabric. Their block-type swap ingredient tests the same complete item list exposed by its display stacks, even when it requests custom testing. The adapter narrows candidates to those item types. Forge's implementation can invalidate its list, so its answers are recomputed; unknown custom ingredients also retain live checks. This exception does not treat arbitrary custom display stacks as exhaustive. See [cold-transition validation](validation.md#nexus-and-recipe-screen-transitions-11115).
 
 ## Setup and boundaries
 

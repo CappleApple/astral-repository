@@ -1,5 +1,27 @@
 # Validation record
 
+## Nexus and recipe-screen transitions (1.11.15)
+
+Two new client recordings from a 506-mod single-player setup identify Moonlight block-type swap matching as the main remaining cost. Custom-ingredient checks consume 52.70% and 84.79% of sampled Render-thread time. Both captures include the integrated server; aggregate server fill/broadcast work is much smaller. These are inclusive samples, not invocation counts or individual hitch durations. The recordings and their decoded metadata remain local under ignored `build/nexus-transitions/`.
+
+Matching now separates a complete item domain from a permanently cacheable answer. Public item-only contracts can narrow candidates, but unknown custom recipes/predicates retain live checks. Non-simple predicates receive cached detached stack prototypes rather than a new copy for every comparison. Exact binary checks established Moonlight's complete item-only behavior despite its non-simple flag; only the verified versions/classes get that exception. Client tag updates invalidate both recipe answers and EMI inventory equality, including integrated-server tag packets with unchanged stock.
+
+The original NeoForge fixture uses Moonlight `1.21.1-3.7.2`, EMI `1.1.24`, JEI `19.64.0.455` and MezzConfig `0.6.9`. Separate EMI, JEI, and combined profiles pass with 10,000 exact stored identities across 1,350 registered item types, four basic storage crystals, and 4,096 generated recipes containing actual Moonlight swap ingredients. Each profile opens a fresh Nexus menu three times, fills one custom recipe, crafts it, then fills and crafts the remaining maximum batch. All 64 stored spruce planks become exactly 64 sticks. The EMI profiles open an actual recipe screen and invoke EMI's fill dispatcher; JEI uses its registered transfer handler.
+
+| Runtime | Old custom fallback, median | Fresh indexed cache, median | Old allocation | Fresh allocation |
+| --- | ---: | ---: | ---: | ---: |
+| EMI | 90.82 ms | 2.35 ms | 287.29 MB | 3.14 MB |
+| JEI | 91.77 ms | 4.52 ms | 287.31 MB | 3.17 MB |
+| EMI + JEI | 105.01 ms | 2.24 ms | 287.29 MB | 3.10 MB |
+
+Each comparison executes 512 actual custom recipes on the same thread and stock, with three samples and a fresh menu/index and no cached recipe answers for each fixed pass. The retained 1.11.14 fallback excludes its old snapshot-construction cost. Packet assembly is outside this comparison. MB uses decimal bytes. These measure the core matching path inside the fixed development client, not separate release binaries or whole-game FPS.
+
+The EMI recipe-open call took 17.56 ms; its single and maximum fill calls took 7.82 ms and 5.97 ms. With both viewers installed these were 14.47 ms, 6.74 ms and 13.18 ms. Full-stock synchronization still takes approximately 2.4 seconds under the existing chunk rate. `RenderFrameEvent.Pre/Post` spans are recorded separately and exclude tick/input processing; they are not full-frame latency measurements. This synthetic catalogue targets the profiled ingredient and does not reproduce the entire custom modpack.
+
+Run `runClientSmoke -PnexusTransitionTest -PemiTest -PtransitionProfile=emi`, or replace `-PemiTest` with `-PjeiTest` or use both. `-PtransitionRecipes=<count>` and `-PtransitionIdentities=<count>` control the workload. The opt-in task generates recipes in `build/generated/nexus-transition-recipes-<count>/data/astral_repository_transition_test/recipe/`. It expects the pinned Moonlight JAR under `test-libs/recipe-compat/transition/` and JEI/MezzConfig under `test-libs/recipe-viewers/transition/`. These dependencies, generated recipes and all smoke classes are excluded from release JARs. Evidence is under `build/nexus-transitions/runtime/` and `runtime-*-final.log`; the initial fixture's result-sentinel failure is preserved separately.
+
+All eight normal builds pass 1,300 unit tests; NeoForge 1.21.1 passes all 166 required server GameTests with the existing optional-mod fixture. Cross-loader runtime checks are in the [port record](../ports/VALIDATION.md#custom-ingredient-and-tag-invalidation-checks-11115). Server planning, extraction and snapshot/diff construction are unchanged.
+
 ## Nexus recipe availability performance (1.11.14)
 
 The reported client profile samples only the Render thread on Minecraft 1.21.1, NeoForge 21.1.265, Astral Repository 1.11.13, EMI 1.1.24 and JEI 19.64.0.455. `RecipeTransfers.canFill` accounts for 79.33% of sampled render time; its ingredient candidate construction accounts for 72.89%. These inclusive percentages overlap. Repeated full-inventory scans and copied item stacks dominate; the assignment solver accounts for 0.08%.

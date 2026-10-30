@@ -50,10 +50,15 @@ public final class AstralEmiPlugin implements EmiPlugin {
         });
     }
     private static final class CachedInventory extends dev.emi.emi.api.recipe.EmiPlayerInventory {
+        private final long recipeEpoch=RecipeTransfers.recipeEpoch();
         private CachedInventory(java.util.Map<com.cappleapple.astralrepository.api.ItemKey,Long> stock){
             super(stock.entrySet().stream().map(entry->EmiStack.of(entry.getKey().sample()).setAmount(entry.getValue())).toList());
         }
-        @Override public boolean isEqual(dev.emi.emi.api.recipe.EmiPlayerInventory other){return this==other||super.isEqual(other);}
+        @Override public boolean isEqual(dev.emi.emi.api.recipe.EmiPlayerInventory other){
+            if(this==other)return true;
+            if(other instanceof CachedInventory cached&&recipeEpoch!=cached.recipeEpoch)return false;
+            return super.isEqual(other);
+        }
     }
     public static void refreshPowerVisibility(){
         if(!registered)return;

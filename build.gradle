@@ -42,6 +42,12 @@ neoForge {
                 systemProperty 'astral_repository.recipePerformanceTest', 'true'
                 systemProperty 'astral_repository.recipePerformanceIdentities', project.findProperty('recipePerformanceIdentities') ?: '10000'
             }
+            if (project.hasProperty('nexusTransitionTest')) {
+                systemProperty 'astral_repository.nexusTransitionTest', 'true'
+                systemProperty 'astral_repository.transitionIdentities', project.findProperty('transitionIdentities') ?: '10000'
+                systemProperty 'astral_repository.transitionRecipes', project.findProperty('transitionRecipes') ?: '4096'
+                systemProperty 'astral_repository.transitionOutput', layout.buildDirectory.dir('nexus-transitions/runtime/' + (project.findProperty('transitionProfile') ?: 'emi')).get().asFile.absolutePath
+            }
             if (project.hasProperty('bindingOnly')) systemProperty 'astral_repository.bindingOnly', 'true'
             if (project.hasProperty('editorOnly')) systemProperty 'astral_repository.editorOnly', 'true'
             if (project.hasProperty('wandOnly')) systemProperty 'astral_repository.wandOnly', 'true'
@@ -130,6 +136,10 @@ repositories {
     maven { url = "https://maven.terraformersmc.com/releases" }
 }
 dependencies {
+    if (project.hasProperty('nexusTransitionTest')) {
+        runtimeOnly files('test-libs/recipe-compat/transition/moonlight-1.21.1-3.7.2-neoforge.jar')
+        if (project.hasProperty('jeiTest')) runtimeOnly fileTree(dir: 'test-libs/recipe-viewers/transition', include: ['*.jar'])
+    }
     if (project.hasProperty('recipeCompatTest'))
         runtimeOnly fileTree(dir: 'test-libs/recipe-compat', include: ['*.jar'], exclude: ['*-sources.jar'])
     if (project.hasProperty('lithiumTest') || project.hasProperty('performanceClientTest'))
@@ -142,7 +152,7 @@ dependencies {
     compileOnly "mezz.jei:jei-1.21.1-common-api:19.21.0.247"
     compileOnly "mezz.jei:jei-1.21.1-neoforge-api:19.21.0.247"
     compileOnly "dev.emi:emi-neoforge:1.1.24+1.21.1:api"
-    if(project.hasProperty('jeiTest')) {
+    if(project.hasProperty('jeiTest') && !project.hasProperty('nexusTransitionTest')) {
         if(project.hasProperty('recipeCompatTest')) runtimeOnly files('test-libs/recipe-viewers/jei-1.21.1-neoforge-19.52.0.421.jar')
         else runtimeOnly 'mezz.jei:jei-1.21.1-neoforge:19.21.0.247'
     }
@@ -171,6 +181,26 @@ tasks.named('processResources').configure {
 tasks.named('jar', Jar).configure { exclude 'com/cappleapple/astralrepository/gametest/**'; exclude 'data/astral_repository/structure/empty_workshop.nbt'; exclude 'data/astral_repository/structure/empty_geode.nbt' }
 if (project.hasProperty('recipeCompatTest')) sourceSets.main.resources.srcDir 'src/testFixtures/recipe-compat-datapack'
 tasks.named('jar', Jar).configure { exclude 'data/astral_repository_recipe_test/**' }
+
+if (project.hasProperty('nexusTransitionTest')) {
+    def count = (project.findProperty('transitionRecipes') ?: '4096').toInteger()
+    if (count < 1 || count > 8192) throw new GradleException('transitionRecipes must be between 1 and 8192')
+    def generated = layout.buildDirectory.dir('generated/nexus-transition-recipes-' + count)
+    tasks.register('generateNexusTransitionRecipes') {
+        inputs.property 'count', count
+        outputs.dir generated
+        doLast {
+            def recipes = generated.get().dir('data/astral_repository_transition_test/recipe').asFile
+            recipes.mkdirs()
+            def ingredient = [type: 'moonlight:block_type_swap', block_type: 'minecraft:wood_type', from: 'minecraft:oak', to: 'minecraft:spruce', ingredient: [item: 'minecraft:oak_planks']]
+            def recipe = groovy.json.JsonOutput.toJson([type: 'minecraft:crafting_shapeless', category: 'misc', ingredients: [ingredient], result: [id: 'minecraft:stick', count: 1]])
+            for (int index = 0; index < count; index++) new File(recipes, 'swap_' + index + '.json').text = recipe
+        }
+    }
+    sourceSets.main.resources.srcDir generated
+    tasks.named('processResources').configure { dependsOn 'generateNexusTransitionRecipes' }
+}
+tasks.named('jar', Jar).configure { exclude 'data/astral_repository_transition_test/**' }
 
 
 
