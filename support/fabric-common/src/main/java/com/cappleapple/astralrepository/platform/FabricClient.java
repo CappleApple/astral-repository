@@ -10,6 +10,9 @@ public final class FabricClient implements net.fabricmc.api.ClientModInitializer
         ConfigRegistration.register("astral_repository",net.neoforged.fml.config.ModConfig.Type.CLIENT,
                 com.cappleapple.astralrepository.AstralClientConfig.SPEC,"astral_repository-client.toml");
         com.cappleapple.astralrepository.platform.network.registration.PayloadRegistrar.registerClient();
+        net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents.TAGS_LOADED.register((registries,client)->{
+            if(client)RecipeTransfers.recipesReloaded();
+        });
         AstralClient.screens(new RegisterMenuScreensEvent());
         AstralClient.tooltips(new RegisterClientTooltipComponentFactoriesEvent());
         AstralClient.blockColors(new RegisterColorHandlersEvent.BlockTintSources());

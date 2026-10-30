@@ -69,6 +69,7 @@ final class ModernRecipeChecks {
             if(screen.getMenu().recipeInventory().size()<81)return;
             check(screen.getMenu().entries.isEmpty(),"Search did not hide ingredients");
             check(screen.getMenu().recipeInventory().getOrDefault(key(Items.IRON_INGOT),0L)==8,"Off-page iron missing from viewer inventory");
+            customAvailability(screen.getMenu());
             if(FabricLoader.getInstance().isModLoaded("jei"))Jei.fill(screen);
             else RecipeTransfers.fill(screen.getMenu(),Identifier.withDefaultNamespace("iron_trapdoor"),1);
             next(5);
@@ -147,6 +148,43 @@ final class ModernRecipeChecks {
         p.getInventory().clearContent();p.teleportTo(level,.5,-59,4.5,Set.of(),180,20,false);
         check(level.getServer().getRecipeManager().byKey(net.minecraft.resources.ResourceKey.create(Registries.RECIPE,id("conflict_smelting_a"))).isPresent(),"Dedicated conflict fixture resources were not loaded");
         pass("packaged core loaded with EMI, Polymorph and Iron Furnaces absent");
+    }
+    private static void customAvailability(NexusMenu menu){
+        check(RecipeTransfers.recipeEpoch()>0,"Actual client tag synchronization did not advance the recipe epoch");
+        int[] simpleCalls={0};
+        var simple=new net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient(){
+            @Override public boolean test(ItemStack stack){simpleCalls[0]++;return stack.is(Items.IRON_INGOT);}
+            @Override public java.util.stream.Stream<Holder<Item>> items(){return java.util.stream.Stream.of(Items.IRON_INGOT.builtInRegistryHolder());}
+            @Override public boolean requiresTesting(){return false;}
+            @Override public net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer<?> getSerializer(){throw new AssertionError("Client-only fixture must not be serialized");}
+        }.toVanilla();
+        int before=simpleCalls[0];
+        for(int i=0;i<1024;i++)check(RecipeTransfers.canFill(menu,customRecipe(simple)),"Cold custom-simple catalogue lost stored iron");
+        check(simpleCalls[0]==before,"Simple custom ingredient ignored its public item-only matching contract");
+
+        boolean[] enabled={false};int[] dynamicCalls={0};var prototypes=new IdentityHashMap<ItemStack,Boolean>();
+        var dynamic=new net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient(){
+            @Override public boolean test(ItemStack stack){dynamicCalls[0]++;prototypes.put(stack,true);check(stack.getCount()==1,"Predicate sample count was not normalized");return enabled[0]&&stack.is(Items.IRON_INGOT);}
+            // Display entries are intentionally incomplete for this non-simple ingredient.
+            @Override public java.util.stream.Stream<Holder<Item>> items(){return java.util.stream.Stream.of(Items.STONE.builtInRegistryHolder());}
+            @Override public boolean requiresTesting(){return true;}
+            @Override public net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer<?> getSerializer(){throw new AssertionError("Client-only fixture must not be serialized");}
+        }.toVanilla();
+        var recipe=customRecipe(dynamic);
+        check(!RecipeTransfers.canFill(menu,recipe),"Disabled dynamic ingredient unexpectedly matched");
+        int samples=prototypes.size(),firstCalls=dynamicCalls[0];check(samples>0,"Dynamic predicate was never evaluated");
+        enabled[0]=true;check(RecipeTransfers.canFill(menu,recipe),"Incomplete display items hid an accepted stored ingredient");
+        enabled[0]=false;check(!RecipeTransfers.canFill(menu,recipe),"Dynamic predicate answer was cached");
+        enabled[0]=true;check(RecipeTransfers.canFill(menu,recipe),"Repeated dynamic state change was ignored");
+        check(dynamicCalls[0]>firstCalls&&prototypes.size()==samples,"Dynamic matching allocated fresh stack copies instead of reusing detached prototypes");
+        var stock=RecipeTransfers.inventory(menu);long epoch=RecipeTransfers.recipeEpoch();
+        RecipeTransfers.recipesReloaded();
+        check(RecipeTransfers.recipeEpoch()==epoch+1&&RecipeTransfers.inventory(menu)!=stock,"Tag-only recipe reload retained cached stock");
+        check(RecipeTransfers.canFill(menu,recipe),"Dynamic matching failed after recipe reload");
+        pass("1024 cold custom-simple recipes use indexed stock; incomplete-display dynamic predicates observe state changes and reuse detached sample stacks; client tag synchronization and recipe epoch invalidate cached stock");
+    }
+    private static CraftingRecipe customRecipe(Ingredient ingredient){
+        return new ShapelessRecipe(new Recipe.CommonInfo(false),new CraftingRecipe.CraftingBookInfo(CraftingBookCategory.MISC,"client cache fixture"),new ItemStackTemplate(Items.STICK),List.of(ingredient));
     }
     private static void configureCooking(ServerPlayer p,int index){
         p.level().setBlockAndUpdate(MACHINE,List.of(Blocks.FURNACE,Blocks.BLAST_FURNACE,Blocks.SMOKER).get(index).defaultBlockState());
