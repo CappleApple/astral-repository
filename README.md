@@ -2,9 +2,9 @@
 
 Astral Repository connects workshop inventories through crystal networks, moves items, fluids, and energy, and crafts products from recipes taught to the network.
 
-The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.11.14. It builds independently of the other Minecraft and loader branches.
+The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.11.15. It builds independently of the other Minecraft and loader branches.
 
-Version 1.11.14 fixes severe Nexus screen lag with EMI or JEI and large Repository inventories. Recipe availability updates when stock, local slots, or the cursor change. See the [changelog](CHANGELOG.md).
+Version 1.11.15 fixes remaining Nexus opening and recipe-fill pauses with the tested Moonlight releases. Recipe availability and the EMI craftable list refresh after client item tags reload. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
@@ -30,6 +30,8 @@ Item identities and saved settings use Minecraft 1.20.1 item NBT. Storage intero
 
 ## Build and validation
 
+Version 1.11.15 passes 161 JUnit tests. Packaged client checks for 1.11.15 exercise the registered EMI and JEI transfer handlers and client tag-reload invalidation. The Moonlight block-type swap fast path is limited to the verified 1.20-2.16.38B release on this branch; other custom predicates retain live checks.
+
 Set `JAVA_HOME` to a JDK 17 installation and run:
 
 ```powershell
@@ -39,7 +41,7 @@ Set `JAVA_HOME` to a JDK 17 installation and run:
 .\gradlew.bat -PgameplaySmoke -PoptionalRuntime runClient
 ```
 
-The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.14.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
+The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.11.15.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
 
 The earlier port audit passed 146 JUnit tests and 22 native Forge GameTests. Runtime checks cover all ten blocks placed through their items on all six faces, storage recovery after breaking and replacement, Nexus withdrawal/deposit and vanilla crafting/refill, Recipe Tome inscription and bookshelf discovery, completed automatic crafting with ingredient conservation, item/fluid/energy rune transfers with stock limits, capability invalidation, all thirteen base recipes, and worldgen registration. This is a focused port suite; it does not claim the original NeoForge edition's complete GameTest coverage.
 

@@ -115,4 +115,83 @@ class RecipeAvailabilityCacheTest {
         assertNull(RecipeTransferPlan.assign(
                 List.of(exact, exact), cache.stock(), 1, key -> 64));
     }
+
+    @Test void coldDeclaredDomainAvoidsUnrelatedItemsAcrossManyComponentVariants() {
+        Map<Key,Long> stock = new LinkedHashMap<>();
+        for (int item = 0; item < 5_000; item++) {
+            stock.put(new Key("item_" + item, "plain"), 1L);
+            stock.put(new Key("item_" + item, "named"), 1L);
+        }
+        AtomicInteger indexed = new AtomicInteger(), tested = new AtomicInteger();
+        var cache = new RecipeAvailabilityCache<Key,String,Object>(stock, key -> {
+            indexed.incrementAndGet();
+            return key.item();
+        });
+        for (int item = 0; item < 1_000; item++) {
+            String wanted = "item_" + item;
+            var candidates = cache.candidates(List.of(wanted), key -> {
+                tested.incrementAndGet();
+                return true;
+            });
+            assertEquals(Set.of(new Key(wanted, "plain"), new Key(wanted, "named")), new HashSet<>(candidates));
+        }
+        assertEquals(10_000, indexed.get());
+        assertEquals(2_000, tested.get(), "Cold complete-domain queries must skip unrelated item buckets");
+    }
+
+    @Test void declaredDomainRetestsDynamicComponentPredicatesWithoutCachingAnswers() {
+        Key plain = new Key("iron", ""), first = new Key("iron", "first"),
+                second = new Key("iron", "second"), gold = new Key("gold", "");
+        var cache = new RecipeAvailabilityCache<Key,String,Object>(
+                Map.of(plain, 5L, first, 2L, second, 3L, gold, 9L), Key::item);
+        AtomicInteger tested = new AtomicInteger();
+        boolean[] enabled = { false };
+        String[] selected = { "first" };
+        java.util.function.Predicate<Key> predicate = key -> {
+            tested.incrementAndGet();
+            return enabled[0] && key.components().equals(selected[0]);
+        };
+        assertEquals(List.of(), cache.candidates(List.of("iron"), predicate));
+        enabled[0] = true;
+        assertEquals(List.of(first), cache.candidates(List.of("iron"), predicate));
+        selected[0] = "second";
+        assertEquals(List.of(second), cache.candidates(List.of("iron"), predicate));
+        enabled[0] = false;
+        assertEquals(List.of(), cache.candidates(List.of("iron"), predicate));
+        assertEquals(12, tested.get(), "A fixed item domain must still test current component and external state");
+        assertEquals(2L, cache.stock().get(first));
+        assertEquals(3L, cache.stock().get(second));
+    }
+
+    @Test void incompleteDisplaySamplesDoNotRestrictUnknownCustomPredicates() {
+        Key displayed = new Key("stone", ""), hidden = new Key("iron", "accepted"), other = new Key("gold", "");
+        var cache = new RecipeAvailabilityCache<Key,String,Object>(
+                Map.of(displayed, 1L, hidden, 4L, other, 1L), Key::item);
+        List<String> displayItems = List.of(displayed.item());
+        assertEquals(List.of(), cache.candidates(displayItems, key -> key.equals(hidden)));
+        AtomicInteger tested = new AtomicInteger();
+        assertEquals(List.of(hidden), cache.candidates(null, key -> {
+            tested.incrementAndGet();
+            return key.equals(hidden);
+        }));
+        assertEquals(3, tested.get(), "Display samples are not a complete domain contract");
+    }
+
+    @Test void denseItemDomainPreservesAllExactIdentitiesAndSharedCapacity() {
+        Map<Key,Long> stock = new LinkedHashMap<>();
+        for (int variant = 0; variant < 10_000; variant++)
+            stock.put(new Key("same_item", "variant_" + variant), 1L);
+        var cache = new RecipeAvailabilityCache<Key,String,Object>(stock, Key::item);
+        AtomicInteger tested = new AtomicInteger();
+        var candidates = cache.candidates(List.of("same_item"), key -> {
+            tested.incrementAndGet();
+            return true;
+        });
+        assertEquals(10_000, tested.get(), "A dense matching bucket still contains every component identity");
+        assertEquals(10_000, new HashSet<>(candidates).size());
+        var assignment = RecipeTransferPlan.assign(Collections.nCopies(9, candidates), cache.stock(), 1, key -> 64);
+        assertNotNull(assignment);
+        assertEquals(9, new HashSet<>(assignment).size(), "Distinct one-count variants cannot be spent twice");
+    }
+
 }
