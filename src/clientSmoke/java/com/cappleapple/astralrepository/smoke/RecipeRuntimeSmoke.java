@@ -63,6 +63,7 @@ public final class RecipeRuntimeSmoke {
         } else if (phase==2 && ticks>20 && mc.gui.screen() instanceof NexusScreen screen) {
             if (ModList.get().isLoaded("jei") && Jei.runtime()==null) return false;
             RecipeTransfers.inventory(screen.getMenu());
+            check(RecipeTransfers.recipeEpoch()>0,"Actual client tag synchronization did not advance the recipe epoch");
             var search=(net.minecraft.client.gui.components.EditBox)screen.children().stream()
                     .filter(w -> w instanceof net.minecraft.client.gui.components.EditBox e && e.getMessage().getString().equals("Search storage")).findFirst().orElseThrow();
             search.setValue("diamond"); next(3);
@@ -211,6 +212,9 @@ public final class RecipeRuntimeSmoke {
                 check(handler.transferRecipe(menu,recipe,null,Minecraft.getInstance().player,false,false)==null,"Repeated JEI availability changed");
                 check(RecipeTransfers.inventory(menu)==stock,"Unchanged JEI checks rebuilt client stock");
             }
+            long epoch=RecipeTransfers.recipeEpoch();RecipeTransfers.recipesReloaded();
+            check(RecipeTransfers.recipeEpoch()==epoch+1&&RecipeTransfers.inventory(menu)!=stock,"Tag-only reload retained cached stock");
+            check(handler.transferRecipe(menu,recipe,null,Minecraft.getInstance().player,false,false)==null,"JEI availability failed after recipe reload");
             var previous=menu.slots.get(10).getItem().copy();var carried=menu.getCarried().copy();
             try{
                 var gold=new ItemKey(new ItemStack(Items.GOLD_INGOT));check(stock.getOrDefault(gold,0L)==0,"Unexpected fixture gold stock");

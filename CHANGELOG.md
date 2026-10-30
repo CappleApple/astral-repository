@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.15 - 2026-10-30
+
+### Fixed
+
+- Custom ingredients with complete item-only matching now use indexed stock. Other custom predicates keep their live checks while reusing detached item samples.
+- Recipe availability refreshes when client item tags reload, including in single player.
+
 ## 1.11.14 - 2026-10-29
 
 ### Fixed
