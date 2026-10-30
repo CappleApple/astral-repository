@@ -1,12 +1,12 @@
 # Astral Repository — Fabric 1.20.1
 
-A magical storage and automation network for Minecraft 1.20.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.11.14**, on branch `CappleApple/fabric-1.20.1`.
+A magical storage and automation network for Minecraft 1.20.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.11.15**, on branch `CappleApple/fabric-1.20.1`.
 
-Version 1.11.14 fixes severe Nexus screen lag with EMI or JEI and large Repository inventories. Recipe availability updates when stock, local slots, or the cursor change. See the [changelog](CHANGELOG.md).
+Version 1.11.15 fixes remaining Nexus opening and recipe-fill pauses with the tested Moonlight releases. Recipe availability and the EMI craftable list refresh after client item tags reload. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
-Install `astral_repository-fabric-1.20.1-1.11.14.jar` on the client and server. Requires **Minecraft 1.20.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.92.12+1.20.1**, and **Java 17**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-1.20.1-1.11.15.jar` on the client and server. Requires **Minecraft 1.20.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.92.12+1.20.1**, and **Java 17**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
 
 Trinkets enables the goggles face slot; goggles also work in the normal helmet slot. Patchouli enables the Astral Field Guide. EMI adds recipe and menu integration, and Jade adds block information. These optional mods are not bundled. The explicit AE2 Fabric 1.20.1 adapter was not exercised with a complete optional storage network during these checks.
 
@@ -29,9 +29,11 @@ Run Gradle with **JDK 21**. An installed JDK 17 is also required for compilation
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.20.1-1.11.14.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.20.1-1.11.15.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
 
 ## Validation
+
+Packaged client checks for 1.11.15 exercise the registered EMI and JEI transfer handlers and client tag-reload invalidation. The Moonlight block-type swap fast path is limited to the verified 1.20-2.16.38B release on this branch; other custom predicates retain live checks.
 
 The 1.11.12 shader fix passed all 146 JUnit tests and 12 packaged-server regressions. A focused packaged client passed eight placed-world mineral/node visibility cases with Iris 1.7.6 and Complementary Unbound r5.9.3 enabled, disabled, re-enabled, and without Iris installed. It also checked opaque-wall occlusion, a hidden window, muted audio, and an ungrabbed mouse. Inventory and armor visuals were not separately pixel-tested by this fixture.
 
@@ -42,7 +44,7 @@ The 1.11.12 shader fix passed all 146 JUnit tests and 12 packaged-server regress
 
 The Iris profile expects `iris-1.7.6+mc1.20.1.jar`, `sodium-fabric-0.5.12-beta.2+mc1.20.1.jar`, `indium-1.0.36+mc1.20.1.jar`, and `ComplementaryUnbound_r5.9.3.zip` in this branch's `build/issue-1/dependencies/`. The test client uses LWJGL 3.3.1. Results and captures are written under `build/production-geode-shader-{iris,plain}/geode-shader-captures/`. Use a fresh world for server regressions to avoid saved recovery resources at fixture coordinates. The following broader coverage is historical from 1.11.11 unless stated above.
 
-The release checks include 157 JUnit tests and 12 packaged-server rune transfer regressions. These cover delayed and instant transfers, one-tick pipelines, stock limits, rejected deliveries, saved shipments, and actual storage endpoints for network-bound runes. The packaged client fixture uses the remapped release JAR with a separate test mod. It covers all ten blocks on all six placement faces, survival item consumption, stateful storage break/re-place, stock-limited rune transfer, translated item names and tooltips, Nexus withdrawal and deposit packets, ordinary crafting, Recipe Tome inscription, bookshelf discovery, and a completed autocrafting job.
+The release checks include 161 JUnit tests and 12 packaged-server rune transfer regressions. These cover delayed and instant transfers, one-tick pipelines, stock limits, rejected deliveries, saved shipments, and actual storage endpoints for network-bound runes. The packaged client fixture uses the remapped release JAR with a separate test mod. It covers all ten blocks on all six placement faces, survival item consumption, stateful storage break/re-place, stock-limited rune transfer, translated item names and tooltips, Nexus withdrawal and deposit packets, ordinary crafting, Recipe Tome inscription, bookshelf discovery, and a completed autocrafting job.
 
 ```powershell
 .\gradlew.bat productionRuneTransitSmoke

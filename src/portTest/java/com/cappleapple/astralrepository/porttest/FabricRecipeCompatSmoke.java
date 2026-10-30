@@ -28,6 +28,7 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
     private static boolean worldStarting,transferDone,completed,manualClicked;
     private static volatile boolean manualVerified;
     private static int runtimeTicks;
+    private static boolean moonlightChecked,reloadChecked;
     private static int cacheNetworkStep;
     private static java.util.Map<ItemKey,Long> cacheNetworkBefore;
     private static Object cacheViewerBefore;
@@ -47,6 +48,7 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
                     String expectedViewer=System.getProperty("astral_repository.recipeViewer","plain");
                     check(FabricLoader.getInstance().isModLoaded("emi")==expectedViewer.equals("emi")&&FabricLoader.getInstance().isModLoaded("jei")==expectedViewer.equals("jei"),"Unexpected recipe-viewer combination");
                     check(FabricLoader.getInstance().isModLoaded("polymorph")==Boolean.getBoolean("astral_repository.expectPolymorph"),"Unexpected Polymorph presence");
+                    check(FabricLoader.getInstance().isModLoaded("moonlight")==Boolean.getBoolean("astral_repository.expectMoonlight"),"Unexpected Moonlight presence");
                     worldStarting=true;mc.getWindow().setWindowed(1100,750);mc.options.guiScale().set(2);mc.options.renderDistance().set(3);mc.resizeDisplay();mc.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
                     mc.createWorldOpenFlows().createFreshLevel("recipe-runtime-"+System.currentTimeMillis(),new net.minecraft.world.level.LevelSettings("Recipe runtime",net.minecraft.world.level.GameType.CREATIVE,false,net.minecraft.world.Difficulty.PEACEFUL,true,new net.minecraft.world.level.GameRules(),net.minecraft.world.level.WorldDataConfiguration.DEFAULT),new net.minecraft.world.level.levelgen.WorldOptions(42,false,false),r->r.registryOrThrow(net.minecraft.core.registries.Registries.WORLD_PRESET).getHolderOrThrow(net.minecraft.world.level.levelgen.presets.WorldPresets.FLAT).value().createWorldDimensions());
                 }else if(mc.player!=null&&mc.level!=null&&mc.getSingleplayerServer()!=null&&mc.getOverlay()==null){
@@ -220,6 +222,8 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
                 check(stock.getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)), 0L) == 8, "Off-page iron is absent from recipe availability");
             }
             check(screen.getMenu().entries.stream().noneMatch(e -> e.stack().is(Items.IRON_INGOT)), "Search did not hide the ingredient");
+            if (!reloadChecked){checkRecipeEpoch(screen);reloadChecked=true;}
+            if (!moonlightChecked&&FabricLoader.getInstance().isModLoaded("moonlight")){checkMoonlight(screen);moonlightChecked=true;}
             if (!checkCacheNetworkChanges(screen)) return false;
             if (FabricLoader.getInstance().isModLoaded("emi")) Emi.fill(screen);
             else if (FabricLoader.getInstance().isModLoaded("jei")) Jei.fill(screen);
@@ -272,10 +276,67 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
         return false;
     }
 
+    private static void checkRecipeEpoch(NexusScreen screen)throws Exception {
+        var before=RecipeTransfers.inventory(screen.getMenu());
+        Object wrapper=viewerInventory(screen);long epoch=RecipeTransfers.recipeEpoch();
+        net.fabricmc.fabric.api.event.lifecycle.v1.CommonLifecycleEvents.TAGS_LOADED.invoker().onTagsLoaded(Minecraft.getInstance().level.registryAccess(),true);
+        check(RecipeTransfers.recipeEpoch()>epoch,"Actual Fabric client tag callback did not invalidate recipes");
+        var after=RecipeTransfers.inventory(screen.getMenu());
+        check(after!=before&&after.equals(before),"Client tag reload did not replace the equal-content detached cache");
+        if(wrapper!=null)Emi.checkRecipeEpoch(screen,wrapper);
+        Files.createDirectories(OUT);
+        Files.writeString(OUT.resolve("recipe-epoch.json"),new com.google.gson.Gson().toJson(java.util.Map.of("actualClientTagCallback",true,"epochBefore",epoch,"epochAfter",RecipeTransfers.recipeEpoch(),"equalStockCacheReplaced",true,"emiWrapperChecked",wrapper!=null)));
+    }
+
+    private static void checkMoonlight(NexusScreen screen)throws Exception {
+        var menu=screen.getMenu();var original=menu.grid.getItem(0).copy();var cursor=menu.getCarried().copy();
+        Class<?> blockType=Class.forName("net.mehvahdjukaar.moonlight.api.set.BlockType");
+        Class<?> registry=Class.forName("net.mehvahdjukaar.moonlight.api.set.wood.WoodTypeRegistry");
+        Object oak=registry.getMethod("getValue",String.class).invoke(null,"minecraft:oak");
+        Object spruce=registry.getMethod("getValue",String.class).invoke(null,"minecraft:spruce");
+        Class<?> implementation=Class.forName("net.mehvahdjukaar.moonlight.api.resources.recipe.fabric.BlockTypeSwapIngredientImpl");
+        var factory=implementation.getMethod("create",net.minecraft.world.item.crafting.Ingredient.class,blockType,blockType);
+        var inputs=new net.minecraft.world.item.Item[]{Items.OAK_PLANKS,Items.OAK_LOG,Items.OAK_SLAB,Items.OAK_STAIRS,Items.OAK_DOOR,Items.OAK_FENCE,Items.OAK_TRAPDOOR,Items.OAK_BUTTON};
+        int cases=0,queries=0;
+        try{
+            for(boolean nonSimple:new boolean[]{false,true})for(var input:inputs){
+                var inner=net.minecraft.world.item.crafting.Ingredient.of(input);
+                if(nonSimple)inner=new net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredient(){
+                    @Override public boolean test(ItemStack stack){return false;}
+                    @Override public java.util.List<ItemStack> getMatchingStacks(){return java.util.List.of(new ItemStack(input));}
+                    @Override public boolean requiresTesting(){return true;}
+                    @Override public net.fabricmc.fabric.api.recipe.v1.ingredient.CustomIngredientSerializer<?> getSerializer(){return null;}
+                }.toVanilla();
+                var swap=(net.minecraft.world.item.crafting.Ingredient)factory.invoke(null,inner,oak,spruce);
+                var custom=((net.fabricmc.fabric.api.recipe.v1.ingredient.FabricIngredient)(Object)swap).getCustomIngredient();
+                check(custom!=null&&custom.getClass()==implementation,"Fixture did not construct the exact real Moonlight ingredient");
+                check(custom.requiresTesting()==nonSimple,"Moonlight did not preserve the tested requiresTesting contract");
+                if(input==Items.OAK_PLANKS)check(swap.test(new ItemStack(Items.SPRUCE_PLANKS))&&!swap.test(new ItemStack(Items.OAK_PLANKS)),"Actual Moonlight oak-to-spruce conversion differs");
+                var recipe=new net.minecraft.world.item.crafting.ShapelessRecipe(new ResourceLocation("astral_repository_recipe_test","moonlight_differential"),"",net.minecraft.world.item.crafting.CraftingBookCategory.MISC,new ItemStack(Items.STICK),net.minecraft.core.NonNullList.of(net.minecraft.world.item.crafting.Ingredient.EMPTY,swap));
+                for(int state=0;state<6;state++){
+                    menu.grid.setItem(0,state==0||state==4?ItemStack.EMPTY:new ItemStack(state==3?Items.OAK_PLANKS:Items.SPRUCE_PLANKS,state==5?2:1));
+                    if(state==2||state==5)nameProbe(menu.grid.getItem(0));
+                    menu.setCarried(state==4?new ItemStack(Items.SPRUCE_PLANKS,2):state==5?new ItemStack(Items.OAK_PLANKS,2):ItemStack.EMPTY);
+                    var stock=new java.util.LinkedHashMap<ItemKey,Long>(menu.recipeInventory());
+                    if(!menu.getCarried().isEmpty())stock.merge(new ItemKey(menu.getCarried()),(long)menu.getCarried().getCount(),Long::sum);
+                    var ingredients=com.cappleapple.astralrepository.menu.NexusMenu.recipeIngredients(recipe,stock);
+                    boolean expected=ingredients!=null&&com.cappleapple.astralrepository.menu.RecipeTransferPlan.assign(ingredients,stock,1,key->key.sample().getMaxStackSize())!=null;
+                    for(int repeat=0;repeat<2;repeat++){check(RecipeTransfers.canFill(menu,recipe)==expected,"Moonlight differential mismatch input="+input+" nonSimple="+nonSimple+" state="+state);queries++;}
+                    cases++;
+                }
+            }
+        }finally{menu.grid.setItem(0,original);menu.setCarried(cursor);}
+        check(cases==96&&queries==192,"Incomplete Moonlight differential matrix");
+        Files.createDirectories(OUT);
+        String version=FabricLoader.getInstance().getModContainer("moonlight").orElseThrow().getMetadata().getVersion().getFriendlyString();
+        Files.writeString(OUT.resolve("moonlight-differential.json"),new com.google.gson.Gson().toJson(java.util.Map.of("version",version,"cases",cases,"availabilityQueries",queries,"actualExactClass",implementation.getName(),"requiresTestingInnerCovered",true,"componentAndCursorVariants",true,"matchesUnoptimizedAssignment",true)));
+    }
+
     private static boolean checkCacheNetworkChanges(NexusScreen screen)throws Exception {
         var menu=screen.getMenu();var iron=new ItemKey(new ItemStack(Items.IRON_INGOT));
         var recipe=(CraftingRecipe)Minecraft.getInstance().level.getRecipeManager().byKey(RECIPE).orElseThrow();
         if(cacheNetworkStep==0){
+            if(!FabricLoader.getInstance().isModLoaded("moonlight"))check(!com.cappleapple.astralrepository.compat.MoonlightRecipeCompatibility.isItemOnly(net.minecraft.world.item.crafting.Ingredient.of(Items.IRON_INGOT)),"Absent Moonlight adapter did not remain optional");
             var initial=RecipeTransfers.inventory(menu);
             for(int repeat=0;repeat<200;repeat++)check(RecipeTransfers.inventory(menu)==initial&&RecipeTransfers.canFill(menu,recipe),"Stable availability changed or rebuilt its inventory");
             try{initial.put(iron,0L);throw new AssertionError("Cached stock must be immutable");}catch(UnsupportedOperationException expected){}
@@ -326,7 +387,8 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
             check(!mc.mouseHandler.isMouseGrabbed(), "Test client grabbed the mouse");
             check(mc.options.getSoundSourceVolume(net.minecraft.sounds.SoundSource.MASTER) == 0, "Test client audio is not muted");
             Files.createDirectories(OUT);
-            Files.writeString(OUT.resolve("result.txt"), "PASS: " + viewer() + " availability includes 81 stored identities beyond the 54-entry page; hidden iron fills an actual shaped recipe through the server packet, preserving all eight iron across storage/grid. Stable cached checks and local count, component, cursor and real committed network removal/restoration invalidation pass."
+            Files.writeString(OUT.resolve("result.txt"), "PASS: " + viewer() + " availability includes 81 stored identities beyond the 54-entry page; hidden iron fills an actual shaped recipe through the server packet, preserving all eight iron across storage/grid. Stable cached checks and local count, component, cursor and real committed network removal/restoration invalidation pass. Actual client tag reload invalidation passes."
+                    + (moonlightChecked ? " Actual Moonlight custom ingredient differential checks pass across 96 cases and 192 availability checks, including a requiresTesting inner ingredient and component/cursor variants." : "")
                     + (FabricLoader.getInstance().isModLoaded("polymorph") ? " Polymorph's actual Nexus widget selects both conflicting outputs without consuming ingredients." : "") + "\n");
             return true;
     }
@@ -352,6 +414,10 @@ public final class FabricRecipeCompatSmoke implements net.fabricmc.api.ClientMod
             var registry=Class.forName("dev.emi.emi.registry.EmiRecipeFiller");
             var handlers=(java.util.List<?>)registry.getMethod("getAllHandlers",net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class).invoke(null,screen);
             return (com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler)handlers.stream().filter(h->h instanceof com.cappleapple.astralrepository.compat.AstralEmiPlugin.RecipeHandler).findFirst().orElseThrow(()->new AssertionError("EMI did not register the Nexus handler"));
+        }
+        static void checkRecipeEpoch(NexusScreen screen,Object before)throws Exception {
+            var after=handler(screen).getInventory(screen);
+            check(after!=before&&!after.isEqual((dev.emi.emi.api.recipe.EmiPlayerInventory)before),"EMI treated changed recipe/tag epoch as equal inventory");
         }
         static void fill(NexusScreen screen) throws Exception {
             var handler=handler(screen);
