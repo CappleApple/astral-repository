@@ -1,12 +1,12 @@
 # Astral Repository — Fabric 26.2
 
-A magical storage and automation network for Minecraft 26.2. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This branch contains Astral Repository 1.11.14 for Fabric.
+A magical storage and automation network for Minecraft 26.2. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This branch contains Astral Repository 1.11.15 for Fabric.
 
-Version 1.11.14 fixes severe Nexus screen lag with JEI and large Repository inventories. Recipe availability updates when stock, local slots, or the cursor change. See the [changelog](CHANGELOG.md).
+Version 1.11.15 speeds up custom ingredient matching and refreshes recipe availability after client item tags reload. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
-Install `astral_repository-fabric-26.2-1.11.14.jar` on both the client and server. Requires Minecraft **26.2**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.161.0+26.2**, and **Java 25**. Configuration and energy libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-26.2-1.11.15.jar` on both the client and server. Requires Minecraft **26.2**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.161.0+26.2**, and **Java 25**. Configuration and energy libraries are bundled in the mod JAR.
 
 JEI 30.29.0.201 and Jade 26.2.11 were installed during gameplay checks. These integrations are optional. No public Patchouli, EMI or Trinkets build was available for this target during validation; goggles work in the helmet slot. Tests with these integrations do not establish compatibility with every modpack.
 
@@ -27,13 +27,15 @@ Run Gradle with JDK 25:
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-26.2-1.11.14.jar`. Release builds must omit `-PclientSmoke`.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-26.2-1.11.15.jar`. Release builds must omit `-PclientSmoke`.
 
 All source sets and resources live under `src/`.
 
 ## Validation
 
-The port passes 158 JUnit tests and twelve dedicated-server rune transit cases. These cover delayed and instant Push/Pull for native item, fluid, and energy providers plus a Source fixture; one-tick pipelining; shared stock limits; refunds and indeterminate-provider recovery; saved travel time; and actual storage routes through network targets. Both classic and improved-transparency client paths draw fluid, power, Source, and binding beam geometry. These render checks do not replace pixel comparisons against real cloud layers. Actual packaged-client checks cover all ten block-item placements, every registered block and item name, storage upgrades and preserved drops, Nexus packets and inventory transfers, crafting and refill, Recipe Tome inscription, bookshelf discovery and completed autocrafting, rune filter/stock limits, remote access, local storage, rendering and the wand editor. Dedicated-server checks cover native item/fluid/energy transactions, recipes and harvesting, and a second process verifies saved resources after restart.
+Packaged client checks for 1.11.15 exercise the registered JEI transfer handlers and client tag-reload invalidation.
+
+The port passes 162 JUnit tests and twelve dedicated-server rune transit cases. These cover delayed and instant Push/Pull for native item, fluid, and energy providers plus a Source fixture; one-tick pipelining; shared stock limits; refunds and indeterminate-provider recovery; saved travel time; and actual storage routes through network targets. Both classic and improved-transparency client paths draw fluid, power, Source, and binding beam geometry. These render checks do not replace pixel comparisons against real cloud layers. Actual packaged-client checks cover all ten block-item placements, every registered block and item name, storage upgrades and preserved drops, Nexus packets and inventory transfers, crafting and refill, Recipe Tome inscription, bookshelf discovery and completed autocrafting, rune filter/stock limits, remote access, local storage, rendering and the wand editor. Dedicated-server checks cover native item/fluid/energy transactions, recipes and harvesting, and a second process verifies saved resources after restart.
 
 ```powershell
 .\gradlew.bat gameplayFixtureJar -PclientSmoke
