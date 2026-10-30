@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.15 - 2026-10-30
+
+### Fixed
+
+- Fixed remaining Nexus opening, EMI recipe-screen and recipe-fill pauses with large networks and supported Moonlight block-type swap ingredients (Moonlight 1.21.1-3.7.2 on this branch).
+- Custom ingredients with complete item-only matching now use indexed stock. Other custom predicates keep their live checks while reusing detached item samples.
+- Recipe availability and EMI's craftable list refresh when client item tags reload, including in single player.
+
 ## 1.11.14 - 2026-10-29
 
 ### Fixed

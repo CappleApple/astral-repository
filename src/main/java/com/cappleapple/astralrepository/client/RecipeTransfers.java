@@ -14,7 +14,13 @@ public final class RecipeTransfers {
     private static final Set<NexusMenu> subscribed=Collections.newSetFromMap(new WeakHashMap<>());
     // Cache values contain detached items and recipes, never their weakly keyed menu.
     private static final Map<NexusMenu,Cache> caches=new WeakHashMap<>();
+    private static long recipeEpoch;
     private RecipeTransfers() {}
+
+    /** Called on the client thread after its item tags are replaced. */
+    public static void recipesReloaded(){recipeEpoch++;caches.clear();}
+    public static long recipeEpoch(){return recipeEpoch;}
+
 
     /** Stable network/player/grid stock. EMI adds the cursor in its inventory constructor. */
     public static Map<ItemKey,Long> inventory(NexusMenu menu){return cache(menu).inventory;}
@@ -32,13 +38,17 @@ public final class RecipeTransfers {
         Cache cache=cache(menu);
         var ingredients=recipe.getIngredients();
         boolean stable=recipe.getClass()==net.minecraft.world.item.crafting.ShapedRecipe.class||recipe.getClass()==net.minecraft.world.item.crafting.ShapelessRecipe.class;
-        if(stable){for(var ingredient:ingredients)if(!ingredient.isEmpty()&&!simple(ingredient)){stable=false;break;};}
+        if(stable){for(var ingredient:ingredients)if(!ingredient.isEmpty()&&!memoizable(ingredient)){stable=false;break;};}
         if(stable)return cache.availability.available(recipe,()->matches(cache,recipe));
         // Modded predicates may depend on state outside the inventory; keep their direct checks.
         return matches(cache,recipe);
     }
-    private static boolean simple(net.minecraft.world.item.crafting.Ingredient ingredient){
-        return ingredient.getClass()==net.minecraft.world.item.crafting.Ingredient.class&&((net.fabricmc.fabric.api.recipe.v1.ingredient.FabricIngredient)(Object)ingredient).getCustomIngredient()==null;
+    private static boolean itemOnly(net.minecraft.world.item.crafting.Ingredient ingredient){
+        // A complete current item domain does not promise that it stays fixed forever.
+        return !((net.fabricmc.fabric.api.recipe.v1.ingredient.FabricIngredient)(Object)ingredient).requiresTesting()||com.cappleapple.astralrepository.compat.MoonlightRecipeCompatibility.isItemOnly(ingredient);
+    }
+    private static boolean memoizable(net.minecraft.world.item.crafting.Ingredient ingredient){
+        return (ingredient.getClass()==net.minecraft.world.item.crafting.Ingredient.class&&((net.fabricmc.fabric.api.recipe.v1.ingredient.FabricIngredient)(Object)ingredient).getCustomIngredient()==null)||com.cappleapple.astralrepository.compat.MoonlightRecipeCompatibility.isStableItemOnly(ingredient);
     }
     private static boolean matches(Cache cache,CraftingRecipe recipe){
         List<List<ItemKey>> result=new ArrayList<>(Collections.nCopies(9,List.of()));
@@ -49,8 +59,9 @@ public final class RecipeTransfers {
             int target=recipe instanceof net.minecraft.world.item.crafting.ShapedRecipe?i%width+(i/width)*3:i;
             if(target>=9)return false;
             List<ItemKey> candidates;
-            if(simple(ingredient))candidates=cache.availability.candidates(Arrays.stream(ingredient.getItems()).map(net.minecraft.world.item.ItemStack::getItem).toList(),key->true);
-            else candidates=cache.availability.candidates(null,key->ingredient.test(key.sample()));
+            if(itemOnly(ingredient))candidates=cache.availability.candidates(Arrays.stream(ingredient.getItems()).map(net.minecraft.world.item.ItemStack::getItem).toList(),key->true);
+            // Ingredient predicates must not mutate their input; never expose ItemKey internals.
+            else candidates=cache.availability.candidates(null,key->ingredient.test(cache.samples.computeIfAbsent(key,ItemKey::sample)));
             if(candidates.isEmpty())return false;
             result.set(target,candidates);
         }
