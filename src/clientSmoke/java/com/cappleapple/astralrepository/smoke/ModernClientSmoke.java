@@ -113,7 +113,7 @@ public final class ModernClientSmoke {
             } else if(phase==25&&ticks>200){
                 server(p->{var menu=menu(p);check(stored(menu,Items.IRON_TRAPDOOR)==1&&stored(menu,Items.IRON_INGOT)==60,"Real Recipe Tome/table autocraft output and input conservation: "+menu.network().crafting().statuses());check(menu.network().crafting().activeJobs()==0,"Autocraft completed");check(!com.cappleapple.astralrepository.crafting.CraftingService.isProcessorReserved(GlobalPos.of(p.level().dimension(),TABLE)),"Table reservation released");LogUtils.getLogger().info("MODERN_PORT_GAMEPLAY_OK: all10 block placements, client-localized block/item names, actual Nexus packets, manual crafting/refill/clear, tome/table autocrafting, filtered rune transfer");});next(5);
             } else if(phase==5){mc.gui.setScreen(new ItemGallery());next(6);
-            } else if(phase==6&&ticks>30){capture("items.png");next(7);
+            } else if(phase==6&&ticks>30){verifyLinkingGlintMaterials();capture("items.png");next(7);
             } else if(phase==7){mc.gui.setScreen(null);mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT);
                 if(net.neoforged.fml.ModList.get().isLoaded("curios"))server(CuriosProbe::equip);next(8);
             } else if(phase==8&&ticks>30){
@@ -133,7 +133,7 @@ public final class ModernClientSmoke {
                 capture("wand.png");next(11);
             } else if(phase==11){
                 check(!mc.mouseHandler.isMouseGrabbed(),"Client grabbed the mouse");
-                Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: background client; registered models; all10 real block-item placements and localized block/item names; Nexus pickup/deposit packets; manual crafting and exact refill; Recipe Tome/table autocrafting; filtered rune transfer conservation; world crystals and minerals; live rune packets and glyph drawing; linked Nexus menu; item gallery; astral trim and glint; worn armor; wand editor with embedded 3D item artwork; captures saved.\n");
+                Files.createDirectories(OUT);Files.writeString(OUT.resolve("result.txt"),"PASS: background client; registered models; all10 real block-item placements and localized block/item names; Nexus pickup/deposit packets; manual crafting and exact refill; Recipe Tome/table autocrafting; filtered rune transfer conservation; world crystals and minerals; live rune packets and glyph drawing; linked Nexus menu; item gallery including native pure red/blue linking glints; astral trim and glint; worn armor; wand editor with embedded 3D item artwork; captures saved.\n");
                 LogUtils.getLogger().info("MODERN_PORT_CLIENT_SMOKE_OK");done=true;mc.stop();
             }
         }catch(Throwable failure){fail(failure);}
@@ -201,7 +201,7 @@ public final class ModernClientSmoke {
         p.setItemSlot(EquipmentSlot.HEAD,new ItemStack(AstralContent.RESONANCE_GOGGLES.get()));
         p.getInventory().setItem(0,new ItemStack(AstralContent.ATTUNEMENT_WAND.get()));p.getInventory().setSelectedSlot(0);
         p.getAbilities().flying=true;p.onUpdateAbilities();
-        try{var method=RuneProgramming.class.getDeclaredMethod("select",ItemStack.class,RuneProgramming.Selection.class);method.setAccessible(true);method.invoke(null,p.getMainHandItem(),new RuneProgramming.Selection(runes.address(),transferRune.id()));}catch(ReflectiveOperationException failure){throw new AssertionError(failure);}
+        RuneProgramming.link(p.getMainHandItem(),level,new RuneProgramming.Selection(runes.address(),transferRune.id()),p);
         p.containerMenu.broadcastChanges();
         Vec3 target=new Vec3(5.5,-59.3,.5),eye=new Vec3(5.5,-58,8.5),delta=target.subtract(eye);
         float yaw=(float)Math.toDegrees(Math.atan2(delta.z,delta.x))-90,pitch=(float)-Math.toDegrees(Math.atan2(delta.y,Math.sqrt(delta.x*delta.x+delta.z*delta.z)));
@@ -282,6 +282,34 @@ public final class ModernClientSmoke {
             LogUtils.getLogger().info("MODERN_PORT_CURIOS_OK: actual head slot goggles equipped and detected");
         }
     }
+    private static ItemStack linkingWand(int rgb){
+        var stack=new ItemStack(AstralContent.ATTUNEMENT_WAND.get());var tag=new net.minecraft.nbt.CompoundTag();
+        tag.put("RuneLinkStart",new AnchorAddress(GlobalPos.of(Level.OVERWORLD,BlockPos.ZERO),Direction.SOUTH).save());
+        tag.putInt("RuneLinkColor",rgb);
+        stack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA,net.minecraft.world.item.component.CustomData.of(tag));
+        check(RuneProgramming.selection(stack)!=null&&RuneProgramming.linkingColor(stack)==rgb&&stack.hasFoil(),"Actual linking-wand data must enable the exact color and foil");
+        return stack;
+    }
+    private static void verifyLinkingGlintMaterials()throws Exception{
+        var field=RuneLinkGlint.class.getDeclaredField("materials");field.setAccessible(true);
+        var materials=(Map<?,?>)field.get(null);
+        check(materials.containsKey(0xff0000)&&materials.containsKey(0x0000ff),"The native item renderer must create both colored glint materials from the gallery wands");
+        for(int rgb:new int[]{0xff0000,0x0000ff}){
+            var material=materials.get(rgb);var texture=material.getClass().getDeclaredMethod("texture");texture.setAccessible(true);
+            var id=(net.minecraft.resources.Identifier)texture.invoke(material);
+            var image=((net.minecraft.client.renderer.texture.DynamicTexture)Minecraft.getInstance().getTextureManager().getTexture(id)).getPixels();
+            check(image!=null,"The linking glint material must own an uploaded texture");
+            boolean lit=false;
+            for(int y=0;y<image.getHeight();y++)for(int x=0;x<image.getWidth();x++){
+                int pixel=image.getPixel(x,y),red=pixel>>16&255,green=pixel>>8&255,blue=pixel&255;
+                check(green==0&&(rgb==0xff0000?blue==0:red==0),"Glint texture must preserve the requested pure color without purple leakage");
+                lit|=rgb==0xff0000?red>0:blue>0;
+            }
+            check(lit,"The native glint texture must retain nonzero animated intensity");
+        }
+        Files.createDirectories(OUT);Files.writeString(OUT.resolve("linking-glint-result.txt"),"PASS: actual red/blue linking-wand custom data; native item renderer created both custom materials; uploaded dynamic texture retains nonzero requested channel and zero other channels; gallery remained stable for30 ticks.\n");
+        LogUtils.getLogger().info("MODERN_LINKING_GLINT_MATERIALS_OK red=true blue=true");
+    }
     private static final class ItemGallery extends Screen {
         ItemGallery(){super(Component.literal("Astral Repository port item check"));}
         @Override public void extractRenderState(GuiGraphicsExtractor graphics,int mouseX,int mouseY,float partialTick){
@@ -290,6 +318,7 @@ public final class ModernClientSmoke {
             var stacks=new ArrayList<ItemStack>();for(var item:items)stacks.add(new ItemStack(item));
             var foil=new ItemStack(AstralContent.ATTUNEMENT_WAND.get());foil.set(net.minecraft.core.component.DataComponents.ENCHANTMENT_GLINT_OVERRIDE,true);stacks.add(foil);
             stacks.add(trimmedChestplate(Minecraft.getInstance().level.registryAccess()));
+            stacks.add(linkingWand(0xff0000));stacks.add(linkingWand(0x0000ff));
             int x=width/2-stacks.size()*12;for(var stack:stacks){graphics.item(stack,x,height/2);x+=24;}
         }
         @Override public boolean isPauseScreen(){return false;}

@@ -32,7 +32,7 @@ public final class AstralMineralItemRenderer implements net.minecraft.client.ren
     }
     @Override public void submit(ItemStack stack,PoseStack poses,net.minecraft.client.renderer.SubmitNodeCollector collector,int light,int overlay,boolean foil,int outline){
         var buffers=new AstralBufferSource();renderByItem(stack,head?ItemDisplayContext.HEAD:ItemDisplayContext.NONE,new PoseStack(),buffers,light,overlay);
-        if(foil&&(stack.is(com.cappleapple.astralrepository.content.AstralContent.ATTUNEMENT_WAND.get())||stack.is(com.cappleapple.astralrepository.content.AstralContent.ASTRAL_NEXUS.get())||stack.is(com.cappleapple.astralrepository.content.AstralContent.RESONANCE_GOGGLES.get())))buffers.addFoil();
+        if(foil&&(stack.is(com.cappleapple.astralrepository.content.AstralContent.ATTUNEMENT_WAND.get())||stack.is(com.cappleapple.astralrepository.content.AstralContent.ASTRAL_NEXUS.get())||stack.is(com.cappleapple.astralrepository.content.AstralContent.RESONANCE_GOGGLES.get())))buffers.addFoil(stack.is(com.cappleapple.astralrepository.content.AstralContent.ATTUNEMENT_WAND.get())&&com.cappleapple.astralrepository.content.RuneProgramming.selection(stack)!=null?RuneLinkGlint.type(com.cappleapple.astralrepository.content.RuneProgramming.linkingColor(stack)):net.minecraft.client.renderer.rendertype.RenderTypes.entityGlint());
         buffers.submit(poses,collector);
     }
     public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack poses, AstralBufferSource buffers, int light, int overlay) {

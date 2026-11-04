@@ -80,7 +80,8 @@ public final class RuneSurface implements NetworkAnchor {
     public void setChanged(){RuneSavedData.get(server).setDirty();}
     public void statusChanged(){ServerLevel level=getLevel();if(level!=null)RuneSurfaces.onChanged.accept(level,getBlockPos());}
     public void changed(){setChanged();statusChanged();}
-    public void topologyChanged(){changed();ServerLevel level=getLevel();if(level!=null)NetworkManager.changed(level,getBlockPos());}
+    public void rulesChanged(){changed();ServerLevel level=getLevel();if(level!=null)NetworkManager.runeRulesChanged(level,getBlockPos());}
+    public void topologyChanged(){rulesChanged();ServerLevel level=getLevel();if(level!=null)NetworkManager.changed(level,getBlockPos());}
     public CompoundTag save(HolderLookup.Provider registries){
         CompoundTag tag=address.save();tag.putInt("Channel",channel);tag.putInt("Priority",priority);tag.putBoolean("Dimensional",dimensional);tag.putBoolean("Enabled",enabled);
         tag.putBoolean("EditingExtraction",editingExtraction);tag.putBoolean("ExcludeNext",excludeNext);tag.putString("Distribution",distribution.name());
