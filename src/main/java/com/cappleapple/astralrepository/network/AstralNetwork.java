@@ -42,6 +42,7 @@ public final class AstralNetwork implements NetworkAccess {
     private final Map<String,Long> nextPoll=new HashMap<>();
     private final Set<GlobalPos> workstations=new LinkedHashSet<>();
     private final Map<GlobalPos,List<ItemStack>> library=new HashMap<>();
+    private final Map<GlobalPos,Map<ItemKey,Set<String>>> libraryExclusions=new HashMap<>();
     private final Set<String> failed=new HashSet<>();
     private final CraftingService crafting;
     private final NetworkPower power;
@@ -63,6 +64,7 @@ public final class AstralNetwork implements NetworkAccess {
     public void unloadChunk(ServerLevel level,ChunkPos chunk){
         List<String> remove=storages.entrySet().stream().filter(e->inChunk(e.getValue().pos,level,chunk)).map(Map.Entry::getKey).toList();remove.forEach(this::removeStorage);
         resources.entrySet().removeIf(e->{if(inChunk(e.getValue().pos,level,chunk)){resourceIndex.remove(e.getKey());return true;}return false;});
+        libraryExclusions.keySet().removeIf(p->inChunk(p,level,chunk));
         workstations.removeIf(p->inChunk(p,level,chunk));if(library.keySet().removeIf(p->inChunk(p,level,chunk)))libraryRevision++;revision++;
     }
     private static boolean inChunk(GlobalPos pos,ServerLevel level,ChunkPos chunk){return pos.dimension().equals(level.dimension())&&new ChunkPos(pos.pos()).equals(chunk);}
@@ -134,13 +136,21 @@ public final class AstralNetwork implements NetworkAccess {
     private String keyOf(BoundStorage bound){return NetworkManager.id(bound.pos)+"/"+bound.provider.id();}
     private boolean loaded(GlobalPos pos){ServerLevel level=server.getLevel(pos.dimension());return level!=null&&level.hasChunkAt(pos.pos());}
     private void readShelf(GlobalPos pos,ChiseledBookShelfBlockEntity shelf){
-        List<ItemStack> products=new ArrayList<>();for(int i=0;i<shelf.getContainerSize();i++){ItemStack product=RecipeTomeItem.product(shelf.getItem(i),server.registryAccess());if(!product.isEmpty())products.add(product);}
+        ServerLevel world=server.getLevel(pos.dimension());
+        if(world==null||ContainerRuneRules.blocked(world,pos.pos())){removeShelf(pos);return;}
+        List<ItemStack> products=new ArrayList<>();Map<ItemKey,Set<String>> exclusions=new HashMap<>();
+        for(int i=0;i<shelf.getContainerSize();i++){
+            ItemStack tome=shelf.getItem(i),product=RecipeTomeItem.product(tome,server.registryAccess());
+            if(product.isEmpty())continue;products.add(product);
+            var blocked=RecipeTomeItem.excludedRecipes(tome);
+            if(!blocked.isEmpty())exclusions.computeIfAbsent(new ItemKey(product),key->new HashSet<>()).addAll(blocked);
+        }
         List<ItemStack> previous=library.get(pos);
-        boolean changed=previous==null||previous.size()!=products.size();
+        boolean changed=previous==null||previous.size()!=products.size()||!exclusions.equals(libraryExclusions.getOrDefault(pos,Map.of()));
         if(!changed)for(int i=0;i<products.size();i++)if(!ItemStack.isSameItemSameTags(previous.get(i),products.get(i))){changed=true;break;}
-        if(changed){library.put(pos,List.copyOf(products));libraryRevision++;revision++;}
+        if(changed){library.put(pos,List.copyOf(products));libraryExclusions.put(pos,Map.copyOf(exclusions));libraryRevision++;revision++;}
     }
-    private void removeShelf(GlobalPos pos){if(library.remove(pos)!=null){libraryRevision++;revision++;}}
+    private void removeShelf(GlobalPos pos){libraryExclusions.remove(pos);if(library.remove(pos)!=null){libraryRevision++;revision++;}}
     private void reconcileLibrary(){
         // Bookshelves have only six slots and are reconciled one at a time.
         if(library.isEmpty())return;var positions=new ArrayList<>(library.keySet());GlobalPos p=positions.get(Math.floorMod(server.getTickCount()/20,positions.size()));ServerLevel level=server.getLevel(p.dimension());
@@ -153,6 +163,18 @@ public final class AstralNetwork implements NetworkAccess {
         if(library.containsKey(pos))invalidate(pos);
         revision++;
     }
+    /** Drop blocked contributions immediately; restoration uses the normal bounded polls. */
+    public void runeRulesChanged(GlobalPos pos){
+        ServerLevel world=server.getLevel(pos.dimension());
+        if(world==null||!world.hasChunkAt(pos.pos()))return;
+        boolean blocked=ContainerRuneRules.blocked(world,pos.pos());
+        for(String key:storagePositions.getOrDefault(pos,Set.of())){if(blocked)index.remove(key);nextPoll.remove(key);}
+        if(blocked){
+            for(var entry:resources.entrySet())if(entry.getValue().pos.equals(pos))resourceIndex.remove(entry.getKey());
+            removeShelf(pos);
+        }
+        invalidate(pos);
+    }
     @Override public void processorChanged(GlobalPos pos){
         for(String key:storagePositions.getOrDefault(pos,Set.of())){index.remove(key);nextPoll.remove(key);}
         invalidate(pos);
@@ -160,15 +182,22 @@ public final class AstralNetwork implements NetworkAccess {
     @Override public boolean payCrafting(long complexity){return powered&&power.operation(AstralConfig.jobCost.get()+complexity*AstralConfig.complexityCost.get());}
     @Override public List<CraftingProvider> craftingProviders(){
         List<CraftingProvider> result=new ArrayList<>();Set<Object> seen=new HashSet<>();
-        for(GlobalPos pos:workstations){ServerLevel level=server.getLevel(pos.dimension());if(level==null||!level.hasChunkAt(pos.pos()))continue;
+        for(GlobalPos pos:workstations()){ServerLevel level=server.getLevel(pos.dimension());if(level==null||!level.hasChunkAt(pos.pos()))continue;
             for(CraftingProvider provider:CompatibilityRegistry.discoverCrafting(level,pos.pos(),null))if(provider.valid()&&seen.add(provider.identity()))result.add(provider);
         }
         return result;
     }
     @Override public ServerLevel level(){return server.getLevel(origin.dimension());}
     @Override public GlobalPos origin(){return origin;}
-    @Override public List<GlobalPos> workstations(){return List.copyOf(workstations);}
+    @Override public List<GlobalPos> workstations(){return workstations.stream().filter(pos->{
+        ServerLevel world=server.getLevel(pos.dimension());
+        return world!=null&&world.hasChunkAt(pos.pos())&&!ContainerRuneRules.blocked(world,pos.pos());
+    }).toList();}
     @Override public List<ItemStack> exposedProducts(){return library.values().stream().flatMap(Collection::stream).map(ItemStack::copy).toList();}
+    @Override public Set<String> excludedRecipes(ItemStack target){
+        if(target.isEmpty())return Set.of();var key=new ItemKey(target);Set<String> result=new HashSet<>();
+        libraryExclusions.values().forEach(shelf->result.addAll(shelf.getOrDefault(key,Set.of())));return Set.copyOf(result);
+    }
     @Override public Map<ItemKey,Long> snapshot(){return index.snapshot();}
     @Override public ItemStack extract(ItemKey key,int amount){return extractAt(key,amount,origin);}
     @Override public ItemStack reserve(ItemKey key,int amount,java.util.function.BiConsumer<GlobalPos,ItemStack> receipt){return extractAt(key,amount,origin,receipt);}
@@ -182,7 +211,7 @@ public final class AstralNetwork implements NetworkAccess {
     @Override public ItemStack extractForDelivery(ItemKey key,int count,GlobalPos destination,java.util.function.BiConsumer<GlobalPos,ItemStack> receipt){return extractAt(key,count,destination,receipt,true);}
     @Override public ItemStack extractTo(ItemKey key,int count,GlobalPos destination){return extractAt(key,count,destination);}
     @Override public ItemStack insertFrom(ItemStack stack,GlobalPos source){
-        return insertExcept(stack,source,null,null,true);
+        return insertAt(stack,source);
     }
     @Override public boolean canRoute(GlobalPos from,GlobalPos to){return !from.dimension().equals(to.dimension())||!manager.route(from,to,nodes.get(0).channel(),AstralConfig.relayRange.get()).isEmpty();}
     public ItemStack extractAt(ItemKey key,int amount,GlobalPos destination){return extractAt(key,amount,destination,null);}
@@ -204,13 +233,12 @@ public final class AstralNetwork implements NetworkAccess {
     @Override public ItemStack insert(ItemStack stack){return insertAt(stack,origin);}
     public ItemStack insertAt(ItemStack stack,GlobalPos source){return insertExcept(stack,source,null);}
     private ItemStack insertExcept(ItemStack stack,GlobalPos source,String excluded){return insertExcept(stack,source,excluded,null);}
-    private ItemStack insertExcept(ItemStack stack,GlobalPos source,String excluded,GlobalPos excludedPosition){return insertExcept(stack,source,excluded,excludedPosition,false);}
-    private ItemStack insertExcept(ItemStack stack,GlobalPos source,String excluded,GlobalPos excludedPosition,boolean craftingReturn){
+    private ItemStack insertExcept(ItemStack stack,GlobalPos source,String excluded,GlobalPos excludedPosition){
         ItemStack remaining=stack.copy();if(remaining.isEmpty())return remaining;ItemKey key=new ItemKey(stack);
         List<Map.Entry<String,BoundStorage>> destinations=new ArrayList<>(storages.entrySet());
         destinations.sort(destinationOrder(source,key));
         for(var entry:destinations){String id=entry.getKey();BoundStorage bound=entry.getValue();
-            if(id.equals(excluded)||bound.pos.equals(excludedPosition)||!usable(bound,id)||(craftingReturn&&crafting.isProcessingPosition(bound.pos))||!canRoute(source,bound.pos)||!bound.owner.networkInsertionFilter().matches(stack))continue;
+            if(id.equals(excluded)||bound.pos.equals(excludedPosition)||!usable(bound,id)||crafting.isProcessingPosition(bound.pos)||!canRoute(source,bound.pos)||!bound.owner.networkInsertionFilter().matches(stack))continue;
             long room=bound.owner.networkInsertionFilter().target()-index.provider(id).getOrDefault(key,0L);int offer=(int)Math.min(remaining.getCount(),Math.max(0,room));if(offer<=0)continue;
             try{ItemStack offered=remaining.copyWithCount(offer);ItemStack rest=bound.provider.insert(offered,false);int accepted=offer-rest.getCount();if(accepted<0||accepted>offer)throw new IllegalStateException("Provider violated insertion contract");
                 if(accepted>0){remaining.shrink(accepted);adjustCount(id,key,accepted);visual(source,bound.pos,stack.copyWithCount(accepted),20);throughput+=accepted;}
@@ -306,7 +334,7 @@ public final class AstralNetwork implements NetworkAccess {
                 try{
                     ItemStack simulated=source.provider.extract(item.getKey(),wanted,true);if(simulated.isEmpty())continue;
                     int accepting=0;
-                    for(var target:storages.entrySet())if(!target.getKey().equals(key)&&usable(target.getValue(),target.getKey())&&canRoute(source.pos,target.getValue().pos)&&target.getValue().owner.networkInsertionFilter().matches(simulated)){
+                    for(var target:storages.entrySet())if(!target.getKey().equals(key)&&usable(target.getValue(),target.getKey())&&!crafting.isProcessingPosition(target.getValue().pos)&&canRoute(source.pos,target.getValue().pos)&&target.getValue().owner.networkInsertionFilter().matches(simulated)){
                         long room=target.getValue().owner.networkInsertionFilter().target()-index.provider(target.getKey()).getOrDefault(item.getKey(),0L);
                         ItemStack offer=simulated.copyWithCount((int)Math.min(simulated.getCount(),Math.max(0,room)));if(offer.isEmpty())continue;
                         accepting+=offer.getCount()-target.getValue().provider.insert(offer,true).getCount();if(accepting>=simulated.getCount())break;
@@ -466,7 +494,7 @@ public final class AstralNetwork implements NetworkAccess {
         public List<RuneRouting.ItemEndpoint> destinations(ItemKey key){
             if(!powered)return List.of();var result=new ArrayList<RuneRouting.ItemEndpoint>();
             var order=new ArrayList<>(storages.entrySet());order.sort(destinationOrder(host,key));
-            for(var entry:order){var bound=entry.getValue();if(!allowed(entry.getKey(),bound))continue;
+            for(var entry:order){var bound=entry.getValue();if(!allowed(entry.getKey(),bound)||crafting.isProcessingPosition(bound.pos))continue;
                 var filter=bound.owner.networkInsertionFilter();
                 if(filter.matches(key.sample())&&index.provider(entry.getKey()).getOrDefault(key,0L)<filter.target())result.add(runeItemEndpoint(bound));
             }
@@ -481,7 +509,7 @@ public final class AstralNetwork implements NetworkAccess {
             }return result;
         }
         public ItemStack insert(ItemStack stack,boolean simulate){if(!powered)return stack.copy();ItemStack rest=stack.copy();ItemKey key=new ItemKey(stack);var order=insertionOrder(key,simulate);
-            for(var entry:order){String id=entry.getKey();var bound=entry.getValue();if(!allowed(id,bound)||!bound.owner.networkInsertionFilter().matches(stack))continue;
+            for(var entry:order){String id=entry.getKey();var bound=entry.getValue();if(!allowed(id,bound)||crafting.isProcessingPosition(bound.pos)||!bound.owner.networkInsertionFilter().matches(stack))continue;
                 long room=Math.max(0,bound.owner.networkInsertionFilter().target()-index.provider(id).getOrDefault(key,0L));int offer=(int)Math.min(rest.getCount(),room);if(offer<=0)continue;
                 if(!simulate&&!power.operation(AstralConfig.transferCost.get()+offer*AstralConfig.itemCost.get()))break;
                 ItemStack remainder=bound.provider.insert(rest.copyWithCount(offer),simulate);if(remainder.getCount()>offer||!remainder.isEmpty()&&!new ItemKey(remainder).equals(key))throw new IllegalStateException("Invalid network insertion");int accepted=offer-remainder.getCount();rest.shrink(accepted);if(!simulate&&accepted>0){adjustCount(id,key,accepted);runeVisual(host,bound.pos,stack.copyWithCount(accepted),-1,host,endpoint);}if(rest.isEmpty())break;
@@ -595,7 +623,7 @@ public final class AstralNetwork implements NetworkAccess {
         StorageProvider routed=new RuneRouting.ItemPolicy(){
             public AnchorAddress policyAnchor(){return bound.owner.address();}
             public long insertionLimit(ItemKey key){
-                if(current()==null)return 0;
+                if(current()==null||crafting.isProcessingPosition(bound.pos))return 0;
                 var filter=bound.owner.networkInsertionFilter();if(!filter.matches(key.sample()))return 0;
                 return filter.target()==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,filter.target()-delegate.snapshot().getOrDefault(key,0L));
             }
@@ -618,7 +646,7 @@ public final class AstralNetwork implements NetworkAccess {
                 return result;
             }
             public ItemStack insert(ItemStack stack,boolean simulate){
-                var network=current();if(network==null||!network.powered||stack.isEmpty())return stack.copy();
+                var network=current();if(network==null||!network.powered||stack.isEmpty()||network.crafting.isProcessingPosition(bound.pos))return stack.copy();
                 var filter=bound.owner.networkInsertionFilter();if(!filter.matches(stack))return stack.copy();
                 ItemKey key=new ItemKey(stack);int offer=stack.getCount();
                 if(filter.target()!=Long.MAX_VALUE)offer=(int)Math.min(offer,Math.max(0,filter.target()-delegate.snapshot().getOrDefault(key,0L)));

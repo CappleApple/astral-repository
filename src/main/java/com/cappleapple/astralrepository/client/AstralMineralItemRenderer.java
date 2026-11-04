@@ -39,6 +39,7 @@ public final class AstralMineralItemRenderer extends BlockEntityWithoutLevelRend
         // Tint index 0 marks the wand crystal or goggles lenses; frames retain their base material.
         if (goggles) material = AstralPlaneRenderType.ready() ? AstralPlaneRenderType.GOGGLES_LENS
                 : RenderType.entityTranslucent(TextureAtlas.LOCATION_BLOCKS);
+        var foilBuffers=wand&&com.cappleapple.astralrepository.content.RuneProgramming.selection(stack)!=null?RuneLinkGlint.buffers(stack,buffers):buffers;
         var random = net.minecraft.util.RandomSource.create(42);
         // Submit opaque frames before transparent lenses; lenses never write depth.
         for (int pass = 0; pass < 2; pass++) {
@@ -48,7 +49,7 @@ public final class AstralMineralItemRenderer extends BlockEntityWithoutLevelRend
                 for (var quad : model.getQuads(null, direction, random)) {
                     boolean crystal = quad.isTinted() && quad.getTintIndex() == 0;
                     if (crystal != (pass == 1)) continue;
-                    var consumer = net.minecraft.client.renderer.entity.ItemRenderer.getFoilBufferDirect(buffers,
+                    var consumer = net.minecraft.client.renderer.entity.ItemRenderer.getFoilBufferDirect(foilBuffers,
                             crystal ? material : RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS), true, stack.hasFoil());
                     consumer.putBulkData(poses.last(), quad, 1, 1, 1, goggles && crystal ? 0.55F : 1F, light, overlay, true);
                 }

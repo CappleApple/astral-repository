@@ -22,10 +22,10 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
     private static final int INK=0x354842;
     private List<RecipeTomeMenu.Entry> entries=List.of();
     private RecipeTomeMenu.Entry selection;
-    private ItemStack chosen=ItemStack.EMPTY;
+    private ItemStack chosen=ItemStack.EMPTY,taught=ItemStack.EMPTY;
     private String outputId="",status="";
     private int page,total;
-    private Button previous,next,inscribe;
+    private Button previous,next,inscribe,block;
     public RecipeTomeScreen(RecipeTomeMenu menu,Inventory inventory,Component title){super(menu,inventory,title);imageWidth=192;imageHeight=306;}
     @Override protected void init(){
         super.init();
@@ -33,17 +33,24 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
         next=addRenderableWidget(new PageButton(leftPos+126,topPos+153,true,b->request(page+1),true));
         inscribe=addRenderableWidget(Button.builder(Component.literal("Inscribe"),b->inscribeSelection()).bounds(leftPos+14,topPos+184,94,20).build());
         addRenderableWidget(Button.builder(Component.literal("Done"),b->onClose()).bounds(leftPos+112,topPos+184,66,20).build());
+        block=addRenderableWidget(Button.builder(Component.literal("Block recipe"),b->toggleExclusion()).bounds(leftPos+36,topPos+168,120,14).build());
         controls();
     }
     public List<RecipeTomeMenu.Entry> visibleRecipes(){return entries;}
     public boolean selectRecipe(ResourceLocation id){selection=entries.stream().filter(e->e.recipe().equals(id)).findFirst().orElse(null);controls();return selection!=null;}
     public void inscribeSelection(){if(selection!=null)PacketDistributor.sendToServer(new RecipeTomePackets.Action(menu.containerId,1,"",page,selection.recipe().toString()));}
+    public void toggleExclusion(){if(selection!=null&&!taught.isEmpty())PacketDistributor.sendToServer(new RecipeTomePackets.Action(menu.containerId,selection.excluded()?4:3,"",page,selection.recipe().toString()));}
     public void update(RecipeTomePackets.Page packet){
         if(packet.menu()!=menu.containerId)return;
-        if(chosen.isEmpty()&&!packet.taught().isEmpty())acceptItem(packet.taught());
+        taught=packet.taught().copy();
+        if(chosen.isEmpty()&&!taught.isEmpty())acceptItem(taught);
         entries=packet.entries();selection=entries.isEmpty()?null:entries.get(0);page=packet.page();total=packet.total();status=packet.status();controls();
     }
-    private void controls(){if(previous==null)return;previous.visible=page>0;next.visible=page+1<total;inscribe.active=selection!=null;}
+    private void controls(){if(previous==null)return;previous.visible=page>0;next.visible=page+1<total;inscribe.active=selection!=null;
+        block.active=selection!=null&&!taught.isEmpty();block.setMessage(Component.literal(selection!=null&&selection.excluded()?"Allow recipe":"Block recipe"));
+        block.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(taught.isEmpty()?"Inscribe the final output first.":
+                "Applies to every crafting path to "+taught.getHoverName().getString()+". Browse another output to block an intermediate recipe. Started jobs keep their plan.")));
+    }
     private void request(int requested){PacketDistributor.sendToServer(new RecipeTomePackets.Action(menu.containerId,0,"="+outputId,requested,""));}
     @Override public Rect2i ingredientArea(){return new Rect2i(leftPos+32,topPos+28,120,120);}
     @Override public boolean acceptItem(ItemStack stack){
@@ -67,7 +74,8 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
             for(int i=0;i<selection.ingredients().size();i++)g.renderItem(selection.ingredients().get(i),leftPos+66+i%3*18,topPos+96+i/3*18);
         }else if(!chosen.isEmpty())g.drawWordWrap(font,Component.literal("No recipe"),leftPos+36,topPos+68,114,INK);
         if(total>1){String number=(page+1)+" / "+total;g.drawString(font,number,leftPos+92-font.width(number)/2,topPos+155,INK,false);}
-        if(status.equals("Inscribed."))g.drawCenteredString(font,"Inscribed",leftPos+92,topPos+82,INK);
+        if(selection!=null&&selection.excluded())g.drawCenteredString(font,"Blocked",leftPos+92,topPos+82,0xA02020);
+        else if(status.equals("Inscribed."))g.drawCenteredString(font,"Inscribed",leftPos+92,topPos+82,INK);
         AstralInterfaceRenderer.blit(g,new ResourceLocation("astral_repository","textures/gui/rune_settings.png"),leftPos+7,topPos+210,178,96);
         for(var slot:menu.slots)RuneUi.slot(g,leftPos+slot.x-1,topPos+slot.y-1,18,isHovering(slot.x,slot.y,16,16,mx,my));
     }

@@ -19,12 +19,68 @@ class CraftingCoreTest {
         assertEquals(Map.of("plank",64L),scheduler.drain());
         assertThrows(CraftPlanner.PlanningException.class,()->planner.planAdditional("plank",1,Map.of("plank",64L),Set.of("table")));
     }
-    @Test void additionalOutputCanUseExistingOutputAsAnActualIngredient() {
-        var recipes=List.of(recipe("grow","seed",2,"table","seed","soil"));
-        var plan=new CraftPlanner<>(recipes).planAdditional("seed",2,Map.of("seed",1L,"soil",1L),Set.of("table"));
-        assertEquals(1,plan.nodes().size());
-        assertEquals(Map.of("seed",1L,"soil",1L),plan.reservations());
-    }    @Test void resolvesFifteenStepsWithOnlyTheFinalProductRequested() {
+    @Test void existingTargetStockCannotBootstrapASelfRecipe() {
+        var recipes = List.of(recipe("grow", "seed", 2, "table", "seed", "soil"));
+        assertThrows(CraftPlanner.PlanningException.class, () -> new CraftPlanner<>(recipes)
+                .planAdditional("seed", 2, Map.of("seed", 1L, "soil", 1L), Set.of("table")));
+    }
+    private static List<CraftRecipe<String>> ironRecipes() {
+        return List.of(recipe("unpack", "ingot", 9, "table", "block"),
+                new CraftRecipe<>("pack", "block", 1, "table",
+                        List.of(new CraftRecipe.Ingredient<>(List.of("ingot"), 9)), 0, 2),
+                new CraftRecipe<>("smelt", "ingot", 1, "furnace",
+                        List.of(CraftRecipe.Ingredient.of("ore")), 0, 200));
+    }
+    @Test void compressionRoundTripsCannotCountStoredTargetsAsNewOutput() {
+        var planner = new CraftPlanner<>(ironRecipes());
+        assertThrows(CraftPlanner.PlanningException.class, () -> planner.planAdditional(
+                "ingot", 9, Map.of("ingot", 9L), Set.of("table", "furnace")));
+        assertThrows(CraftPlanner.PlanningException.class, () -> planner.planAdditional(
+                "block", 1, Map.of("block", 1L), Set.of("table", "furnace")));
+    }
+    @Test void usesStoredBlocksBeforeSmeltingAndProducesTheRequestedNetIncrease() {
+        var stock = Map.of("ingot", 64L, "block", 2L, "ore", 3L);
+        var plan = new CraftPlanner<>(ironRecipes()).planAdditional("ingot", 21, stock, Set.of("table", "furnace"));
+        assertEquals(List.of("unpack", "unpack", "smelt", "smelt", "smelt"),
+                plan.nodes().stream().map(node -> node.recipe().id()).toList());
+        assertEquals(Map.of("block", 2L, "ore", 3L), plan.reservations());
+        var scheduler = new CraftScheduler<>(plan, plan.reservations(), new InstantProcessors());
+        for (int i = 0; i < 8; i++) scheduler.tick(List.of("table", "furnace"), 2);
+        assertEquals(CraftScheduler.State.COMPLETE, scheduler.state());
+        assertEquals(Map.of("ingot", 21L), scheduler.drain());
+        assertEquals(64L, stock.get("ingot"));
+    }
+    @Test void maximumRequestUsesAStoredPrefixWithoutRecursingForEachOperation() {
+        var plan = new CraftPlanner<>(ironRecipes()).planAdditional("ingot", 4096,
+                Map.of("block", 454L, "ore", 10L), Set.of("table", "furnace"));
+        assertEquals(464, plan.nodes().size());
+        assertEquals(Map.of("block", 454L, "ore", 10L), plan.reservations());
+        var simple = new CraftPlanner<>(List.of(recipe("simple", "output", 1, "table", "input")))
+                .planAdditional("output", 4096, Map.of("input", 4096L), Set.of("table"));
+        assertEquals(4096, simple.nodes().size());
+        assertEquals(Map.of("input", 4096L), simple.reservations());
+    }
+    @Test void mixedProductionPreservesDependenciesForALaterConsumer() {
+        var recipes = new ArrayList<>(ironRecipes());
+        recipes.add(new CraftRecipe<>("final", "final", 1, "table",
+                List.of(new CraftRecipe.Ingredient<>(List.of("ingot"), 21)), 0, 2));
+        var plan = new CraftPlanner<>(recipes).plan("final", 1, Map.of("block", 2L, "ore", 3L), Set.of("table", "furnace"));
+        assertEquals(Set.of(0, 1, 2, 3, 4), plan.nodes().get(5).dependencies());
+        var scheduler = new CraftScheduler<>(plan, plan.reservations(), new InstantProcessors());
+        for (int i = 0; i < 10; i++) scheduler.tick(List.of("table", "furnace"), 2);
+        assertEquals(CraftScheduler.State.COMPLETE, scheduler.state());
+        assertEquals(Map.of("final", 1L), scheduler.drain());
+    }
+    @Test void backtracksTheMixedPrefixWhenALaterInputNeedsABlock() {
+        var recipes = new ArrayList<>(ironRecipes());
+        recipes.add(new CraftRecipe<>("final", "final", 1, "table", List.of(
+                new CraftRecipe.Ingredient<>(List.of("ingot"), 20), CraftRecipe.Ingredient.of("block")), 0, 2));
+        var plan = new CraftPlanner<>(recipes).plan("final", 1, Map.of("block", 2L, "ore", 11L), Set.of("table", "furnace"));
+        assertEquals(1, plan.nodes().stream().filter(node -> node.recipe().id().equals("unpack")).count());
+        assertEquals(11, plan.nodes().stream().filter(node -> node.recipe().id().equals("smelt")).count());
+        assertEquals(Map.of("block", 2L, "ore", 11L), plan.reservations());
+    }
+    @Test void resolvesFifteenStepsWithOnlyTheFinalProductRequested() {
         List<CraftRecipe<String>> recipes = new ArrayList<>();
         for (int i = 1; i <= 15; i++) recipes.add(recipe("step_" + i, "step_" + i, 1, "table", i == 1 ? "raw" : "step_" + (i - 1)));
         CraftPlan<String> plan = new CraftPlanner<>(recipes).plan("step_15", 1, Map.of("raw", 1L), Set.of("table"));
