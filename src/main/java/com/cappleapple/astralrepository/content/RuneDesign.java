@@ -48,4 +48,10 @@ public final class RuneDesign {
         for(int y=0;y<7;y++)for(int x=0;x<7;x++)if(glyph[y].charAt(x)=='#')for(int dy=0;dy<3;dy++)for(int dx=0;dx<3;dx++)pixels[(y*3+dy+5)*n+x*3+dx+5]=color;
         return new RuneDesign(n,pixels,List.of());
     }
+    public static RuneDesign blocking(){
+        int n=32;int[] pixels=new int[n*n];
+        for(int y=5;y<27;y++)for(int x=5;x<27;x++)if(Math.abs(x-y)<=1||Math.abs(x+y-31)<=1)pixels[y*n+x]=0xffff3333;
+        return new RuneDesign(n,pixels,List.of());
+    }
+
 }

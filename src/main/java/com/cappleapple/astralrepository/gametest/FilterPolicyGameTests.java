@@ -10,6 +10,46 @@ import net.minecraft.world.level.block.Blocks;
 import net.neoforged.neoforge.gametest.*;
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class FilterPolicyGameTests {
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=400)
+    public static void blockingRuneImmediatelyRemovesCachedStockAndRemovalRestoresIt(GameTestHelper h){
+        var nexus=new BlockPos(4,2,4);var chest=nexus.east(2);h.setBlock(nexus,AstralContent.STORAGE_NEXUS.get());h.setBlock(chest,Blocks.CHEST);
+        var physical=(net.minecraft.world.Container)h.getBlockEntity(chest);physical.setItem(0,new ItemStack(Items.IRON_INGOT,7));
+        var origin=GlobalPos.of(h.getLevel().dimension(),h.absolutePos(nexus));var key=new ItemKey(new ItemStack(Items.IRON_INGOT));
+        h.startSequence().thenWaitUntil(()->{var network=com.cappleapple.astralrepository.network.NetworkManager.get(h.getLevel().getServer()).networkAt(origin);h.assertTrue(network!=null&&network.snapshot().getOrDefault(key,0L)==7,"Actual Nexus discovers the fixture iron");})
+            .thenExecute(()->{var surface=RuneSurfaces.getOrCreate(h.getLevel(),h.absolutePos(chest),Direction.SOUTH);var rune=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.FILTER),RuneLayer.Mode.FILTER);rune.preset(RunePreset.blocking(),h.getLevel().registryAccess());
+                var network=com.cappleapple.astralrepository.network.NetworkManager.get(h.getLevel().getServer()).networkAt(origin);h.assertTrue(network.snapshot().getOrDefault(key,0L)==0,"Applying Blocking Rune drops indexed stock in the same tick without test invalidation");})
+            .thenIdle(20).thenExecute(()->{var network=com.cappleapple.astralrepository.network.NetworkManager.get(h.getLevel().getServer()).networkAt(origin);h.assertTrue(network.snapshot().getOrDefault(key,0L)==0&&physical.getItem(0).getCount()==7,"Reconciliation keeps blocked contents hidden and physically intact");RuneSurfaces.remove(h.getLevel(),h.absolutePos(chest),Direction.SOUTH);})
+            .thenWaitUntil(()->{var network=com.cappleapple.astralrepository.network.NetworkManager.get(h.getLevel().getServer()).networkAt(origin);h.assertTrue(network.snapshot().getOrDefault(key,0L)==7,"Removing Blocking Rune restores stock through ordinary reconciliation");}).thenSucceed();
+    }
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop")
+    public static void blockingPresetHidesStoredContentsAndRejectsTransfersWithoutDeletingItems(GameTestHelper h)throws Exception{
+        var level=h.getLevel();var pos=new BlockPos(3,2,3);h.setBlock(pos,Blocks.BARREL);var at=h.absolutePos(pos);
+        var provider=CompatibilityRegistry.discoverStorage(level,at,null).getFirst();var key=new ItemKey(new ItemStack(Items.IRON_INGOT));
+        h.assertTrue(provider.insert(new ItemStack(Items.IRON_INGOT,7),false).isEmpty(),"Fixture starts with actual stored iron");
+        var preset=RunePresetFiles.decode(RunePresetFiles.encode(RunePreset.blocking()),level.registryAccess());
+        h.assertTrue(preset.name().equals("Blocking Rune")&&preset.design().averageColor(32)==0xff3333,"Default Blocking Rune keeps its red X artwork");
+        var surface=RuneSurfaces.getOrCreate(level,at,Direction.SOUTH);var rune=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.FILTER),RuneLayer.Mode.FILTER);rune.preset(preset,level.registryAccess());
+        h.assertTrue(rune.filter().entries().isEmpty()&&!rune.filter().blacklist()&&rune.filter().blocksAll(),"Blocking uses an explicit empty whitelist");
+        h.assertTrue(ContainerRuneRules.blocked(level,at)&&provider.snapshot().isEmpty()&&provider.poll(32).orElseThrow().isEmpty()&&provider.candidate(stack->true)==null,"Existing provider hides every stored identity immediately");
+        h.assertTrue(provider.extract(key,7,true).isEmpty()&&provider.extract(key,7,false).isEmpty()&&provider.insert(new ItemStack(Items.GOLD_INGOT,3),false).getCount()==3,"Blocked container rejects extraction and ordinary deposits");
+        var physical=(net.minecraft.world.Container)level.getBlockEntity(at);h.assertTrue(physical.getItem(0).getCount()==7,"Blocking leaves physical items in the container");
+        rune.setEnabled(false);h.assertTrue(provider.extract(key,1,true).getCount()==1,"Pausing the Blocking Rune restores storage access");rune.setEnabled(true);
+        rune.filter().add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,ItemStack.EMPTY);rune.changed();
+        h.assertTrue(!ContainerRuneRules.blocked(level,at)&&provider.extract(key,1,true).getCount()==1,"Adding a whitelist entry turns the Blocking Rune into an ordinary filter");
+        surface.removeLayer(rune.id());h.assertTrue(provider.extract(key,7,false).getCount()==7,"Removing the rune restores the original stored items exactly once");h.succeed();
+    }
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop")
+    public static void blockingRuneVetoesWhitelistsAcrossBothChestHalves(GameTestHelper h){
+        var level=h.getLevel();var first=new BlockPos(3,2,3);
+        var state=Blocks.CHEST.defaultBlockState().setValue(net.minecraft.world.level.block.ChestBlock.FACING,Direction.NORTH).setValue(net.minecraft.world.level.block.ChestBlock.TYPE,net.minecraft.world.level.block.state.properties.ChestType.LEFT);
+        var second=first.relative(net.minecraft.world.level.block.ChestBlock.getConnectedDirection(state));h.setBlock(first,state);h.setBlock(second,state.setValue(net.minecraft.world.level.block.ChestBlock.TYPE,net.minecraft.world.level.block.state.properties.ChestType.RIGHT));
+        var left=RuneSurfaces.getOrCreate(level,h.absolutePos(first),Direction.SOUTH);var right=RuneSurfaces.getOrCreate(level,h.absolutePos(second),Direction.SOUTH);
+        left.addLayer(RuneGlyph.id(RuneLayer.Mode.FILTER),RuneLayer.Mode.FILTER).filter().add(FilterRules.Kind.ITEM,"minecraft:iron_ingot",false,ItemStack.EMPTY);
+        var blocking=right.addLayer(RuneGlyph.id(RuneLayer.Mode.FILTER),RuneLayer.Mode.FILTER);blocking.preset(RunePreset.blocking(),level.registryAccess());
+        h.assertTrue(ContainerRuneRules.blocked(level,h.absolutePos(first))&&ContainerRuneRules.blocked(level,h.absolutePos(second)),"Blocking either half excludes the complete double chest");
+        h.assertTrue(!ContainerRuneRules.allows(level,h.absolutePos(first),new ItemStack(Items.IRON_INGOT)),"A matching whitelist on the other half cannot override blocking");
+        RuneSurfaces.remove(level,h.absolutePos(second),Direction.SOUTH);h.assertTrue(!ContainerRuneRules.blocked(level,h.absolutePos(first)),"Removing the remote rune reopens both halves");h.succeed();
+    }
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
     public static void passiveFiltersGateRealProviderInsertionAndLeaveExtractionAlone(GameTestHelper h){
         var pos=new BlockPos(3,2,3);h.setBlock(pos,Blocks.CHEST);var at=h.absolutePos(pos);
