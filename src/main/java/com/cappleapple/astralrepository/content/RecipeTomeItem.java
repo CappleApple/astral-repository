@@ -5,6 +5,7 @@ import java.util.List;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -27,6 +28,20 @@ public final class RecipeTomeItem extends Item {
     }
     public static ItemStack product(ItemStack tome, HolderLookup.Provider registries) {
         return com.cappleapple.astralrepository.port.NbtCodecs.item(registries, tome.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompoundOrEmpty("Output"));
+    }
+    /** Recipe IDs excluded from every path to this tome's taught output. */
+    public static java.util.Set<String> excludedRecipes(ItemStack tome) {
+        var rules = tome.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag().getCompoundOrEmpty("ExcludedRecipes");
+        return rules.keySet().stream().filter(id -> Identifier.tryParse(id) != null).limit(256)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+    public static void setRecipeExcluded(ItemStack tome, String recipe, boolean excluded) {
+        var tag = tome.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        var rules = tag.getCompoundOrEmpty("ExcludedRecipes");
+        if (excluded) { if (rules.size() >= 256 && !rules.contains(recipe)) return; rules.putBoolean(recipe, true); }
+        else rules.remove(recipe);
+        if (rules.isEmpty()) tag.remove("ExcludedRecipes"); else tag.put("ExcludedRecipes", rules);
+        tome.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
     public record OutputTooltip(ItemStack tome) implements net.minecraft.world.inventory.tooltip.TooltipComponent {}
     @Override public java.util.Optional<net.minecraft.world.inventory.tooltip.TooltipComponent> getTooltipImage(ItemStack stack){
