@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.12.0 - 2026-11-04
+
+### Added
+
+- Added a red X Blocking Rune that excludes a container from storage transfers, processing, and recipe discovery while preserving its contents.
+- Recipe Tomes can block individual final or intermediate recipes for their taught output.
+
+### Changed
+
+- Nexus crafting ingredients and the selected recipe now remain in a saved personal grid when the interface closes.
+- The wand's linking glint uses the average color of the selected rune's visible painted pixels.
+
+### Fixed
+
+- Ordinary storage deposits no longer fill processing machines such as idle furnaces.
+- Recipe planning rejects conversion loops and plans for the requested net increase. Stored blocks can supply part of an unpacking request before the remaining amount moves to smelting.
+
 ## 1.11.15 - 2026-10-30
 
 ### Fixed

@@ -15,7 +15,7 @@ public final class RuneSurfaces {
         RuneSurface result=get(level,pos,face);if(result!=null&&!result.isRemoved())return result;if(result!=null)remove(level,pos,face);
         result=new RuneSurface(level.getServer(),AnchorAddress.rune(level,pos,face));RuneSavedData.get(level.getServer()).addSurface(result);result.topologyChanged();return result;
     }
-    public static boolean remove(ServerLevel level,BlockPos pos,Direction face){boolean removed=RuneSavedData.get(level.getServer()).removeSurface(AnchorAddress.rune(level,pos,face));if(removed){onChanged.accept(level,pos);NetworkManager.changed(level,pos);}return removed;}
+    public static boolean remove(ServerLevel level,BlockPos pos,Direction face){boolean removed=RuneSavedData.get(level.getServer()).removeSurface(AnchorAddress.rune(level,pos,face));if(removed){onChanged.accept(level,pos);NetworkManager.runeRulesChanged(level,pos);NetworkManager.changed(level,pos);}return removed;}
     public static List<RuneSurface> at(ServerLevel level,BlockPos pos){return RuneSavedData.get(level.getServer()).surfaces(GlobalPos.of(level.dimension(),pos));}
     /** Loaded nearby faces from spatial buckets; player updates never enumerate every world rune. */
     public static List<RuneSurface> nearby(ServerLevel level,net.minecraft.world.phys.Vec3 center,int radius){

@@ -157,6 +157,50 @@ public final class CraftingGameTests {
         h.assertTrue(service.cancel(cancelled.jobId())&&access.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.IRON_INGOT)),0L)==4,"Cancellation returns both arrived and in-flight ingredients exactly once");
         h.assertTrue(!service.cancel(cancelled.jobId()),"Repeated cancellation cannot duplicate delivery escrow");h.succeed();
     }
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop",timeoutTicks=700)
+    public static void charcoalRequestUsesOtherFuelAndAddsTheFullNetOutput(GameTestHelper h){
+        var chestPos=new BlockPos(3,2,3);var furnace=chestPos.east();h.setBlock(chestPos,Blocks.BARREL);h.setBlock(furnace,Blocks.FURNACE);
+        var chest=(Container)h.getBlockEntity(chestPos);chest.setItem(0,new ItemStack(Items.CHARCOAL,16));chest.setItem(1,new ItemStack(Items.OAK_LOG));chest.setItem(2,new ItemStack(Items.OAK_PLANKS,4));
+        var target=new ItemStack(Items.CHARCOAL);var access=new Fixture(h,chestPos,chest,List.of(furnace),target){@Override public int travelTicks(GlobalPos from,GlobalPos to){return 0;}};
+        var service=new CraftingService(access);var player=new ServerPlayer(h.getLevel().getServer(),h.getLevel(),new GameProfile(UUID.randomUUID(),"charcoal-net-output"),ClientInformation.createDefault());
+        h.assertTrue(service.request(player,target,1).accepted(),"The request adds one charcoal to existing stock");awaitPlanning(service);service.tick();
+        boolean[] lit={false};h.onEachTick(()->{service.tick();lit[0]|=h.getBlockState(furnace).getValue(AbstractFurnaceBlock.LIT);});
+        h.succeedWhen(()->{
+            h.assertTrue(service.activeJobs()==0,"The actual charcoal furnace operation completes");
+            h.assertTrue(access.snapshot().getOrDefault(new ItemKey(target),0L)==17,"The stored charcoal increases by the full requested amount");
+            h.assertTrue(access.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.OAK_PLANKS)),0L)==3&&lit[0],"The real furnace burns another fuel instead of target charcoal");
+        });
+    }
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop")
+    public static void charcoalRequestWaitsRatherThanBurningItsExistingTargetStock(GameTestHelper h){
+        var chestPos=new BlockPos(3,2,3);var furnace=chestPos.east();h.setBlock(chestPos,Blocks.BARREL);h.setBlock(furnace,Blocks.FURNACE);
+        var chest=(Container)h.getBlockEntity(chestPos);chest.setItem(0,new ItemStack(Items.CHARCOAL,16));chest.setItem(1,new ItemStack(Items.OAK_LOG));
+        var target=new ItemStack(Items.CHARCOAL);var access=new Fixture(h,chestPos,chest,List.of(furnace),target){@Override public int travelTicks(GlobalPos from,GlobalPos to){return 0;}};
+        var service=new CraftingService(access);var player=new ServerPlayer(h.getLevel().getServer(),h.getLevel(),new GameProfile(UUID.randomUUID(),"charcoal-no-other-fuel"),ClientInformation.createDefault());
+        var request=service.request(player,target,1);h.assertTrue(request.accepted(),"A request may wait for a permitted fuel");awaitPlanning(service);
+        try{
+            for(int tick=0;tick<40;tick++)service.tick();
+            var machine=(Container)h.getBlockEntity(furnace);
+            h.assertTrue(machine.getItem(0).is(Items.OAK_LOG)&&machine.getItem(1).isEmpty(),"Initial and replacement fuel searches leave target charcoal untouched");
+            h.assertTrue(access.snapshot().getOrDefault(new ItemKey(target),0L)==16,"No existing requested item is consumed as hidden fuel");
+        }finally{service.cancelAll();}
+        h.assertTrue(access.snapshot().getOrDefault(new ItemKey(new ItemStack(Items.OAK_LOG)),0L)==1,"Cancelling the waiting operation returns its input");h.succeed();
+    }
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop")
+    public static void charcoalRequestRejectsAFurnacePreloadedWithTargetFuel(GameTestHelper h){
+        var chestPos=new BlockPos(3,2,3);var furnace=chestPos.east();h.setBlock(chestPos,Blocks.BARREL);h.setBlock(furnace,Blocks.FURNACE);
+        var chest=(Container)h.getBlockEntity(chestPos);chest.setItem(0,new ItemStack(Items.CHARCOAL,16));chest.setItem(1,new ItemStack(Items.OAK_LOG));chest.setItem(2,new ItemStack(Items.OAK_PLANKS,4));
+        var machine=(Container)h.getBlockEntity(furnace);machine.setItem(1,new ItemStack(Items.CHARCOAL));
+        var target=new ItemStack(Items.CHARCOAL);var access=new Fixture(h,chestPos,chest,List.of(furnace),target){@Override public int travelTicks(GlobalPos from,GlobalPos to){return 0;}};
+        var service=new CraftingService(access);var player=new ServerPlayer(h.getLevel().getServer(),h.getLevel(),new GameProfile(UUID.randomUUID(),"charcoal-preloaded-fuel"),ClientInformation.createDefault());
+        h.assertTrue(service.request(player,target,1).accepted(),"The request can wait for an eligible furnace");awaitPlanning(service);
+        try{
+            for(int tick=0;tick<40;tick++)service.tick();
+            h.assertTrue(service.activeProcessors()==0&&machine.getItem(0).isEmpty()&&machine.getItem(1).is(Items.CHARCOAL),"A furnace containing protected target fuel is rejected before input insertion");
+            h.assertTrue(access.snapshot().getOrDefault(new ItemKey(target),0L)==16,"The preloaded fuel does not cause hidden target consumption");
+        }finally{service.cancelAll();}
+        h.succeed();
+    }
     /** Keep existing processor-timing assertions separate from asynchronous planning latency. */
     static void awaitPlanning(CraftingService service){
         try{
