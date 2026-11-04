@@ -139,7 +139,7 @@ public final class RuneProgramming {
                     link(stack,server,current,player);return true;
                 }
                 com.cappleapple.astralrepository.network.WandPackets.selection(stack,com.cappleapple.astralrepository.network.WandPackets.selected(stack),false);
-                select(stack,new Selection(AnchorAddress.rune(server,pos,hit.getDirection()),selected==null?null:selected.id()));
+                select(stack,server,new Selection(AnchorAddress.rune(server,pos,hit.getDirection()),selected==null?null:selected.id()));
                 var data=stack.getOrDefault(DataComponents.CUSTOM_DATA,CustomData.EMPTY).copyTag();
                 data.putBoolean(selected!=null?"RuneTargeting":"ContainerTargeting",true);
                 stack.set(DataComponents.CUSTOM_DATA,CustomData.of(data));
@@ -187,7 +187,7 @@ public final class RuneProgramming {
     public static void link(ItemStack wand, ServerLevel level, Selection current, Player player) {
         Selection first = selection(wand);
         if (first == null) {
-            select(wand, current);
+            select(wand, level, current);
             message(player, current.layer() == null ? "Container or crystal selected. Select a rune, or another crystal to link networks." : mode(resolveLayer(level, current)) + " Rune selected. Select its target container.");
             return;
         }
@@ -238,13 +238,17 @@ public final class RuneProgramming {
     }
     private static Direction face(Selection selection) { return selection.address().face() == null ? Direction.UP : selection.address().face(); }
     private static String mode(RuneLayer layer) { return layer == null ? "" : layer.mode() == RuneLayer.Mode.PUSH ? "Push" : "Pull"; }
-    private static void select(ItemStack wand, Selection selected) {
+    private static void select(ItemStack wand, ServerLevel level, Selection selected) {
         CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         CompoundTag endpoint = selected.address().save();
         if (selected.layer() != null) endpoint.putUUID("Layer", selected.layer());
+        var layer=resolveLayer(level,selected);
+        tag.putInt("RuneLinkColor",(layer==null?RuneDesign.initial(RuneLayer.Mode.PUSH):layer.design()).averageColor(com.cappleapple.astralrepository.AstralServerConfig.runeResolution.get()));
         tag.put(SELECTION, endpoint);
         wand.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
+    /** Server-authored average of the selected rune's visible painted pixels. */
+    public static int linkingColor(ItemStack wand){var tag=wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();return tag.contains("RuneLinkColor")?tag.getInt("RuneLinkColor"):0xA1AFFF;}
     public static Selection selection(ItemStack wand) {
         CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
         if (!tag.contains(SELECTION)) return null;
@@ -255,7 +259,7 @@ public final class RuneProgramming {
     }
     public static void cancel(ItemStack wand) {
         CompoundTag tag = wand.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
-        tag.remove(SELECTION);tag.remove("RuneTargeting");tag.remove("ContainerTargeting");
+        tag.remove(SELECTION);tag.remove("RuneLinkColor");tag.remove("RuneTargeting");tag.remove("ContainerTargeting");
         wand.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
     private static void message(Player player, String text) {}

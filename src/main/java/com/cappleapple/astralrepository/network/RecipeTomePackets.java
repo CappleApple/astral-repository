@@ -29,6 +29,7 @@ public final class RecipeTomePackets {
             b.writeVarInt(p.entries.size());
             for (var entry : p.entries) {
                 b.writeResourceLocation(entry.recipe()); b.writeResourceLocation(entry.type()); ItemStack.STREAM_CODEC.encode(b, entry.output());
+                b.writeBoolean(entry.excluded());
                 b.writeVarInt(entry.ingredients().size()); for (ItemStack ingredient : entry.ingredients()) ItemStack.OPTIONAL_STREAM_CODEC.encode(b, ingredient);
             }
         }, b -> {
@@ -37,9 +38,10 @@ public final class RecipeTomePackets {
             List<RecipeTomeMenu.Entry> entries = new ArrayList<>();
             for (int i = 0; i < count; i++) {
                 ResourceLocation recipe = b.readResourceLocation(), type = b.readResourceLocation(); ItemStack output = ItemStack.STREAM_CODEC.decode(b);
+                boolean excluded = b.readBoolean();
                 int inputs = b.readVarInt(); if (inputs < 0 || inputs > 9) throw new IllegalArgumentException("Invalid tome recipe preview");
                 List<ItemStack> ingredients = new ArrayList<>(); for (int slot = 0; slot < inputs; slot++) ingredients.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(b));
-                entries.add(new RecipeTomeMenu.Entry(recipe, type, output, List.copyOf(ingredients)));
+                entries.add(new RecipeTomeMenu.Entry(recipe, type, output, List.copyOf(ingredients), excluded));
             }
             return new Page(menu, page, total, taught, status, List.copyOf(entries));
         });

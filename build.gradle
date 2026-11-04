@@ -51,6 +51,7 @@ neoForge {
             if (project.hasProperty('bindingOnly')) systemProperty 'astral_repository.bindingOnly', 'true'
             if (project.hasProperty('editorOnly')) systemProperty 'astral_repository.editorOnly', 'true'
             if (project.hasProperty('wandOnly')) systemProperty 'astral_repository.wandOnly', 'true'
+            if (project.hasProperty('runeUpdateOnly')) systemProperty 'astral_repository.runeUpdateOnly', 'true'
             if (project.hasProperty('transferStressUnique')) systemProperty 'astral_repository.transferStressUnique', 'true'
             if (project.hasProperty('transferStressItems')) systemProperty 'astral_repository.transferStressItems', 'true'
             if (project.hasProperty('cloudDepthOnly')) systemProperty 'astral_repository.cloudDepthOnly', 'true'

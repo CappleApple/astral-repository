@@ -69,7 +69,7 @@ public final class RuneRenderer {
         else if(layer.status().contains("full")||layer.status().contains("reject")||layer.status().contains("unloaded")||layer.status().contains("out of range")||layer.status().contains("No loaded relay")||layer.status().contains("no accessible")||layer.status().contains("Same ")||layer.status().contains("failed"))route.add(itemIcon(Items.BARRIER));
         else route.add(itemIcon(Items.CLOCK));
         List<List<Icon>> rows=new ArrayList<>();rows.add(List.copyOf(route));
-        List<Icon> filters=new ArrayList<>();if(layer.icons().isEmpty())filters.add(symbol(Symbol.ALL,-1));
+        List<Icon> filters=new ArrayList<>();if(layer.icons().isEmpty())filters.add(layer.status().equals("Blocked")?itemIcon(Items.BARRIER):symbol(Symbol.ALL,-1));
         else {if(layer.matchAll())filters.add(symbol(Symbol.MATCH_ALL,-1));for(var icon:layer.icons())filters.add(new Icon(new ItemStack(BuiltInRegistries.ITEM.getValue(icon.item())),Symbol.NONE,"",icon.excluded(),icon.exact()));if(layer.filterCount()>layer.icons().size())filters.add(new Icon(new ItemStack(Items.PAPER),Symbol.NONE,"+"+(layer.filterCount()-layer.icons().size()),false,false));}
         rows.add(List.copyOf(filters));List<Icon> counts=new ArrayList<>();if(layer.mode()!=RuneLayer.Mode.FILTER&&layer.minimum()>0)counts.add(symbol(Symbol.RESERVE,layer.minimum()));if(layer.mode()!=RuneLayer.Mode.FILTER&&layer.targetAmount()!=Long.MAX_VALUE)counts.add(symbol(Symbol.LIMIT,layer.targetAmount()));if(layer.priority()!=0)counts.add(new Icon(ItemStack.EMPTY,Symbol.PRIORITY,Integer.toString(layer.priority()),false,false));if(!counts.isEmpty())rows.add(List.copyOf(counts));return List.copyOf(rows);
     }
@@ -100,7 +100,7 @@ public final class RuneRenderer {
             default->{}
         }
     }
-    public static void disconnect(com.cappleapple.astralrepository.platform.client.event.ClientPlayerNetworkEvent.LoggingOut event){faces=List.of();RuneDesignRenderer.disconnect();}
+    public static void disconnect(com.cappleapple.astralrepository.platform.client.event.ClientPlayerNetworkEvent.LoggingOut event){faces=List.of();RuneDesignRenderer.disconnect();RuneLinkGlint.clear();}
     public static void render(AstralWorldFrame event){
         
         rendered=0;if(!current())faces=List.of();var mc=Minecraft.getInstance();if(mc.level==null||mc.player==null)return;var pose=event.getPoseStack();var buffers=event.buffers();

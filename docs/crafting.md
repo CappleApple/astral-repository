@@ -4,11 +4,15 @@ Right-click a Recipe Tome to open its book editor. Shift-click an output in the 
 
 The server resolves the selected recipe and saves only its final output. The editor shows recipes with a fixed, enabled result; dynamic recipes without a fixed result are omitted. Browsing a recipe does not guarantee an available processing adapter or workstation. Requests still validate the network's actual processors and materials.
 
-Requests produce the requested number of additional final items. Existing ingredients and intermediate items are used before resolving missing materials through available recipes and machines. Completed output and surplus return to network storage. If storage cannot accept a returned item, it drops at the originating Nexus when that chunk is loaded.
+After inscribing a final output, use **Block recipe** to exclude the displayed recipe from paths to that output; **Allow recipe** restores it. To block an intermediate step, browse that step's output using an inventory sample or EMI/JEI drop, then block its recipe without inscribing it as the new final output. Exclusions are saved on the tome. Tomes teaching the same exact output combine their exclusions. Removing a tome removes its rules from that network. Queued requests recheck changed rules; already started jobs keep their plan. External crafting providers are not used for requests with exclusions, because their internal paths cannot be checked.
+
+Requests produce the requested number of additional final items. Existing ingredients and intermediate items are used before resolving missing materials through available recipes and machines. Furnace jobs do not burn an existing item matching the requested final output as fuel; use another fuel or a furnace whose fuel does not match that target. Completed output and surplus return to network storage. If storage cannot accept a returned item, it drops at the originating Nexus when that chunk is loaded.
 
 The Nexus accepts 1–4,096 additional final items per request, with up to 48 active requests per player. Right-click an empty craftable entry to request one item, or Shift-right-click any craftable entry to request its maximum stack size even when some are already stored. Middle-click selects an output for the quantity field and hammer button. Jobs appear at the lower right with their output, count, state, and progress; each active job has its own cancel control. The visible list contains only current work. Missing ingredients remain queued until supplied or cancelled; click a missing job to open its ingredient grid. Crafting does not send chat notices.
 
 ## Manual crafting grid
+
+The grid is a personal workspace shared by your Nexus menus. Closing it keeps the nine ingredient slots and selected recipe; reopening at another Nexus restores the same workspace. Ingredients retain their counts and item components through world saves. The displayed result is recalculated, so reopening never creates a free output. Use the clear-grid control to return ingredients to storage.
 
 EMI and JEI recipe transfer fills the Nexus grid from its current ingredients, player inventory, cursor, and accessible Repository storage. Availability includes stored items outside the current search and visible page. Normal transfer supplies one batch when needed and retains an already filled matching grid. Maximum transfer fills as many batches as fit in each ingredient slot. Unused grid items must fit in player inventory before a replacement proceeds. The server resolves the recipe again and checks access, power, actual extraction, and the configured interaction delay.
 
@@ -21,6 +25,8 @@ Shift-clicking the result crafts at most one maximum stack of output. Each compl
 Player transactions are immediate by default. With `instantPlayerInteractions=false`, transfers, crafting submissions, grid clearing, and refills wait twenty server ticks. Shift-crafting waits before starting its entire batch. Each menu permits one pending transaction; changing its inventory or cursor, losing access, becoming a spectator, or closing the menu cancels it before resources are moved.
 
 ## Available processors
+
+Ordinary network deposits skip processing blocks, including idle furnaces. Crafting jobs still deliver their real inputs to their assigned machines. Explicit container-to-container rune transfers can feed a machine.
 
 Placing or replacing a workstation inside coverage refreshes discovery even after the initial scan has finished. Ordinary block changes from commands and mods follow the same path. Changes to a furnace's lit state retain its processor and running job.
 
@@ -57,7 +63,7 @@ The server rechecks recipe knowledge, processors, and actual reservation quantit
 4. Backtrack earlier recipe and ingredient choices when a later branch needs a scarce material.
 5. Record the producing node whenever a consumer uses an intermediate result.
 
-The result is a topologically ordered `CraftPlan<K>`. Each operation records its selected ingredient alternatives and dependencies. Surplus from one operation can feed several branches. Existing ingredient stock produces reservations without extra intermediate craft nodes. A cycle rejects that production path while allowing other paths to be tried.
+The result is a topologically ordered `CraftPlan<K>`. Each operation records its selected ingredient alternatives and dependencies. Surplus from one operation can feed several branches. Existing ingredient stock produces reservations without extra intermediate craft nodes. Cycles are rejected even when existing target stock could supply the loop. Compression and decompression cannot be combined into a fictitious net gain. When stored iron blocks can supply only part of an ingot request, the planner unpacks those first and resolves the remaining amount through other allowed paths such as smelting. Batch surplus is retained.
 
 Search is bounded: the default planner allows 8,192 operations, recipe depth 128, 100,000 search steps, and 192 active search continuations. A request accepts quantities from 1 to 4,096, but a complicated batch can reach a search limit before that quantity. The failure message asks for a smaller batch. Recipe selection is a bounded search heuristic, not a global cost optimizer.
 

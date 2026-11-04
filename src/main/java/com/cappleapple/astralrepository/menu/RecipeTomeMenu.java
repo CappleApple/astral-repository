@@ -22,7 +22,11 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 /** A held-book editing session. All recipe identities and saved outputs originate on the server. */
 public final class RecipeTomeMenu extends AbstractContainerMenu {
     public static final int PAGE_SIZE = 1;
-    public record Entry(ResourceLocation recipe, ResourceLocation type, ItemStack output, List<ItemStack> ingredients) {}
+    public record Entry(ResourceLocation recipe, ResourceLocation type, ItemStack output, List<ItemStack> ingredients, boolean excluded) {
+        public Entry(ResourceLocation recipe, ResourceLocation type, ItemStack output, List<ItemStack> ingredients) {
+            this(recipe, type, output, ingredients, false);
+        }
+    }
     private final Player owner;
     private final InteractionHand hand;
     private final ItemStack tome;
@@ -61,6 +65,11 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
         } else if (action.kind() == 1) {
             ResourceLocation recipe = ResourceLocation.tryParse(action.recipe());
             status = recipe != null && inscribe(recipe) ? "Inscribed." : "That recipe is no longer available.";
+        } else if (action.kind() == 3 || action.kind() == 4) {
+            ResourceLocation recipe = ResourceLocation.tryParse(action.recipe());
+            status = recipe != null && exclude(recipe, action.kind() == 3)
+                    ? (action.kind() == 3 ? "Recipe blocked for this tome." : "Recipe allowed for this tome.")
+                    : "Inscribe an output and choose an available recipe first.";
         } else return;
         sendPage();
     }
@@ -72,6 +81,7 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
         ItemStack output = output(holder.get(), player);
         if (output.isEmpty()) return false;
         CompoundTag tag = tome.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!ItemStack.isSameItemSameComponents(RecipeTomeItem.product(tome, player.registryAccess()), output)) tag.remove("ExcludedRecipes");
         tag.put("Output", output.copyWithCount(1).save(player.registryAccess()));
         tag.putString("OutputId", BuiltInRegistries.ITEM.getKey(output.getItem()).toString());
         tag.putString("Recipe", recipeId.toString());
@@ -79,6 +89,17 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
         player.getInventory().setChanged();
         player.inventoryMenu.broadcastChanges();
         return true;
+    }
+    /** Editing a path never changes the final product taught by this tome. */
+    public boolean exclude(ResourceLocation recipeId, boolean excluded) {
+        if (!(owner instanceof ServerPlayer player) || !stillValid(owner)
+                || RecipeTomeItem.product(tome, player.registryAccess()).isEmpty()) return false;
+        var holder = player.server.getRecipeManager().byKey(recipeId);
+        if (holder.isEmpty() || output(holder.get(), player).isEmpty()) return false;
+        RecipeTomeItem.setRecipeExcluded(tome, recipeId.toString(), excluded);
+        player.getInventory().setChanged();
+        player.inventoryMenu.broadcastChanges();
+        return RecipeTomeItem.excludedRecipes(tome).contains(recipeId.toString()) == excluded;
     }
     public RecipeTomePackets.Page browse(String search, int requestedPage) {
         if (!(owner instanceof ServerPlayer player) || !stillValid(owner))
@@ -96,7 +117,9 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
         List<Entry> matches = catalogue.stream().filter(entry -> matches(entry, normalized)).toList();
         int selectedPage = Math.clamp(requestedPage, 0, Math.max(0, (matches.size() - 1) / PAGE_SIZE));
         return new RecipeTomePackets.Page(containerId, selectedPage, matches.size(), RecipeTomeItem.product(tome, player.registryAccess()), status,
-                matches.stream().skip((long) selectedPage * PAGE_SIZE).limit(PAGE_SIZE).toList());
+                matches.stream().skip((long) selectedPage * PAGE_SIZE).limit(PAGE_SIZE)
+                        .map(entry -> new Entry(entry.recipe(), entry.type(), entry.output(), entry.ingredients(),
+                                RecipeTomeItem.excludedRecipes(tome).contains(entry.recipe().toString()))).toList());
     }
     private void sendPage() { if (owner instanceof ServerPlayer player) {
         if(query.isBlank())RecipeTomePackets.send(player,new RecipeTomePackets.Page(containerId,0,0,RecipeTomeItem.product(tome,player.registryAccess()),"",List.of()));

@@ -44,6 +44,11 @@ public final class RecipeConflictGameTests {
             packet.getMethod("handle",packet,ServerPlayer.class).invoke(null,selection,player);
         } catch(ReflectiveOperationException failure) { throw new AssertionError("Actual Polymorph selection packet failed",failure); }
         h.assertTrue(menu.slots.getFirst().getItem().is(Items.IRON_NUGGET),"Polymorph's real server selection changes the Nexus preview");
+        menu.removed(player);player.containerMenu=player.inventoryMenu;
+        var alternate=player.server.getRecipeManager().byKey(id("conflict_crafting_a")).orElseThrow();
+        h.assertTrue(com.cappleapple.astralrepository.compat.PolymorphCompatibility.selectPlayerRecipe(player,alternate),"A different external Polymorph selection is stored while the Nexus is closed");
+        menu=new NexusMenu(142,player.getInventory());player.containerMenu=menu;
+        h.assertTrue(menu.slots.getFirst().getItem().is(Items.IRON_NUGGET)&&menu.grid.getItem(4).is(Items.DANDELION),"Reopening restores the saved Nexus recipe and real ingredients rather than another menu's Polymorph selection");
         h.assertTrue(!menu.selectCraftingRecipe(ResourceLocation.withDefaultNamespace("oak_planks")),"A recipe that does not match cannot be selected");
         menu.clicked(0,0,ClickType.PICKUP,player);
         h.assertTrue(menu.getCarried().is(Items.IRON_NUGGET)&&menu.getCarried().getCount()==1,"The selected real result reaches the cursor");

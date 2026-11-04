@@ -20,6 +20,19 @@ import net.minecraftforge.gametest.*;
 @GameTestHolder("astral_repository") @PrefixGameTestTemplate(false)
 public final class WandPresetGameTests {
     @GameTest(templateNamespace="astral_repository",template="empty_workshop")
+    public static void wandLinkColorUsesSelectedRunesVisiblePixelsAndSurvivesItemData(GameTestHelper h){
+        var level=h.getLevel();var at=h.absolutePos(new BlockPos(3,2,3));level.setBlockAndUpdate(at,Blocks.BARREL.defaultBlockState());
+        int n=128;int[] pixels=new int[n*n];pixels[0]=0xffff0000;pixels[1]=0xff0000ff;pixels[127*n+127]=0xff00ff00;
+        var design=new RuneDesign(n,pixels,List.of());var surface=RuneSurfaces.getOrCreate(level,at,Direction.SOUTH);var layer=surface.addLayer(RuneGlyph.id(RuneLayer.Mode.PUSH),RuneLayer.Mode.PUSH);
+        layer.preset(new RunePreset(UUID.randomUUID(),"Mixed link",RuneLayer.Mode.PUSH,design,new CompoundTag(),0,true),level.registryAccess());
+        var player=new FakePlayer(level,new GameProfile(UUID.randomUUID(),"link-color"));var wand=new ItemStack(AstralContent.ATTUNEMENT_WAND.get());int previous=AstralServerConfig.runeResolution.get();
+        try{AstralServerConfig.runeResolution.set(32);RuneProgramming.link(wand,level,new RuneProgramming.Selection(surface.address(),layer.id()),player);
+            h.assertTrue(RuneProgramming.selection(wand)!=null&&wand.hasFoil(),"Linking mode enables the wand glint");
+            h.assertTrue(RuneProgramming.linkingColor(wand.copy())==0x7f007f,"Link glint averages painted RGB pixels, ignores transparency and cropped artwork, and survives stack copying");
+            RuneProgramming.cancel(wand);h.assertTrue(RuneProgramming.selection(wand)==null&&!wand.hasFoil(),"Canceling linking mode removes the temporary glint");
+        }finally{AstralServerConfig.runeResolution.set(previous);}h.succeed();
+    }
+    @GameTest(templateNamespace="astral_repository",template="empty_workshop")
     public static void exactRgbArtworkAndLegacyPaletteBothSurviveSaving(GameTestHelper h)throws Exception{
         int[] colors=new int[128*128];for(int i=0;i<colors.length;i++)colors[i]=0xff000000|(i*7919)&0xffffff;
         var design=new RuneDesign(128,colors,List.of());var preset=new RunePreset(UUID.randomUUID(),"Exact RGB",RuneLayer.Mode.FILTER,design,new FilterRules().save(h.getLevel().registryAccess()),0,true);

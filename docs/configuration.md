@@ -80,7 +80,7 @@ A container face accepts up to `maxRunesPerFace` runes if they fit (eight by def
 
 
 
-Pack presets are JSON files in `config/astral_repository/rune_presets/`, on the client or server. A newly created folder receives editable `push.json`, `pull.json`, and `filter.json` examples. Copy a player-made JSON file into this folder to distribute it. Use a distinct UUID for each preset. Up to 64 files are read in filename order; invalid files are skipped and logged. Server presets are sent when the wand editor opens.
+Pack presets are JSON files in `config/astral_repository/rune_presets/`, on the client or server. A newly created folder receives editable `push.json`, `pull.json`, and `filter.json` examples. The default red X Blocking Rune is saved as `blocking.json` whenever that file is absent, including in existing folders. Its filter uses `{EmptyWhitelist:1b}` to reject every resource while empty; ordinary empty filters retain their unrestricted behavior. Copy a player-made JSON file into this folder to distribute it. Use a distinct UUID for each preset. Up to 64 files are read in filename order; invalid files are skipped and logged. Server presets are sent when the wand editor opens.
 
 
 

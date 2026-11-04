@@ -1,5 +1,29 @@
 # Port validation
 
+## 1.12.0 checks - 2026-11-04
+
+All eight normal `test build` runs pass, totaling 1,356 unit tests:
+
+| Edition | Unit tests |
+| --- | ---: |
+| NeoForge 1.21.1 (original) | 168 |
+| Forge 1.20.1 | 168 |
+| Fabric 1.20.1 | 168 |
+| Fabric 1.21.1 | 168 |
+| Fabric 26.2 | 169 |
+| Fabric 26.3 | 169 |
+| NeoForge 26.2 | 173 |
+| NeoForge 26.3 | 173 |
+
+Shared regressions cover conversion loops, net additional output, mixed recipe alternatives, maximum requests, and recipe exclusion matching. The original edition additionally passes 178 actual-world GameTests and the focused wand/tome client checks; see [the validation record](../docs/validation.md#1120-checks---2026-11-04).
+
+Fabric and NeoForge 26.3 development clients render actual red/blue linking wands, assert the generated glint materials and uploaded texture channels, and pass their existing gameplay checks. Normal builds are restored after the smoke profiles; final Fabric metadata contains no smoke entrypoint. The Forge JAR contains mappings for all three new glint-buffer injections. Other editions received normal build/unit checks in this work; their earlier runtime receipts below describe earlier versions.
+
+The source audit resolves the 26.3 generated inputs and overrides. Fabric 26.3's furnace override has the same target-fuel guards as the common implementation. The glint generator preserves the supplied colored material in the solid pass and bypasses the general OIT setup replacement for GLINT. API adaptations preserve the shared personal grid on legacy Fabric and modern containers.
+
+Ignored evidence is under `build/feature-update/`, including final input hashes, per-target test/JAR hashes, failed preliminary logs, the override audit, and client logs. This records build and runtime validation; publication receipts are tracked separately.
+
+
 ## Custom ingredient and tag invalidation checks (1.11.15)
 
 All eight normal builds pass: 161 unit tests for each legacy/original edition, 162 each for modern Fabric, and 166 each for modern NeoForge, totalling 1,300. The four new shared cases cover cold item-domain lookup, dense same-item component variants, dynamic predicates, and incomplete custom display domains. A complete current item domain does not imply an immutable result: unknown custom-simple ingredients use the index but recompute answers. Non-simple tests reuse detached samples. Client tag callbacks clear cached answers and advance the epoch used by EMI inventory equality.

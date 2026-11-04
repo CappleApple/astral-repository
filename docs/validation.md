@@ -1,5 +1,26 @@
 # Validation record
 
+## 1.12.0 checks - 2026-11-04
+
+The eight normal builds pass 1,356 unit tests in total. The original NeoForge edition passes 178 dedicated-server GameTests in fresh worlds, both with the ordinary recipe set and with the installed Polymorph 1.2.0 / Iron Furnaces 4.3.2 integration fixtures. The integration run verifies that reopening the Nexus restores its saved conflicting recipe after another menu changes Polymorph's player selection.
+
+New coverage includes net-output cycle rejection, mixed block-unpacking/smelting batches, 4,096-item requests, per-target recipe exclusions and waiting-job retries, exact saved grid contents, full-storage deposits skipping idle furnaces, Blocking Rune hide/reveal and double-chest vetoes, and target items being protected from furnace fuel selection. A separate pure-Java audit checks 13,624 combinations of block, ore, existing-target stock, and requested count for feasibility and conservation.
+
+The original development client passes the focused `-PruneUpdateOnly` check. It renders inactive, red-linking, and blue-linking wands through the registered item renderer, checks the generated texture channels and custom glint dispatch, and captures the red X Blocking Rune. It also clicks the actual Recipe Tome Inscribe, Block recipe, and Allow recipe controls, checks server state, browses an intermediate route, and verifies reopening. Captured frames were inspected for visible wand glint and readable tome controls.
+
+Fabric and NeoForge 26.3 development clients pass their gameplay checks plus the red/blue linking-wand gallery and uploaded texture-channel assertions. These run from development sources; they are not packaged-client checks for every edition. Clients remain hidden, muted, and mouse-free. The 26.3 source-generation audit verifies the custom glint stays in the solid pass and uses the native GLINT setup.
+
+The first client attempt exposed a custom glint buffer lifecycle crash; separate supplemental buffers now retain foil geometry until the base buffers draw. Preliminary port builds also exposed API differences and a Fabric 26.3 override that bypassed fuel protection. Failed logs are retained with the passing results under ignored `build/feature-update/`. Final normal JARs exclude smoke entrypoints and fixtures. These checks record validation; publication receipts are tracked separately.
+
+```powershell
+.\gradlew.bat test build
+.\gradlew.bat runGameTestServer
+.\gradlew.bat runClientSmoke -PruneUpdateOnly
+```
+
+See [port validation](../ports/VALIDATION.md#1120-checks---2026-11-04) for edition counts.
+
+
 ## Nexus and recipe-screen transitions (1.11.15)
 
 Two new client recordings from a 506-mod single-player setup identify Moonlight block-type swap matching as the main remaining cost. Custom-ingredient checks consume 52.70% and 84.79% of sampled Render-thread time. Both captures include the integrated server; aggregate server fill/broadcast work is much smaller. These are inclusive samples, not invocation counts or individual hitch durations. The recordings and their decoded metadata remain local under ignored `build/nexus-transitions/`.

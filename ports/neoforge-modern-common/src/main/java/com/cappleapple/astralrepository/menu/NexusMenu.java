@@ -21,7 +21,9 @@ import java.util.*;
 /** Shared local/handheld menu. Network entries are bounded scrolling records, never phantom inventory slots. */
 public final class NexusMenu extends AbstractContainerMenu {
     public record Entry(ItemStack stack, long count, boolean craftable) {}
-    public final CraftingContainer grid = new TransientCraftingContainer(this, 3, 3);
+    public final CraftingContainer grid;
+    private final NexusCraftingData craftingData;
+    private final NexusCraftingData.Workspace craftingWorkspace;
     private final ResultContainer result = new ResultContainer();
     private RecipeHolder<CraftingRecipe> selectedCraftingRecipe;
     private net.minecraft.resources.Identifier preferredCraftingRecipe;
@@ -55,6 +57,30 @@ public final class NexusMenu extends AbstractContainerMenu {
     public NexusMenu(int id, Inventory inventory, GlobalPos origin, boolean remote) {
         super(AstralRepository.NEXUS_MENU.get(), id);
         this.player = inventory.player; this.origin = origin; this.remote = remote;
+
+        craftingData = player instanceof ServerPlayer sp ? NexusCraftingData.get(sp.level().getServer()) : null;
+        craftingWorkspace = craftingData == null ? new NexusCraftingData.Workspace() : craftingData.workspace(player.getUUID());
+        preferredCraftingRecipe = net.minecraft.resources.Identifier.tryParse(craftingWorkspace.recipe);
+        grid = new CraftingContainer() {
+            @Override public int getWidth() { return 3; }
+            @Override public int getHeight() { return 3; }
+            @Override public int getContainerSize() { return 9; }
+            @Override public boolean isEmpty() { return craftingWorkspace.items.stream().allMatch(ItemStack::isEmpty); }
+            @Override public ItemStack getItem(int slot) { return slot >= 9 ? ItemStack.EMPTY : craftingWorkspace.items.get(slot); }
+            @Override public List<ItemStack> getItems() { return List.copyOf(craftingWorkspace.items); }
+            @Override public ItemStack removeItem(int slot,int count) {
+                var stack=net.minecraft.world.ContainerHelper.removeItem(craftingWorkspace.items,slot,count);
+                if(!stack.isEmpty())NexusMenu.this.slotsChanged(this);return stack;
+            }
+            @Override public ItemStack removeItemNoUpdate(int slot) { var stack=net.minecraft.world.ContainerHelper.takeItem(craftingWorkspace.items,slot);setChanged();return stack; }
+            @Override public void setItem(int slot,ItemStack stack) { craftingWorkspace.items.set(slot,stack);NexusMenu.this.slotsChanged(this); }
+            @Override public void setChanged() { if(craftingData!=null)craftingData.setDirty(); }
+            @Override public boolean stillValid(Player player) { return true; }
+            @Override public void clearContent() { craftingWorkspace.items.clear();setChanged();NexusMenu.this.slotsChanged(this); }
+            @Override public void fillStackedContents(net.minecraft.world.entity.player.StackedItemContents contents) {
+                for(var stack:craftingWorkspace.items)contents.accountSimpleStack(stack);
+            }
+        };
         localStorage=!remote && origin!=null && player instanceof ServerPlayer sp
                 && sp.level().getServer().getLevel(origin.dimension())!=null
                 && sp.level().getServer().getLevel(origin.dimension()).getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity node
@@ -70,6 +96,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         for (int y=0;y<3;y++) for(int x=0;x<3;x++) addSlot(new Slot(grid,x+y*3,208+x*18,54+y*18));
         for (int y=0;y<3;y++) for(int x=0;x<9;x++) addSlot(new Slot(inventory,x+y*9+9,8+x*18,180+y*18));
         for (int x=0;x<9;x++) addSlot(new Slot(inventory,x,8+x*18,238));
+        slotsChanged(grid);
     }
     public AstralNetwork network() { return player instanceof ServerPlayer p && origin != null ? NetworkManager.get(p.level().getServer()).networkAt(origin) : null; }
     private Map<ItemKey,Long> storedItems(AstralNetwork network){
@@ -96,6 +123,7 @@ public final class NexusMenu extends AbstractContainerMenu {
     }
     @Override public void slotsChanged(Container container) {
         if (!(player instanceof ServerPlayer sp)) return;
+        craftingData.setDirty();
         ItemStack output = ItemStack.EMPTY;
         var input=grid.asCraftInput();
         var recipe=sp.level().getServer().getRecipeManager().getRecipeFor(RecipeType.CRAFTING,input,sp.level());
@@ -105,6 +133,7 @@ public final class NexusMenu extends AbstractContainerMenu {
                     recipe=Optional.of(new RecipeHolder<>(preferred.get().id(),crafting));
             }
         selectedCraftingRecipe=recipe.orElse(null);
+        if(selectedCraftingRecipe!=null)craftingWorkspace.recipe=selectedCraftingRecipe.id().identifier().toString();
         if (recipe.isPresent() && result.setRecipeUsed(sp,recipe.get())) {
             ItemStack assembled = recipe.get().value().assemble(grid.asCraftInput());
             if (assembled.isItemEnabled(sp.level().enabledFeatures())) output = assembled;
@@ -117,7 +146,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(!(player instanceof ServerPlayer sp))return false;
         var holder=sp.level().getServer().getRecipeManager().byKey(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE,id));
         if(holder.isEmpty()||!(holder.get().value() instanceof CraftingRecipe crafting)||!crafting.matches(grid.asCraftInput(),sp.level()))return false;
-        preferredCraftingRecipe=id;
+        preferredCraftingRecipe=id;craftingWorkspace.recipe=id.toString();craftingData.setDirty();
         slotsChanged(grid);return true;
     }
     private net.minecraft.core.NonNullList<ItemStack> craftingRemainders(net.minecraft.world.item.crafting.CraftingInput input){
@@ -508,6 +537,6 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(live.getCount()==original.getCount())return ItemStack.EMPTY;
         slot.onTake(player,live);if(slotIndex==0)player.drop(live,false);return original;
     }
-    @Override public void removed(Player player) { pendingInteraction=null;deferredRefill=null;super.removed(player); if (!player.level().isClientSide()) clearContainer(player,grid); }
+    @Override public void removed(Player player) { pendingInteraction=null;deferredRefill=null;super.removed(player); if(craftingData!=null)craftingData.setDirty(); }
     @Override public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) { return slot.container!=result && super.canTakeItemForPickAll(stack,slot); }
 }

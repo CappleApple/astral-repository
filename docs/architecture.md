@@ -37,7 +37,7 @@ Every Nexus in one connected component uses the same `AstralNetwork`, inventory 
 
 Crystal coverage is a sphere of `coverageRange`. The owner is the closest crystal, then the one with higher priority, then the first deterministic address. A component can use ordinary coverage only when that selected owner belongs to it.
 
-The manager still understands persisted rune-face graph anchors. A face in a component supplies its host's exact sided view for that component, with higher face priority and address order selecting between multiple faces. These legacy graph views have no surrounding coverage. Per-layer transfer filters do not restrict the Nexus's view of that host. Provider identity deduplication prevents multiple views of one backing store from adding the same inventory twice.
+The manager still understands persisted rune-face graph anchors. A face in a component supplies its host's exact sided view for that component, with higher face priority and address order selecting between multiple faces. These legacy graph views have no surrounding coverage. Push/Pull transfer filters do not restrict the Nexus's view of that host. An enabled Blocking Rune is a container-wide veto: provider wrappers hide items/resources and reject extraction/insertion, including across double chests. Its persisted `EmptyWhitelist` flag distinguishes intentional denial from legacy unrestricted empty filters. Rule changes remove blocked index contributions immediately; reconnection uses bounded normal discovery and polling. Provider identity deduplication prevents multiple views of one backing store from adding the same inventory twice.
 
 Placement, removal, channel changes, explicit link changes, and chunk events invalidate topology. A bounded validation queue also checks host identity. When rebuilding the graph, the manager reuses services whose anchor instances, settings, internal links, and nearby coverage competitors are unchanged. Only affected components close their old services and cancel active local jobs, returning virtual escrow through the crafting recovery path. Unaffected components retain their indexes and active jobs.
 
@@ -76,6 +76,8 @@ Reconciliation rotates through providers. The default manager budget is eight pr
 The cached index scales with distinct resource identities and their provider references. Component variants are distinct item identities. Unit tests exercise a synthetic 200,000-key index; this is not a measured server-TPS guarantee for a factory containing 200,000 live inventories.
 
 ## Transactions and routing
+
+`NexusCraftingData` owns one nine-slot manual workspace and preferred recipe ID per player UUID, saved in the overworld's `astral_repository_nexus_crafting.dat`. Server menus borrow that slot list directly; they do not copy or refund it on close. Item mutations mark the data dirty, and result slots are derived from current server recipes. All Nexus entry points use the same personal workspace.
 
 Nexus deposits and withdrawals execute immediately by default and update known counts. With `instantPlayerInteractions=false`, the menu defers a transaction for 20 ticks, keeps one pending action, and cancels it if the menu closes or its captured inventory state changes. Access, the bound Nexus, provider availability, and optional power are rechecked at commit. Transfer effects are cosmetic and keep their full travel duration when player inventory changes are instant.
 

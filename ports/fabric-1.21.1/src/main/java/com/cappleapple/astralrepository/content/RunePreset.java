@@ -12,4 +12,9 @@ public record RunePreset(UUID id,String name,RuneLayer.Mode mode,RuneDesign desi
     public CompoundTag save(){CompoundTag t=new CompoundTag();t.put("Cadence",cadence.save());t.putUUID("Id",id);t.putString("Name",name);t.putString("Mode",mode.name());t.put("Design",design.save());t.put("Filter",filter.copy());t.putInt("Priority",priority);t.putBoolean("Enabled",enabled);return t;}
     public static RunePreset load(CompoundTag t,HolderLookup.Provider registries){FilterRules rules=new FilterRules();rules.load(t.getCompound("Filter"),registries);return new RunePreset(t.getUUID("Id"),t.getString("Name"),RuneLayer.Mode.valueOf(t.getString("Mode")),RuneDesign.load(t.getCompound("Design")),rules.save(registries),t.getInt("Priority"),!t.contains("Enabled")||t.getBoolean("Enabled"),RuneCadence.load(t.getCompound("Cadence")));}
     public static RunePreset initial(RuneLayer.Mode mode){return new RunePreset(UUID.randomUUID(),mode.title(),mode,RuneDesign.initial(mode),new CompoundTag(),0,true);}
+    public static RunePreset blocking(){
+        CompoundTag filter=new CompoundTag();filter.putBoolean("EmptyWhitelist",true);
+        return new RunePreset(UUID.nameUUIDFromBytes("astral_repository:blocking".getBytes(java.nio.charset.StandardCharsets.UTF_8)),"Blocking Rune",RuneLayer.Mode.FILTER,RuneDesign.blocking(),filter,0,true);
+    }
+
 }

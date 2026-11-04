@@ -50,7 +50,7 @@ public final class RuneLayer {
     public FilterRules filter(){return filter;}
     public int priority(){return priority;}
     public boolean enabled(){return enabled;}
-    public String status(){if(mode==Mode.FILTER)return enabled?"Filtering":"Paused";return !enabled?status:targets.isEmpty()?"Unlinked":status;}
+    public String status(){if(mode==Mode.FILTER)return enabled?(filter.blocksAll()?"Blocked":"Filtering"):"Paused";return !enabled?status:targets.isEmpty()?"Unlinked":status;}
     public long transferredItems(){return transferredItems;}
     public long transferredFluid(){return transferredFluid;}
     public RuneSurface surface(){return surface;}
@@ -59,7 +59,7 @@ public final class RuneLayer {
     public void setEnabled(boolean value){enabled=value;status=value?"Waiting":"Paused";changed();}
     public void clearFilter(){filter.clearPredicates();changed();}
     /** Call after editing the mutable filter so persistence and observers see the change. */
-    public void changed(){surface.changed();}
+    public void changed(){surface.rulesChanged();}
     void target(Target value){targets.clear();if(value!=null)targets.add(value);status=value==null?"Unlinked":"Waiting";changed();}
     public void beginReport(){pendingStatus=status;}
     public void endReport(){String value=pendingStatus;pendingStatus=null;if(value!=null)report(value);}

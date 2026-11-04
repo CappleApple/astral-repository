@@ -29,7 +29,7 @@ public final class CraftPlanner<K> {
     public synchronized CraftPlan<K> plan(K target, long count, Map<K, Long> inventory, Set<String> processes) {
         return plan(target,count,inventory,processes,true);
     }
-    /** Produce new output, while existing output remains available as a legitimate recipe ingredient. */
+    /** Produce a net increase in the target; cyclic paths cannot spend existing target stock. */
     public synchronized CraftPlan<K> planAdditional(K target,long count,Map<K,Long> inventory,Set<String> processes) {
         return plan(target,count,inventory,processes,false);
     }
@@ -64,14 +64,20 @@ public final class CraftPlanner<K> {
         return fulfill(key,count,initial,path,processes,continuation,true);
     }
     private State fulfill(K key,long count,State initial,LinkedHashSet<K> path,Set<String> processes,Function<Outcome,State> continuation,boolean useExisting) {
+        return fulfill(key, count, initial, path, processes, continuation, useExisting, Set.of());
+    }
+    private State fulfill(K key,long count,State initial,LinkedHashSet<K> path,Set<String> processes,
+                          Function<Outcome,State> continuation,boolean useExisting,Set<String> usedRecipes) {
         budget();
         if (++activeSearch > 192) { activeSearch--; throw new PlanningException("Craft search is too complex; request a smaller batch", true); }
         try {
+            // A stored ancestor cannot bootstrap a compression/decompression loop.
+            // Checking before consumption also guarantees net additional final output.
+            if (path.contains(key)) throw new PlanningException("Cyclic production path: " + path + " -> " + key);
             State state = new State(initial);
             Set<Integer> dependencies = new LinkedHashSet<>();
             long missing = useExisting ? consume(key, count, state, dependencies, true) : count;
             if (missing == 0) return continuation.apply(new Outcome(state, dependencies));
-            if (path.contains(key)) throw new PlanningException("Cyclic production path: " + path + " -> " + key);
             if (path.size() >= maxDepth) throw new PlanningException("Recipe depth exceeds " + maxDepth);
             LinkedHashSet<K> nextPath = new LinkedHashSet<>(path);
             nextPath.add(key);
@@ -81,15 +87,43 @@ public final class CraftPlanner<K> {
                     .thenComparingInt(CraftRecipe::durationTicks).thenComparing(CraftRecipe::id));
             String failure = "Missing ingredient or available processor for " + key + " x" + missing;
             for (CraftRecipe<K> recipe : candidates) {
+                if (usedRecipes.contains(recipe.id())) continue;
                 try {
                     long operations = Math.floorDiv(missing - 1, recipe.outputCount()) + 1;
                     if (operations > maxNodes - state.nodes.size()) throw new PlanningException("Craft plan exceeds " + maxNodes + " operations");
-                    return resolveOperations(recipe, operations, new State(state), nextPath, processes, branch -> {
-                        Set<Integer> branchDependencies = new LinkedHashSet<>(dependencies);
-                        if (consume(key, missing, branch, branchDependencies, useExisting) != 0)
-                            throw new PlanningException("Recipe did not supply its declared output");
-                        return continuation.apply(new Outcome(branch, branchDependencies));
-                    });
+                    State batch = new State(state);
+                    long completed = 0;
+                    for (; completed < operations; completed++) {
+                        budget();
+                        try {
+                            batch = resolveIngredients(recipe, 0, batch, nextPath, processes,
+                                    new ArrayList<>(), new LinkedHashSet<>(), Function.identity());
+                        } catch (PlanningException error) {
+                            if (error.exhausted) throw error;
+                            failure = error.getMessage();
+                            break;
+                        }
+                    }
+                    Set<String> nextUsedRecipes = new HashSet<>(usedRecipes);
+                    nextUsedRecipes.add(recipe.id());
+                    Function<State, State> finish = branch -> finishProduction(key, missing, branch, dependencies,
+                            path, processes, continuation, useExisting, nextUsedRecipes);
+                    if (completed == operations) {
+                        try { return finish.apply(batch); }
+                        catch (PlanningException error) { if (error.exhausted) throw error; failure = error.getMessage(); }
+                        try { return resolveOperations(recipe, operations, new State(state), nextPath, processes, finish); }
+                        catch (PlanningException error) { if (error.exhausted) throw error; failure = error.getMessage(); }
+                    }
+                    // Keep the useful prefix when an input runs out, then search again for
+                    // the remaining output. This spends stored blocks before using ore.
+                    for (long prefix = Math.min(completed, operations - 1); prefix > 0; prefix--) {
+                        if (prefix == completed) {
+                            try { return finish.apply(new State(batch)); }
+                            catch (PlanningException error) { if (error.exhausted) throw error; failure = error.getMessage(); }
+                        }
+                        try { return resolveOperations(recipe, prefix, new State(state), nextPath, processes, finish); }
+                        catch (PlanningException error) { if (error.exhausted) throw error; failure = error.getMessage(); }
+                    }
                 } catch (PlanningException error) {
                     if (error.exhausted) throw error;
                     failure = error.getMessage();
@@ -97,6 +131,20 @@ public final class CraftPlanner<K> {
             }
             throw new PlanningException(failure);
         } finally { activeSearch--; }
+    }
+    private State finishProduction(K key, long missing, State initial, Set<Integer> dependencies,
+                                   LinkedHashSet<K> path, Set<String> processes,
+                                   Function<Outcome, State> continuation, boolean useExisting, Set<String> usedRecipes) {
+        State state = new State(initial);
+        Set<Integer> producedBy = new LinkedHashSet<>(dependencies);
+        long remaining = consume(key, missing, state, producedBy, useExisting);
+        if (remaining == 0) return continuation.apply(new Outcome(state, producedBy));
+        if (remaining == missing) throw new PlanningException("Recipe did not supply its declared output");
+        return fulfill(key, remaining, state, path, processes, outcome -> {
+            Set<Integer> allDependencies = new LinkedHashSet<>(producedBy);
+            allDependencies.addAll(outcome.dependencies);
+            return continuation.apply(new Outcome(outcome.state, allDependencies));
+        }, useExisting, usedRecipes);
     }
     private State resolveOperations(CraftRecipe<K> recipe, long operations, State state, LinkedHashSet<K> path,
                                     Set<String> processes, Function<State, State> continuation) {
@@ -120,6 +168,7 @@ public final class CraftPlanner<K> {
         budget();
         if (index == recipe.ingredients().size()) {
             if (state.nodes.size() >= maxNodes) throw new PlanningException("Craft plan exceeds " + maxNodes + " operations");
+            recordProduction(recipe.output(), selected, state);
             int id = state.nodes.size();
             state.nodes.add(new CraftPlan.Node<>(id, recipe, selected, dependencies));
             state.supplies.computeIfAbsent(recipe.output(), ignored -> new ArrayList<>()).add(new Supply(recipe.outputCount(), id));
@@ -131,6 +180,7 @@ public final class CraftPlanner<K> {
         String failure = "No usable alternative for " + ingredient.alternatives();
         for (K alternative : alternatives) {
             try {
+                rejectProductionCycle(recipe.output(), alternative, state);
                 return fulfill(alternative, ingredient.count(), state, path, processes, outcome -> {
                     List<CraftPlan.Selection<K>> nextSelected = new ArrayList<>(selected);
                     nextSelected.add(new CraftPlan.Selection<>(alternative, ingredient.count()));
@@ -144,6 +194,28 @@ public final class CraftPlanner<K> {
             }
         }
         throw new PlanningException(failure);
+    }
+    private void rejectProductionCycle(K output, K input, State state) {
+        if (state.productionInputs.getOrDefault(output, Set.of()).contains(input)) return;
+        Set<K> visited = new HashSet<>();
+        ArrayDeque<K> pending = new ArrayDeque<>();
+        pending.add(input);
+        while (!pending.isEmpty()) {
+            budget();
+            K key = pending.removeFirst();
+            if (Objects.equals(key, output)) throw new PlanningException("Cyclic production path through " + output);
+            if (visited.add(key)) pending.addAll(state.productionInputs.getOrDefault(key, Set.of()));
+        }
+    }
+    private void recordProduction(K output, List<CraftPlan.Selection<K>> selected, State state) {
+        Set<K> inputs = new LinkedHashSet<>(state.productionInputs.getOrDefault(output, Set.of()));
+        for (var selection : selected) {
+            K input = selection.key();
+            if (inputs.contains(input)) continue;
+            rejectProductionCycle(output, input, state);
+            inputs.add(input);
+        }
+        state.productionInputs.put(output, Set.copyOf(inputs));
     }
     private long missingScore(CraftRecipe<K> recipe, State state) {
         long total = 0;
@@ -176,11 +248,12 @@ public final class CraftPlanner<K> {
     private final class State {
         final Map<K, List<Supply>> supplies = new LinkedHashMap<>();
         final Map<K, Long> reservations = new LinkedHashMap<>();
+        final Map<K, Set<K>> productionInputs = new HashMap<>();
         final List<CraftPlan.Node<K>> nodes = new ArrayList<>();
         State() {}
         State(State source) {
             source.supplies.forEach((key, supplies) -> this.supplies.put(key, new ArrayList<>(supplies.stream().map(Supply::new).toList())));
-            reservations.putAll(source.reservations); nodes.addAll(source.nodes);
+            reservations.putAll(source.reservations); productionInputs.putAll(source.productionInputs); nodes.addAll(source.nodes);
         }
     }
     private static final class Supply {

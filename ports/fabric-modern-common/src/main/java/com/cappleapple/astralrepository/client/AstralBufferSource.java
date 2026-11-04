@@ -24,10 +24,11 @@ public final class AstralBufferSource {
             for(Vertex vertex:data)vertex.emit(transform,target);
         },material));
     }
-    public void addFoil() {
+    public void addFoil() { addFoil(net.minecraft.client.renderer.rendertype.RenderTypes.entityGlint()); }
+    public void addFoil(RenderType glint) {
         var data=new ArrayList<Vertex>();for(var vertices:buffers.values())data.addAll(vertices.snapshot());
         var immutable=List.copyOf(data);freeze();
-        draws.add((pose,collector)->collector.order(1).submitCustomGeometry(pose,net.minecraft.client.renderer.rendertype.RenderTypes.entityGlint(),(transform,target)->{for(var vertex:immutable)vertex.emit(transform,target);}));
+        draws.add((pose,collector)->collector.order(1).submitCustomGeometry(pose,glint,(transform,target)->{for(var vertex:immutable)vertex.emit(transform,target);}));
     }
     public void freeze() { for(var type:List.copyOf(buffers.keySet()))freeze(type); }
     public void submit(PoseStack pose,SubmitNodeCollector collector) { freeze();for(var draw:draws)draw.accept(pose,collector); }

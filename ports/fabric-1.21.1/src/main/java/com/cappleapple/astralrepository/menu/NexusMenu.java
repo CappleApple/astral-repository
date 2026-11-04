@@ -21,7 +21,9 @@ import java.util.*;
 /** Shared local/handheld menu. Network entries are bounded scrolling records, never phantom inventory slots. */
 public final class NexusMenu extends AbstractContainerMenu {
     public record Entry(ItemStack stack, long count, boolean craftable) {}
-    public final CraftingContainer grid = new TransientCraftingContainer(this, 3, 3);
+    public final CraftingContainer grid;
+    private final NexusCraftingData craftingData;
+    private final NexusCraftingData.Workspace craftingWorkspace;
     private final ResultContainer result = new ResultContainer();
     private RecipeHolder<CraftingRecipe> selectedCraftingRecipe;
     private net.minecraft.resources.ResourceLocation preferredCraftingRecipe;
@@ -55,6 +57,15 @@ public final class NexusMenu extends AbstractContainerMenu {
     public NexusMenu(int id, Inventory inventory, GlobalPos origin, boolean remote) {
         super(AstralRepository.NEXUS_MENU.get(), id);
         this.player = inventory.player; this.origin = origin; this.remote = remote;
+
+        craftingData = player instanceof ServerPlayer sp ? NexusCraftingData.get(sp.server) : null;
+        craftingWorkspace = craftingData == null ? new NexusCraftingData.Workspace() : craftingData.workspace(player.getUUID());
+        preferredCraftingRecipe = net.minecraft.resources.ResourceLocation.tryParse(craftingWorkspace.recipe);
+        grid = new TransientCraftingContainer(this, 3, 3, craftingWorkspace.items) {
+            @Override public void setChanged() { if (craftingData != null) craftingData.setDirty(); }
+            @Override public ItemStack removeItemNoUpdate(int slot) { var stack=super.removeItemNoUpdate(slot);setChanged();return stack; }
+            @Override public void clearContent() { super.clearContent();setChanged();NexusMenu.this.slotsChanged(this); }
+        };
         localStorage=!remote && origin!=null && player instanceof ServerPlayer sp
                 && sp.server.getLevel(origin.dimension())!=null
                 && sp.server.getLevel(origin.dimension()).getBlockEntity(origin.pos()) instanceof CrystalNodeBlockEntity node
@@ -70,6 +81,8 @@ public final class NexusMenu extends AbstractContainerMenu {
         for (int y=0;y<3;y++) for(int x=0;x<3;x++) addSlot(new Slot(grid,x+y*3,208+x*18,54+y*18));
         for (int y=0;y<3;y++) for(int x=0;x<9;x++) addSlot(new Slot(inventory,x+y*9+9,8+x*18,180+y*18));
         for (int x=0;x<9;x++) addSlot(new Slot(inventory,x,8+x*18,238));
+        // Restore this workspace once; subsequent Polymorph selections remain live.
+        if(preferredCraftingRecipe==null||!selectCraftingRecipe(preferredCraftingRecipe))slotsChanged(grid);
     }
     public AstralNetwork network() { return player instanceof ServerPlayer p && origin != null ? NetworkManager.get(p.server).networkAt(origin) : null; }
     private Map<ItemKey,Long> storedItems(AstralNetwork network){
@@ -96,6 +109,7 @@ public final class NexusMenu extends AbstractContainerMenu {
     }
     @Override public void slotsChanged(Container container) {
         if (!(player instanceof ServerPlayer sp)) return;
+        craftingData.setDirty();
         ItemStack output = ItemStack.EMPTY;
         var input=grid.asCraftInput();
         var recipe=com.cappleapple.astralrepository.compat.PolymorphCompatibility.playerRecipe(this,input,player);
@@ -108,6 +122,7 @@ public final class NexusMenu extends AbstractContainerMenu {
             }
         }
         selectedCraftingRecipe=recipe.orElse(null);
+        if(selectedCraftingRecipe!=null)craftingWorkspace.recipe=selectedCraftingRecipe.id().toString();
         if (recipe.isPresent() && result.setRecipeUsed(sp.level(),sp,recipe.get())) {
             ItemStack assembled = recipe.get().value().assemble(grid.asCraftInput(),sp.registryAccess());
             if (assembled.isItemEnabled(sp.level().enabledFeatures())) output = assembled;
@@ -120,7 +135,7 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(!(player instanceof ServerPlayer sp))return false;
         var holder=sp.server.getRecipeManager().byKey(id);
         if(holder.isEmpty()||!(holder.get().value() instanceof CraftingRecipe crafting)||!crafting.matches(grid.asCraftInput(),sp.level()))return false;
-        preferredCraftingRecipe=id;
+        preferredCraftingRecipe=id;craftingWorkspace.recipe=id.toString();craftingData.setDirty();
         com.cappleapple.astralrepository.compat.PolymorphCompatibility.selectPlayerRecipe(player,holder.get());
         slotsChanged(grid);return true;
     }
@@ -512,6 +527,6 @@ public final class NexusMenu extends AbstractContainerMenu {
         if(live.getCount()==original.getCount())return ItemStack.EMPTY;
         slot.onTake(player,live);if(slotIndex==0)player.drop(live,false);return original;
     }
-    @Override public void removed(Player player) { pendingInteraction=null;deferredRefill=null;super.removed(player); if (!player.level().isClientSide) clearContainer(player,grid); }
+    @Override public void removed(Player player) { pendingInteraction=null;deferredRefill=null;super.removed(player); if(craftingData!=null)craftingData.setDirty(); }
     @Override public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) { return slot.container!=result && super.canTakeItemForPickAll(stack,slot); }
 }

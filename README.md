@@ -7,15 +7,15 @@ Transfers follow the shortest loaded route with clear line of sight, travelling 
 ## Features
 
 - A textured Storage Nexus interface with a continuously scrolling 9-column, 6-row storage view, normal cursor transfers, search, and autocrafting jobs with individual cancellation.
-- Manual crafting refills matching ingredients from storage, clears the grid back into storage, and Shift-crafts up to one normal output stack at a time. EMI and JEI can fill recipes from stored ingredients.
+- Manual crafting keeps your grid and selected recipe between visits, refills matching ingredients from storage, clears the grid back into storage, and Shift-crafts up to one normal output stack at a time. EMI and JEI can fill recipes from stored ingredients.
 - An optional Patchouli Field Guide with screenshots for workshop setup and controls, plus a reference for the four network block roles. Its item and recipe appear only with Patchouli installed.
 - Automatic nearby inventory discovery and connections between same-channel Relays, Nexuses, and Storage Crystals. Multiple Nexuses share one network.
 - A wand preset library with a pixel editor, separate item overlays, and autosaving Push/Pull/Filter behavior. Place up to eight runes by default at chosen points on each container face; each can retain multiple container or whole-network targets.
-- Rune inspection uses icons and amounts shown only while holding Shift. Look at a face to see its glyphs, hold a programming tool while building, or wear Astral Goggles in the helmet or optional Curios head slot for continuous visibility. Jade integration is optional.
+- A red X Blocking Rune excludes a container from the network without moving its contents. Rune inspection uses icons and amounts shown only while holding Shift. Look at a face to see its glyphs, hold a programming tool while building, or wear Astral Goggles in the helmet or optional Curios head slot for continuous visibility. Jade integration is optional.
 - Capacity-based Astral Storage Crystals with individual storage views that retain their contents when moved.
 - Four block roles: Storage Nexus, Relay Crystal, Storage Crystal, and optional Power Node. Storage and Relay upgrades reuse the higher-stage crystal models.
 - A handheld Astral Nexus and distant network bridges, with separate upgrades for dimensional access.
-- Recipe Tomes select actual recipes from inventory samples or EMI/JEI drops in a book editor and teach final outputs through vanilla Chiseled Bookshelves. Recipe searches are cached and planned on worker threads. Jobs appear immediately as Calculating, show tagged ingredient shortages, and resume when stock becomes available.
+- Recipe Tomes select actual recipes from inventory samples or EMI/JEI drops in a book editor and teach final outputs through vanilla Chiseled Bookshelves. The tome can block individual recipes, including intermediate conversions, for its taught output. Recipe searches are cached and planned on worker threads. Jobs appear immediately as Calculating, show tagged ingredient shortages, and resume when stock becomes available.
 - Cadence sets per-rune batch amounts and intervals for supported item, fluid, energy, and Source storage.
 - Real furnace processing and crafting-table assembly, including Visual Workbench tables without changing their saved player grids. Optional Create adapters provide pressing and milling.
 - Item and fluid rune transfers, native item/fluid/FE storage, and optional Ars Nouveau Source, AE2, Refined Storage, and Stacks Not Slots adapters.
@@ -47,7 +47,7 @@ Requires Minecraft **1.21.1**, **NeoForge 21.1.244 or newer**, and **Java 21**. 
 
 **Patchouli 1.21.1-93 or newer for NeoForge is optional.** Install it on both sides to add the `astral_repository:field_guide` item and its crafting recipe.
 
-Put `astral_repository-1.11.15.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
+Put `astral_repository-1.12.0.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
 
 ## Start a workshop
 
@@ -72,7 +72,7 @@ With Java 21 available, run on Windows:
 .\gradlew.bat test build
 ```
 
-The mod JAR is written to `build/libs/astral_repository-1.11.15.jar`.
+The mod JAR is written to `build/libs/astral_repository-1.12.0.jar`.
 
 ```powershell
 .\gradlew.bat runGameTestServer
