@@ -13,18 +13,22 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import com.cappleapple.astralrepository.platform.fluids.FluidStack;
 
-/** Positive predicates combine by ANY; exclusions always veto. Empty filters accept all. */
+/** Positive predicates combine by ANY; exclusions always veto. Legacy empty filters accept all; explicit empty whitelists block storage. */
 public final class FilterRules {
     public enum Kind { ITEM, ITEM_TAG, FLUID, FLUID_TAG, NAMESPACE, COMPONENTS }
     public record Entry(Kind kind, String id, boolean exclude, ItemStack sample) {}
     private final List<Entry> entries = new ArrayList<>();
     private boolean blacklist;
+    private boolean emptyWhitelist;
     private long minimum;
     private long target = Long.MAX_VALUE;
 
     public List<Entry> entries() { return List.copyOf(entries); }
     /** No identity predicates; numeric reserve and stock limits are still applied by callers. */
-    public boolean unrestricted() { return entries.isEmpty(); }
+    public boolean unrestricted() { return entries.isEmpty() && !blocksAll(); }
+    /** Explicit empty whitelist used by the Blocking Rune; old empty filters remain unrestricted. */
+    public boolean blocksAll() { return emptyWhitelist && !blacklist && entries.isEmpty(); }
+    public void setEmptyWhitelist(boolean value) { emptyWhitelist = value; }
     public void remove(int index) { entries.remove(index); }
     public boolean toggleItemData(int index) {
         Entry entry = entries.get(index);
@@ -42,7 +46,7 @@ public final class FilterRules {
     @Deprecated public void toggleAll() {}
     public void toggleBlacklist() { blacklist = !blacklist; }
     public void clearPredicates() { entries.clear(); blacklist = false; }
-    public void clear() { clearPredicates(); minimum = 0; target = Long.MAX_VALUE; }
+    public void clear() { emptyWhitelist = false; clearPredicates(); minimum = 0; target = Long.MAX_VALUE; }
     public void add(Kind kind, String id, boolean exclude, ItemStack sample) {
         ItemStack copy = sample.isEmpty() ? ItemStack.EMPTY : sample.copyWithCount(1);
         for (int i = 0; i < entries.size(); i++) {
@@ -57,6 +61,7 @@ public final class FilterRules {
     }
     public boolean matches(ItemStack stack) {
         if (stack.isEmpty()) return false;
+        if (blocksAll()) return false;
         if (unrestricted()) return true;
         String namespace = BuiltInRegistries.ITEM.getKey(stack.getItem()).getNamespace();
         return evaluate(e -> switch (e.kind) {
@@ -70,6 +75,7 @@ public final class FilterRules {
 
     public boolean matches(FluidStack stack) {
         if (stack.isEmpty()) return false;
+        if (blocksAll()) return false;
         if (unrestricted()) return true;
         Identifier id = BuiltInRegistries.FLUID.getKey(stack.getFluid());
         return evaluate(e -> switch (e.kind) {
@@ -99,6 +105,7 @@ public final class FilterRules {
     public CompoundTag save(HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
         tag.putBoolean("Blacklist", blacklist);
+        tag.putBoolean("EmptyWhitelist", emptyWhitelist);
         tag.putLong("Minimum", minimum); tag.putLong("Target", target);
         ListTag values = new ListTag();
         for (Entry entry : entries) {
@@ -113,6 +120,7 @@ public final class FilterRules {
 
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
         clear(); blacklist = tag.getBooleanOr("Blacklist",false);
+        emptyWhitelist = tag.getBooleanOr("EmptyWhitelist",false);
         minimum = Math.max(0, tag.getLongOr("Minimum",0L));
         target = tag.contains("Target") ? Math.max(0, tag.getLongOr("Target",0L)) : Long.MAX_VALUE;
         ListTag values = tag.getListOrEmpty("Entries");
@@ -128,6 +136,7 @@ public final class FilterRules {
     }
 
     public String summary() {
+        if(blocksAll())return "WHITELIST 0 entries; blocks storage";
         return (blacklist ? "BLACKLIST " : "") + "ANY " + entries.size() + " entries; keep " + minimum
                 + (target == Long.MAX_VALUE ? "" : "; target " + target);
     }

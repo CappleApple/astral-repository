@@ -33,6 +33,8 @@ public final class CraftingService {
         ItemStack insert(ItemStack stack);
         List<GlobalPos> workstations();
         List<ItemStack> exposedProducts();
+        default Set<String> excludedRecipes(ItemStack target) { return Set.of(); }
+        default boolean mayUseFuel(ItemKey key) { return true; }
         GlobalPos origin();
         void visual(GlobalPos from, GlobalPos to, ItemStack stack, int durationTicks);
         default void craftingVisual(GlobalPos table, List<ItemStack> grid, ItemStack output, int durationTicks) {}
@@ -59,7 +61,7 @@ public final class CraftingService {
     private static final class Planning {
         final UUID id,owner;final ItemStack target;final int count;
         java.util.concurrent.Future<AsyncCraftPlanner.Result<ItemKey>> future;
-        Map<ItemKey,Long> snapshot=Map.of();Set<String> processes=Set.of();
+        Map<ItemKey,Long> snapshot=Map.of();Set<String> processes=Set.of(),exclusions=Set.of();
         AsyncCraftPlanner<ItemKey> catalog;
         Map<String,ProcessingAdapter> owners=Map.of();
         List<MissingIngredients.Missing<ItemKey>> missing=List.of();
@@ -73,6 +75,9 @@ public final class CraftingService {
     private List<?> recipeHolders=List.of(),processingRules=List.of();
     private Set<ItemKey> catalogVariants=Set.of();
     private AsyncCraftPlanner<ItemKey> catalog;
+    private final Map<Set<String>,AsyncCraftPlanner<ItemKey>> filteredCatalogs=new LinkedHashMap<>(16,.75f,true){
+        @Override protected boolean removeEldestEntry(Map.Entry<Set<String>,AsyncCraftPlanner<ItemKey>> entry){return size()>32;}
+    };
     private record ProcessorProbe(ProcessingAdapter adapter,CraftPlan.Node<ItemKey> node) {}
     private List<ProcessorProbe> processorProbes=List.of();
     private void refreshCatalog(Map<ItemKey,Long> stock){
@@ -84,7 +89,7 @@ public final class CraftingService {
         for(var adapter:adapters)try{for(var recipe:adapter.recipes(access))if(owners.putIfAbsent(recipe.id(),adapter)==null)recipes.add(recipe);}
         catch(RuntimeException failure){LOGGER.warn("Processing adapter unavailable",failure);}
         catalogRecipes=List.copyOf(recipes);catalogOwners=Map.copyOf(owners);catalog=new AsyncCraftPlanner<>(catalogRecipes);
-        recipeHolders=holders;processingRules=rules;catalogVariants=variants;
+        recipeHolders=holders;processingRules=rules;catalogVariants=variants;filteredCatalogs.clear();
     }
     private Set<String> availableProcesses(){
         var processes=new HashSet<String>();var machines=access.workstations();var seen=new HashSet<String>();var probes=new ArrayList<ProcessorProbe>();
@@ -106,23 +111,26 @@ public final class CraftingService {
     }
     private void calculate(Planning job,Map<ItemKey,Long> stock,Set<String> processes){
         job.snapshot=Map.copyOf(stock);job.processes=processes;job.catalog=catalog;job.owners=catalogOwners;
+        job.exclusions=Set.copyOf(access.excludedRecipes(job.target));
+        var worker=job.exclusions.isEmpty()?catalog:filteredCatalogs.computeIfAbsent(job.exclusions,
+                excluded->new AsyncCraftPlanner<>(catalogRecipes.stream().filter(recipe->RecipeExclusions.allows(recipe.id(),excluded)).toList()));
         job.state="CALCULATING";job.missing=List.of();job.error="";
-        try{job.future=catalog.submit(new ItemKey(job.target),job.count,ledger.available(stock),processes);}
+        try{job.future=worker.submit(new ItemKey(job.target),job.count,ledger.available(stock),processes);}
         catch(java.util.concurrent.RejectedExecutionException busy){job.future=null;}
     }
     private void tickPlanning(){
         if(planning.isEmpty())return;
         var stock=access.snapshot();refreshCatalog(stock);var processes=availableProcesses();
         for(var job:List.copyOf(planning.values())){
-            if(job.future==null){if(job.state.equals("CALCULATING")||job.catalog!=catalog||!job.snapshot.equals(stock)||!job.processes.equals(processes))calculate(job,stock,processes);continue;}
+            if(job.future==null){if(job.state.equals("CALCULATING")||job.catalog!=catalog||!job.snapshot.equals(stock)||!job.processes.equals(processes)||!job.exclusions.equals(access.excludedRecipes(job.target)))calculate(job,stock,processes);continue;}
             if(!job.future.isDone())continue;
             try{
                 var result=job.future.get();job.future=null;
                 var currentStock=stock;
                 boolean staleStock=result.plan()==null?!job.snapshot.equals(stock):result.plan().reservations().entrySet().stream().anyMatch(e->currentStock.getOrDefault(e.getKey(),0L)<e.getValue());
-                if(job.catalog!=catalog||staleStock||!job.processes.equals(processes)){calculate(job,stock,processes);continue;}
+                if(job.catalog!=catalog||staleStock||!job.processes.equals(processes)||!job.exclusions.equals(access.excludedRecipes(job.target))){calculate(job,stock,processes);continue;}
                 if(result.plan()==null){
-                    var external=tryExternal(job.owner,job.id,job.target,job.count,result.error());
+                    var external=job.exclusions.isEmpty()?tryExternal(job.owner,job.id,job.target,job.count,result.error()):new RequestResult(false,result.error(),null);
                     if(external.accepted()){planning.remove(job.id);continue;}
                     job.state=result.missing().isEmpty()?"WAITING":"MISSING";job.missing=result.missing();job.error=result.error();continue;
                 }
@@ -166,6 +174,7 @@ public final class CraftingService {
     private RequestResult startPlanned(Planning job,CraftPlan<ItemKey> plan){
         UUID id=job.id;ItemStack target=job.target;int count=job.count;
         var owners=job.owners;var snapshot=access.snapshot();
+        NetworkAccess jobAccess=new CraftingJobAccess(access,new ItemKey(target));
         Map<ItemKey,Long> extracted=new LinkedHashMap<>();
         CraftOrigins<ItemKey,GlobalPos> origins=new CraftOrigins<>();
         try {
@@ -185,13 +194,13 @@ public final class CraftingService {
             ledger.release(id); // Physical escrow now owns the claims and cannot be indexed or stolen by another request.
             CraftScheduler<ItemKey, GlobalPos> scheduler = new CraftScheduler<>(plan, extracted, new CraftScheduler.Processor<>() {
                 @Override public boolean supports(GlobalPos position, CraftPlan.Node<ItemKey> node) {
-                    return !isProcessorReserved(position) && node.inputs().keySet().stream().allMatch(key->origins.positions(key).stream().allMatch(from->access.canRoute(from,position))) && owners.get(node.recipe().id()).supports(access, position, node);
+                    return !isProcessorReserved(position) && node.inputs().keySet().stream().allMatch(key->origins.positions(key).stream().allMatch(from->access.canRoute(from,position))) && owners.get(node.recipe().id()).supports(jobAccess, position, node);
                 }
                 @Override public CraftScheduler.Operation<ItemKey> start(GlobalPos position, CraftPlan.Node<ItemKey> node) {
                     if (PROCESSOR_OWNERS.putIfAbsent(position, id) != null) return null;
                     access.processorChanged(position);
                     CraftScheduler.Operation<ItemKey> operation;
-                    try { operation = new CraftDelivery(access,owners.get(node.recipe().id()),position,node,origins); }
+                    try { operation = new CraftDelivery(jobAccess,owners.get(node.recipe().id()),position,node,origins); }
                     catch (RuntimeException failure) { release(position, id); throw failure; }
                     return new CraftScheduler.Operation<>() {
                         @Override public Map<ItemKey, Long> poll() {

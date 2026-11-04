@@ -550,6 +550,18 @@ public final class NetworkManager {
         for(var face:cached.faces)if(face.surface.enabled()&&!face.surface.isRemoved())result.add(face.network);
         return result;
     }
+    /** A face rule can affect the complete backing store, including the adjacent chest half. */
+    public static void runeRulesChanged(ServerLevel level,BlockPos pos){
+        NetworkManager manager=SERVERS.get(level.getServer());
+        if(manager==null||manager.stopping||!level.getServer().isSameThread())return;
+        for(Direction side:Direction.values()){
+            if(side==Direction.DOWN)continue;
+            BlockPos at=side==Direction.UP?pos:pos.relative(side);
+            GlobalPos location=GlobalPos.of(level.dimension(),at.immutable());
+            for(AstralNetwork network:manager.coveringNetworks(location))network.runeRulesChanged(location);
+            manager.runeTransfers.invalidate(location);
+        }
+    }
     public static void providerChanged(ServerLevel level,BlockPos pos){
         NetworkManager manager=SERVERS.get(level.getServer());if(manager==null||!level.getServer().isSameThread())return;
         GlobalPos location=GlobalPos.of(level.dimension(),pos);

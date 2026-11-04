@@ -72,7 +72,10 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         var state = level.getBlockState(position.pos());
         return switch (node.recipe().process()) {
             case "crafting" -> VisualWorkbenchCompatibility.isCraftingTable(level,position.pos());
-            case "smelting", "blasting", "smoking" -> FurnaceAccess.find(level, position.pos(), node.recipe().process()) != null;
+            case "smelting", "blasting", "smoking" -> {
+                var furnace=FurnaceAccess.find(level,position.pos(),node.recipe().process());
+                yield furnace!=null&&(furnace.getItem(1).isEmpty()||access.mayUseFuel(new ItemKey(furnace.getItem(1))));
+            }
             case "stonecutting" -> state.is(Blocks.STONECUTTER);
             default -> false;
         };
@@ -152,7 +155,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
     private record FuelDelivery(ItemStack stack,int ticks){static final FuelDelivery EMPTY=new FuelDelivery(ItemStack.EMPTY,0);}
     private static FuelDelivery takeFuel(CraftingService.NetworkAccess access, RecipeType<?> type, GlobalPos position, FurnaceAccess furnace) {
         for (var entry : access.snapshot().entrySet().stream().sorted(Comparator.<Map.Entry<ItemKey, Long>>comparingInt(e -> com.cappleapple.astralrepository.port.FuelCompat.burnTicks(e.getKey().sample(),access.level(),position.pos(),type)).reversed()).toList()) {
-            if (entry.getValue() <= 0 || com.cappleapple.astralrepository.port.FuelCompat.burnTicks(entry.getKey().sample(),access.level(),position.pos(),type) <= 0) continue;
+            if (!access.mayUseFuel(entry.getKey()) || entry.getValue() <= 0 || com.cappleapple.astralrepository.port.FuelCompat.burnTicks(entry.getKey().sample(),access.level(),position.pos(),type) <= 0) continue;
             if (!furnace.canPlaceItem(1, entry.getKey().sample())) continue;
             int[] delay={0};
             ItemStack extracted = access.extractForDelivery(entry.getKey(),1,position,(from,stack)->{
