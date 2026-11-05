@@ -25,19 +25,14 @@ public final class TransferRecoveryData extends SavedData {
         TransferRecoveryData data=new TransferRecoveryData();ListTag list=tag.getListOrEmpty("Transfers");
         for(int i=0;i<list.size();i++){CompoundTag value=list.getCompoundOrEmpty(i);try{
             GlobalPos source=GlobalPos.of(net.minecraft.resources.ResourceKey.create(Registries.DIMENSION,Identifier.parse(value.getStringOr("Dimension",""))),BlockPos.of(value.getLongOr("Position",0L)));
-            ResourceKey key;
-            if(value.contains("Item"))key=new ItemKey(com.cappleapple.astralrepository.port.NbtCodecs.item(registries,value.getCompoundOrEmpty("Item")));
-            else if(value.contains("Fluid"))key=new FluidKey(com.cappleapple.astralrepository.port.NbtCodecs.fluid(registries,value.getCompoundOrEmpty("Fluid")));
-            else key=new ResourceKinds.ScalarKey(Identifier.parse(value.getStringOr("Type","")),Identifier.parse(value.getStringOr("Resource","")));
+            ResourceKey key=ResourceKeyCodec.load(value.contains("Key")?value.getCompoundOrEmpty("Key"):value,registries);
             UUID id=value.read("Id",net.minecraft.core.UUIDUtil.CODEC).orElseThrow();data.entries.put(id,new Entry(id,source,key,value.getLongOr("Amount",0L),value.getBooleanOr("Uncertain",false),value.getStringOr("Provider",""),value.contains("Side")?Direction.byName(value.getStringOr("Side","")):null));
         }catch(RuntimeException error){AstralRepository.LOGGER.error("Invalid transfer recovery entry {}",i,error);}}
         return data;
     }
     public CompoundTag save(CompoundTag tag,HolderLookup.Provider registries){
         ListTag list=new ListTag();for(Entry e:entries.values()){CompoundTag value=new CompoundTag();value.store("Id",net.minecraft.core.UUIDUtil.CODEC,e.id);value.putString("Dimension",e.source.dimension().identifier().toString());value.putLong("Position",e.source.pos().asLong());value.putLong("Amount",e.amount);value.putBoolean("Uncertain",e.uncertain);value.putString("Provider",e.provider);if(e.side!=null)value.putString("Side",e.side.getName());
-            if(e.resource instanceof ItemKey item)value.put("Item",com.cappleapple.astralrepository.port.NbtCodecs.save(item.sample(),registries));
-            else if(e.resource instanceof FluidKey fluid)value.put("Fluid",com.cappleapple.astralrepository.port.NbtCodecs.save(fluid.sample(),registries));
-            else{value.putString("Type",e.resource.type().toString());value.putString("Resource",e.resource.id().toString());}
+            value.put("Key",ResourceKeyCodec.save(e.resource,registries));
             list.add(value);
         }tag.put("Transfers",list);return tag;
     }

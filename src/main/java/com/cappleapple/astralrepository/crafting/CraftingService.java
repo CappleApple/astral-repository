@@ -2,6 +2,7 @@ package com.cappleapple.astralrepository.crafting;
 
 import com.cappleapple.astralrepository.AstralConfig;
 import com.cappleapple.astralrepository.api.ItemKey;
+import com.cappleapple.astralrepository.api.ResourceKey;
 import com.cappleapple.astralrepository.api.CraftingProvider;
 import com.cappleapple.astralrepository.api.CraftingContext;
 import com.mojang.logging.LogUtils;
@@ -17,10 +18,47 @@ import java.util.*;
 public final class CraftingService {
     static final Logger LOGGER = LogUtils.getLogger();
     private static final Map<GlobalPos, UUID> PROCESSOR_OWNERS = new HashMap<>();
+    private static final Map<Object, UUID> PROCESSOR_IDENTITIES = new HashMap<>();
+    private static final Map<GlobalPos, Object> CLAIM_IDENTITIES = new HashMap<>();
     private static final Set<UUID> ACTIVE = new HashSet<>();
     public interface NetworkAccess {
         ServerLevel level();
         Map<ItemKey, Long> snapshot();
+        /** Item and non-item quantities in native resource units. The returned map is detached. */
+        default Map<com.cappleapple.astralrepository.api.ResourceKey, Long> resourceSnapshot() { return Map.copyOf(snapshot()); }
+        /** Transfer confirmed resources into job ownership and report each physical source. */
+        default long reserveResource(com.cappleapple.astralrepository.api.ResourceKey key, long amount, java.util.function.BiConsumer<GlobalPos,Long> receipt) {
+            if (!(key instanceof ItemKey item) || amount <= 0) return 0;
+            int batch = (int)Math.min(amount, item.sample().getMaxStackSize());
+            var sources = new ArrayList<Map.Entry<GlobalPos,ItemStack>>();
+            var stack = reserve(item, batch, (from, part) -> sources.add(Map.entry(from, part.copy())));
+            if (!stack.isEmpty() && (!item.matches(stack) || stack.getCount() > batch)) {
+                // Preserve the actual wrong result. Never turn its quantity into the requested identity.
+                try {
+                    ItemStack rest = insertFrom(stack.copy(), origin());
+                    if (!rest.isEmpty()) CraftRecoveryData.get(level().getServer()).put(UUID.randomUUID(), origin(), Map.of(new ItemKey(rest), (long)rest.getCount()));
+                } catch (RuntimeException uncertain) {
+                    CraftRecoveryData.get(level().getServer()).uncertain(origin(), Map.of(new ItemKey(stack), (long)stack.getCount()));
+                }
+                throw new IllegalStateException("Storage returned another item while reserving " + key);
+            }
+            if (stack.isEmpty()) return 0;
+            boolean validSources = sources.stream().allMatch(source -> item.matches(source.getValue()))
+                    && sources.stream().mapToLong(source -> source.getValue().getCount()).sum() == stack.getCount();
+            if (validSources) sources.forEach(source -> receipt.accept(source.getKey(), (long)source.getValue().getCount()));
+            else receipt.accept(origin(), (long)stack.getCount());
+            return stack.getCount();
+        }
+        /** Return the amount that remains uninserted. */
+        default long insertResourceFrom(com.cappleapple.astralrepository.api.ResourceKey key, long amount, GlobalPos source) {
+            if (!(key instanceof ItemKey item) || amount <= 0) return amount;
+            int count = (int)Math.min(amount, item.sample().getMaxStackSize());
+            return amount - count + insertFrom(item.sample().copyWithCount(count), source).getCount();
+        }
+        default void visualResource(GlobalPos from, GlobalPos to, com.cappleapple.astralrepository.api.ResourceKey key, long amount, int durationTicks) {
+            if (key instanceof ItemKey item) visual(from, to, item.sample().copyWithCount((int)Math.min(amount, item.sample().getMaxStackSize())), durationTicks);
+        }
+
         ItemStack extract(ItemKey key, int count);
         default ItemStack reserve(ItemKey key,int count,java.util.function.BiConsumer<GlobalPos,ItemStack> receipt){var stack=extract(key,count);if(!stack.isEmpty())receipt.accept(origin(),stack);return stack;}
         default int travelTicks(GlobalPos from,GlobalPos to){return AstralConfig.instantAutomaticLogistics.get()?0:com.cappleapple.astralrepository.network.TransferVisuals.legTicks(from.pos(),to.pos());}
@@ -47,10 +85,10 @@ public final class CraftingService {
     public record JobStatus(UUID id, UUID owner, ItemStack target, long count, String state, int completed, int total, int active, String message,List<MissingIngredients.Missing<ItemKey>> missing) {
         public JobStatus(UUID id,UUID owner,ItemStack target,long count,String state,int completed,int total,int active,String message){this(id,owner,target,count,state,completed,total,active,message,List.of());}
     }
-    private record Job(UUID id, UUID owner, ItemStack target, long count, CraftScheduler<ItemKey, GlobalPos> scheduler,CraftOrigins<ItemKey,GlobalPos> origins) {}
+    private record Job(UUID id, UUID owner, ItemStack target, long count, CraftScheduler<ResourceKey, GlobalPos> scheduler,CraftOrigins<ResourceKey,GlobalPos> origins,long produced) {}
     private final NetworkAccess access;
-    private final List<ProcessingAdapter> adapters;
-    private final ReservationLedger<ItemKey> ledger = new ReservationLedger<>();
+    private final List<ResourceProcessingAdapter> adapters;
+    private final ReservationLedger<ResourceKey> ledger = new ReservationLedger<>();
     private final Map<UUID, Job> jobs = new LinkedHashMap<>();
     private record ExternalJob(UUID id, UUID owner, ItemStack target, long count, CraftingProvider provider, CraftingProvider.Ticket ticket) {}
     private final Map<UUID, ExternalJob> externalJobs = new LinkedHashMap<>();
@@ -59,43 +97,45 @@ public final class CraftingService {
     private final CraftRecoveryData recovery;
     private int ticks;
     private static final class Planning {
-        final UUID id,owner;final ItemStack target;final int count;
-        java.util.concurrent.Future<AsyncCraftPlanner.Result<ItemKey>> future;
-        Map<ItemKey,Long> snapshot=Map.of();Set<String> processes=Set.of(),exclusions=Set.of();
-        AsyncCraftPlanner<ItemKey> catalog;
-        Map<String,ProcessingAdapter> owners=Map.of();
-        List<MissingIngredients.Missing<ItemKey>> missing=List.of();
+        final UUID id,owner;final ItemStack target;final int count,requested;final long produced;
+        java.util.concurrent.Future<AsyncCraftPlanner.Result<ResourceKey>> future;
+        Map<ResourceKey,Long> snapshot=Map.of();Set<String> processes=Set.of(),exclusions=Set.of();
+        AsyncCraftPlanner<ResourceKey> catalog;
+        Map<String,ResourceProcessingAdapter> owners=Map.of();
+        List<MissingIngredients.Missing<ResourceKey>> missing=List.of();
         String state="CALCULATING",error="";
-        Planning(UUID id,UUID owner,ItemStack target,int count){this.id=id;this.owner=owner;this.target=target.copyWithCount(1);this.count=count;}
-        JobStatus status(){return new JobStatus(id,owner,target.copy(),count,state,0,0,0,error,missing);}
+        Planning(UUID id,UUID owner,ItemStack target,int count){this(id,owner,target,count,count,0);}
+        Planning(UUID id,UUID owner,ItemStack target,int count,int requested,long produced){this.id=id;this.owner=owner;this.target=target.copyWithCount(1);this.count=count;this.requested=requested;this.produced=produced;}
+        JobStatus status(){return new JobStatus(id,owner,target.copy(),requested,state,0,0,0,error,ResourcePresentation.missing(missing));}
     }
     private final Map<UUID,Planning> planning=new LinkedHashMap<>();
-    private List<CraftRecipe<ItemKey>> catalogRecipes=List.of();
-    private Map<String,ProcessingAdapter> catalogOwners=Map.of();
-    private List<?> recipeHolders=List.of(),processingRules=List.of();
-    private Set<ItemKey> catalogVariants=Set.of();
-    private AsyncCraftPlanner<ItemKey> catalog;
-    private final Map<Set<String>,AsyncCraftPlanner<ItemKey>> filteredCatalogs=new LinkedHashMap<>(16,.75f,true){
-        @Override protected boolean removeEldestEntry(Map.Entry<Set<String>,AsyncCraftPlanner<ItemKey>> entry){return size()>32;}
+    private List<CraftRecipe<ResourceKey>> catalogRecipes=List.of();
+    private Map<String,ResourceProcessingAdapter> catalogOwners=Map.of();
+    private List<?> recipeHolders=List.of(),processingRules=List.of(),adapterStates=List.of();
+    private Set<ResourceKey> catalogVariants=Set.of();
+    private AsyncCraftPlanner<ResourceKey> catalog;
+    private final Map<Set<String>,AsyncCraftPlanner<ResourceKey>> filteredCatalogs=new LinkedHashMap<>(16,.75f,true){
+        @Override protected boolean removeEldestEntry(Map.Entry<Set<String>,AsyncCraftPlanner<ResourceKey>> entry){return size()>32;}
     };
-    private record ProcessorProbe(ProcessingAdapter adapter,CraftPlan.Node<ItemKey> node) {}
+    private record ProcessorProbe(ResourceProcessingAdapter adapter,CraftPlan.Node<ResourceKey> node) {}
     private List<ProcessorProbe> processorProbes=List.of();
-    private void refreshCatalog(Map<ItemKey,Long> stock){
+    private void refreshCatalog(Map<ResourceKey,Long> stock){
         var holders=List.copyOf(access.level().getServer().getRecipeManager().getRecipes());
         var rules=List.copyOf(ProcessingRules.rules());
-        var variants=stock.keySet().stream().filter(k->{var sample=k.sample();return !ItemStack.isSameItemSameComponents(sample,new ItemStack(sample.getItem()));}).collect(java.util.stream.Collectors.toUnmodifiableSet());
-        if(catalog!=null&&holders.equals(recipeHolders)&&rules.equals(processingRules)&&variants.equals(catalogVariants))return;
-        var recipes=new ArrayList<CraftRecipe<ItemKey>>();var owners=new LinkedHashMap<String,ProcessingAdapter>();
+        var variants=stock.keySet().stream().filter(k->{if(!(k instanceof ItemKey item))return true;var sample=item.sample();return !new ItemKey(new ItemStack(sample.getItem())).equals(item);}).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        var states=adapters.stream().map(adapter->adapter.catalogState(access)).toList();
+        if(catalog!=null&&holders.equals(recipeHolders)&&rules.equals(processingRules)&&variants.equals(catalogVariants)&&states.equals(adapterStates))return;
+        var recipes=new ArrayList<CraftRecipe<ResourceKey>>();var owners=new LinkedHashMap<String,ResourceProcessingAdapter>();
         for(var adapter:adapters)try{for(var recipe:adapter.recipes(access))if(owners.putIfAbsent(recipe.id(),adapter)==null)recipes.add(recipe);}
         catch(RuntimeException failure){LOGGER.warn("Processing adapter unavailable",failure);}
         catalogRecipes=List.copyOf(recipes);catalogOwners=Map.copyOf(owners);catalog=new AsyncCraftPlanner<>(catalogRecipes);
-        recipeHolders=holders;processingRules=rules;catalogVariants=variants;filteredCatalogs.clear();
+        recipeHolders=holders;processingRules=rules;catalogVariants=variants;adapterStates=states;filteredCatalogs.clear();
     }
     private Set<String> availableProcesses(){
-        var processes=new HashSet<String>();var machines=access.workstations();var seen=new HashSet<String>();var probes=new ArrayList<ProcessorProbe>();
+        var processes=new HashSet<String>();var machines=access.workstations();var seen=new HashSet<Map.Entry<ResourceProcessingAdapter,String>>();var probes=new ArrayList<ProcessorProbe>();
         for(var recipe:catalogRecipes){var adapter=catalogOwners.get(recipe.id());
-            if(!seen.add(adapter.getClass().getName()+":"+recipe.process()))continue;
-            var probe=new CraftPlan.Node<ItemKey>(0,recipe,List.of(),Set.of());probes.add(new ProcessorProbe(adapter,probe));
+            if(!seen.add(Map.entry(adapter,recipe.process())))continue;
+            var probe=new CraftPlan.Node<ResourceKey>(0,recipe,List.of(),Set.of());probes.add(new ProcessorProbe(adapter,probe));
             if(machines.stream().anyMatch(at->adapter.supports(access,at,probe)))processes.add(recipe.process());
         }
         processorProbes=List.copyOf(probes);return Set.copyOf(processes);
@@ -103,13 +143,15 @@ public final class CraftingService {
     /** Craft results return to storage without filling idle machines with unrelated outputs. */
     public boolean isProcessingPosition(GlobalPos position){
         var world=access.level().getServer().getLevel(position.dimension());if(world==null||!world.hasChunkAt(position.pos()))return false;
-        if(FurnaceAccess.isCandidate(world.getBlockEntity(position.pos()))
-                || com.cappleapple.astralrepository.compat.VisualWorkbenchCompatibility.isCraftingTable(world,position.pos())
+        if(world.getBlockEntity(position.pos()) instanceof net.minecraft.world.level.block.entity.BrewingStandBlockEntity
+                || FurnaceAccess.isCandidate(world.getBlockEntity(position.pos()))
+                || VanillaProcessingAdapter.isCraftingWorkstation(world,position.pos())
                 || world.getBlockState(position.pos()).is(net.minecraft.world.level.block.Blocks.STONECUTTER)
-                || ProcessingRules.isCandidate(world,position.pos()))return true;
+                || ProcessingRules.isCandidate(world,position.pos())
+                || adapters.stream().anyMatch(adapter->adapter.isProcessingPosition(access,position)))return true;
         return processorProbes.stream().anyMatch(probe->probe.adapter().supports(access,position,probe.node()));
     }
-    private void calculate(Planning job,Map<ItemKey,Long> stock,Set<String> processes){
+    private void calculate(Planning job,Map<ResourceKey,Long> stock,Set<String> processes){
         job.snapshot=Map.copyOf(stock);job.processes=processes;job.catalog=catalog;job.owners=catalogOwners;
         job.exclusions=Set.copyOf(access.excludedRecipes(job.target));
         var worker=job.exclusions.isEmpty()?catalog:filteredCatalogs.computeIfAbsent(job.exclusions,
@@ -120,7 +162,7 @@ public final class CraftingService {
     }
     private void tickPlanning(){
         if(planning.isEmpty())return;
-        var stock=access.snapshot();refreshCatalog(stock);var processes=availableProcesses();
+        var stock=access.resourceSnapshot();refreshCatalog(stock);var processes=availableProcesses();
         for(var job:List.copyOf(planning.values())){
             if(job.future==null){if(job.state.equals("CALCULATING")||job.catalog!=catalog||!job.snapshot.equals(stock)||!job.processes.equals(processes)||!job.exclusions.equals(access.excludedRecipes(job.target)))calculate(job,stock,processes);continue;}
             if(!job.future.isDone())continue;
@@ -136,16 +178,16 @@ public final class CraftingService {
                 }
                 planning.remove(job.id);
                 var accepted=startPlanned(job,result.plan());
-                if(!accepted.accepted())remember(new JobStatus(job.id,job.owner,job.target,job.count,"FAILED",0,0,0,accepted.message()));
-                stock=access.snapshot();
+                if(!accepted.accepted())remember(new JobStatus(job.id,job.owner,job.target,job.requested,"FAILED",0,0,0,accepted.message()));
+                stock=access.resourceSnapshot();
             }catch(InterruptedException failure){Thread.currentThread().interrupt();return;}
-            catch(java.util.concurrent.ExecutionException|RuntimeException failure){planning.remove(job.id);remember(new JobStatus(job.id,job.owner,job.target,job.count,"FAILED",0,0,0,"Craft calculation failed"));LOGGER.warn("Craft calculation failed",failure);}
+            catch(java.util.concurrent.ExecutionException|RuntimeException failure){planning.remove(job.id);remember(new JobStatus(job.id,job.owner,job.target,job.requested,"FAILED",0,0,0,"Craft calculation failed"));LOGGER.warn("Craft calculation failed",failure);}
         }
     }
 
     public CraftingService(NetworkAccess access) {
         this.access = access;
-        this.adapters = ProcessingAdapters.create();
+        this.adapters = ProcessingAdapters.createResourceAdapters();
         this.recovery = CraftRecoveryData.get(access.level().getServer());
     }
     static void animate(NetworkAccess access, GlobalPos from, GlobalPos to, ItemStack stack, int ticks) {
@@ -155,6 +197,22 @@ public final class CraftingService {
         try { access.craftingVisual(table, grid, output, com.cappleapple.astralrepository.network.LogisticsTiming.visualTicks(ticks)); } catch (RuntimeException failure) { LOGGER.debug("Cosmetic table animation failed", failure); }
     }
     public static boolean isProcessorReserved(GlobalPos position) { return PROCESSOR_OWNERS.containsKey(position); }
+    /** Direct rune paths also respect native multiblock aliases outside their originating network. */
+    public static boolean isProcessorReserved(net.minecraft.server.MinecraftServer server, GlobalPos position) {
+        if (isProcessorReserved(position)) return true;
+        var level = server.getLevel(position.dimension());
+        if (level == null || !level.hasChunkAt(position.pos()) || PROCESSOR_IDENTITIES.isEmpty()) return false;
+        try {
+            Object handler = MekanismMachineAccess.handler(level.getBlockEntity(position.pos()));
+            return handler != null && PROCESSOR_IDENTITIES.containsKey(MekanismMachineAccess.identity(handler));
+        } catch (RuntimeException | LinkageError unavailable) { return false; }
+    }
+    public boolean isProcessorAliasReserved(GlobalPos position) {
+        if (isProcessorReserved(position)) return true;
+        for (var adapter : adapters) if (adapter.isProcessingPosition(access, position)
+                && PROCESSOR_IDENTITIES.containsKey(adapter.processorIdentity(access, position))) return true;
+        return false;
+    }
     public RequestResult request(ServerPlayer player, ItemStack target, int count) {
         return com.cappleapple.astralrepository.network.LogisticsTiming.automaticOperation(() -> requestNow(player, target, count));
     }
@@ -171,57 +229,63 @@ public final class CraftingService {
         planning.put(id,new Planning(id,player.getUUID(),target,count));
         return new RequestResult(true,"Calculating",id);
     }
-    private RequestResult startPlanned(Planning job,CraftPlan<ItemKey> plan){
+    private RequestResult startPlanned(Planning job,CraftPlan<ResourceKey> plan){
         UUID id=job.id;ItemStack target=job.target;int count=job.count;
-        var owners=job.owners;var snapshot=access.snapshot();
+        var owners=job.owners;var snapshot=access.resourceSnapshot();
         NetworkAccess jobAccess=new CraftingJobAccess(access,new ItemKey(target));
-        Map<ItemKey,Long> extracted=new LinkedHashMap<>();
-        CraftOrigins<ItemKey,GlobalPos> origins=new CraftOrigins<>();
+        Map<ResourceKey,Long> extracted=new LinkedHashMap<>();
+        CraftOrigins<ResourceKey,GlobalPos> origins=new CraftOrigins<>();
         try {
             if (!access.payCrafting(plan.nodes().size())) return new RequestResult(false, "Network cannot pay the autocrafting cost", null);
             if (!ledger.reserve(id, plan.reservations(), snapshot)) return new RequestResult(false, "Inventory changed; please retry", null);
+            int reservationCalls = 0;
             for (var entry : plan.reservations().entrySet()) {
                 long remaining = entry.getValue();
                 while (remaining > 0) {
-                    int batch = (int)Math.min(remaining, entry.getKey().sample().getMaxStackSize());
-                    ItemStack stack = access.reserve(entry.getKey(), batch,(at,part)->origins.add(new ItemKey(part),part.getCount(),at));
-                    if (!stack.isEmpty()) VanillaProcessingAdapter.add(extracted, stack);
-                    if (stack.isEmpty() || !new ItemKey(stack).equals(entry.getKey()) || stack.getCount() != batch)
-                        throw new IllegalStateException("Inventory changed while reserving " + entry.getKey());
-                    remaining -= stack.getCount();
+                    long batch = Math.min(remaining, entry.getKey() instanceof ItemKey item ? item.sample().getMaxStackSize() : Integer.MAX_VALUE);
+                    if (++reservationCalls > 8192) throw new IllegalStateException("Craft reservation exceeds the transfer budget; request a smaller batch");
+                    long taken = access.reserveResource(entry.getKey(), batch, (at, amount) -> origins.add(entry.getKey(), amount, at));
+                    if (taken < 0 || taken > batch) throw new IllegalStateException("Invalid resource extraction amount");
+                    if (taken > 0) extracted.merge(entry.getKey(), taken, Math::addExact);
+                    if (taken == 0) throw new IllegalStateException("Inventory changed while reserving " + entry.getKey());
+                    remaining -= taken;
                 }
             }
             ledger.release(id); // Physical escrow now owns the claims and cannot be indexed or stolen by another request.
-            CraftScheduler<ItemKey, GlobalPos> scheduler = new CraftScheduler<>(plan, extracted, new CraftScheduler.Processor<>() {
-                @Override public boolean supports(GlobalPos position, CraftPlan.Node<ItemKey> node) {
-                    return !isProcessorReserved(position) && node.inputs().keySet().stream().allMatch(key->origins.positions(key).stream().allMatch(from->access.canRoute(from,position))) && owners.get(node.recipe().id()).supports(jobAccess, position, node);
+            CraftScheduler<ResourceKey, GlobalPos> scheduler = new CraftScheduler<>(plan, extracted, new CraftScheduler.Processor<>() {
+                @Override public boolean supports(GlobalPos position, CraftPlan.Node<ResourceKey> node) {
+                    return !isProcessorAliasReserved(position) && node.inputs().keySet().stream().allMatch(key->origins.positions(key).stream().allMatch(from->access.canRoute(from,position))) && owners.get(node.recipe().id()).supports(jobAccess, position, node);
                 }
-                @Override public CraftScheduler.Operation<ItemKey> start(GlobalPos position, CraftPlan.Node<ItemKey> node) {
-                    if (PROCESSOR_OWNERS.putIfAbsent(position, id) != null) return null;
+                @Override public CraftScheduler.Operation<ResourceKey> start(GlobalPos position, CraftPlan.Node<ResourceKey> node) {
+                    Object identity = owners.get(node.recipe().id()).processorIdentity(jobAccess, position);
+                    if (PROCESSOR_IDENTITIES.putIfAbsent(identity, id) != null) return null;
+                    if (PROCESSOR_OWNERS.putIfAbsent(position, id) != null) { PROCESSOR_IDENTITIES.remove(identity, id); return null; }
+                    CLAIM_IDENTITIES.put(position, identity);
                     access.processorChanged(position);
-                    CraftScheduler.Operation<ItemKey> operation;
-                    try { operation = new CraftDelivery(jobAccess,owners.get(node.recipe().id()),position,node,origins); }
+                    CraftScheduler.Operation<ResourceKey> operation;
+                    try { operation = new ResourceCraftDelivery(jobAccess,owners.get(node.recipe().id()),position,node,origins); }
                     catch (RuntimeException failure) { release(position, id); throw failure; }
                     return new CraftScheduler.Operation<>() {
-                        @Override public Map<ItemKey, Long> poll() {
-                            Map<ItemKey, Long> result = operation.poll();
+                        @Override public Map<ResourceKey, Long> poll() {
+                            Map<ResourceKey, Long> result = operation.poll();
                             if (result != null) {result.forEach((key,n)->origins.add(key,n,position));release(position, id);}
                             return result;
                         }
-                        @Override public Map<ItemKey, Long> cancel() {
+                        @Override public Map<ResourceKey, Long> cancel() {
                             try {return operation.cancel();} finally { release(position, id); }
                         }
-                        @Override public Map<ItemKey, Long> recoverable() { return operation.recoverable(); }
+                        @Override public Map<ResourceKey, Long> recoverable() { return operation.recoverable(); }
+                        @Override public boolean mayReturnShortOutput() { return operation.mayReturnShortOutput(); }
                     };
                 }
             });
-            jobs.put(id, new Job(id, job.owner, target.copyWithCount(1), count, scheduler,origins));
+            jobs.put(id, new Job(id, job.owner, target.copyWithCount(1), job.requested, scheduler,origins,job.produced));
             ACTIVE.add(id);
             recovery.put(id, access.origin(), scheduler.recoverySnapshot());
             return new RequestResult(true, "Queued " + count + " " + target.getHoverName().getString() + " (" + plan.nodes().size() + " operations)", id);
         } catch (RuntimeException failure) {
             ledger.release(id);
-            Map<ItemKey, Long> pending = returnItems(extracted,origins);
+            Map<ResourceKey, Long> pending = returnItems(extracted,origins);
             if (!pending.isEmpty()) recovery.put(id, access.origin(), pending);
             return new RequestResult(false,failure.getMessage() == null ? "Craft planning failed" : failure.getMessage(),id);
         }
@@ -265,7 +329,10 @@ public final class CraftingService {
         history.addFirst(new Finished(status,access.level().getServer().getTickCount()+duration));
         while(history.size()>16)history.removeLast();
     }    private void release(GlobalPos position, UUID id) {
-        PROCESSOR_OWNERS.remove(position, id);
+        if (PROCESSOR_OWNERS.remove(position, id)) {
+            Object identity = CLAIM_IDENTITIES.remove(position);
+            if (identity != null) PROCESSOR_IDENTITIES.remove(identity, id);
+        }
         access.processorChanged(position);
     }
     public void tick() {
@@ -286,7 +353,7 @@ public final class CraftingService {
         return ((job!=null&&job.owner().equals(owner))||(external!=null&&external.owner().equals(owner)))&&cancel(id);
     }
     public boolean cancel(UUID id) {
-        var pending=planning.remove(id);if(pending!=null){if(pending.future!=null)pending.future.cancel(true);remember(new JobStatus(pending.id,pending.owner,pending.target,pending.count,"CANCELLED",0,0,0,""));return true;}
+        var pending=planning.remove(id);if(pending!=null){if(pending.future!=null)pending.future.cancel(true);remember(new JobStatus(pending.id,pending.owner,pending.target,pending.requested,"CANCELLED",0,0,0,""));return true;}
         Job job = jobs.get(id);
         if (job == null) {
             ExternalJob external = externalJobs.get(id);
@@ -337,38 +404,52 @@ public final class CraftingService {
         return new JobStatus(job.id(), job.owner(), job.target().copy(), job.count(), scheduler.state().name(), scheduler.completed(), scheduler.total(), scheduler.active(), message);
     }
     private void finish(Job job) {
-        Map<ItemKey, Long> pending = returnItems(job.scheduler().drain(),job.origins());
-        if (pending.isEmpty()) recovery.remove(job.id()); else recovery.put(job.id(), access.origin(), pending);
+        Map<ResourceKey,Long> actual = job.scheduler().drain();
+        Map<ResourceKey, Long> pending = returnItems(actual,job.origins());
         jobs.remove(job.id());
         ACTIVE.remove(job.id());
+        if (job.scheduler().retryRequired()) {
+            // An optimistic chance-output step yielded less than planned. Only actual output
+            // counts toward this request; surplus/refunds are real storage before replanning.
+            recovery.remove(job.id());
+            if (!pending.isEmpty()) recovery.put(UUID.randomUUID(), access.origin(), pending);
+            long produced = Math.addExact(job.produced(), actual.getOrDefault(new ItemKey(job.target()), 0L));
+            if (produced < job.count()) {
+                planning.put(job.id(), new Planning(job.id(), job.owner(), job.target(), Math.toIntExact(job.count()-produced), Math.toIntExact(job.count()), produced));
+            } else remember(new JobStatus(job.id(),job.owner(),job.target(),job.count(),"COMPLETE",job.scheduler().completed(),job.scheduler().total(),0,""));
+            return;
+        }
+        if (pending.isEmpty()) recovery.remove(job.id()); else recovery.put(job.id(), access.origin(), pending);
         remember(status(job));
     }
     private void recoverInterrupted() {
         recovery.pending(access.origin(), ACTIVE).forEach((id, entry) -> {
-            Map<ItemKey, Long> pending = returnItems(entry.items());
+            Map<ResourceKey, Long> pending = returnItems(entry.items());
             if (pending.isEmpty()) recovery.remove(id); else recovery.put(id, access.origin(), pending);
         });
     }
-    private Map<ItemKey,Long> returnItems(Map<ItemKey,Long> items){return returnItems(items,new CraftOrigins<>());}
-    private Map<ItemKey, Long> returnItems(Map<ItemKey, Long> items,CraftOrigins<ItemKey,GlobalPos> origins) {
-        Map<ItemKey, Long> pending = new LinkedHashMap<>();
+    private Map<ResourceKey,Long> returnItems(Map<ResourceKey,Long> items){return returnItems(items,new CraftOrigins<>());}
+    private Map<ResourceKey, Long> returnItems(Map<ResourceKey, Long> items,CraftOrigins<ResourceKey,GlobalPos> origins) {
+        Map<ResourceKey, Long> pending = new LinkedHashMap<>();
         items.forEach((key, quantity) -> {
             long left = quantity;
             while (left > 0) {
-                int amount = (int)Math.min(left, key.sample().getMaxStackSize());
-                ItemStack stack = key.sample().copyWithCount(amount);
-                ItemStack remainder=ItemStack.EMPTY;
+                long amount = Math.min(left, key instanceof ItemKey item ? item.sample().getMaxStackSize() : Integer.MAX_VALUE);
+                long uninserted = 0;
                 for(var part:origins.take(key,amount,access.origin()).entrySet()){
-                    int offer=Math.toIntExact(part.getValue());ItemStack rest;
-                    try {rest=access.insertFrom(stack.copyWithCount(offer),part.getKey());}
-                    catch(RuntimeException failure){LOGGER.error("Craft refund insertion outcome is uncertain; saved without replay",failure);recovery.uncertain(part.getKey(),Map.of(key,(long)offer));continue;}
-                    if(!rest.isEmpty()){if(remainder.isEmpty())remainder=rest.copy();else remainder.grow(rest.getCount());}
+                    long offered = part.getValue();
+                    try {
+                        long rest = access.insertResourceFrom(key, offered, part.getKey());
+                        if (rest < 0 || rest > offered) throw new IllegalStateException("Invalid resource insertion remainder");
+                        uninserted = Math.addExact(uninserted, rest);
+                    } catch(RuntimeException failure){LOGGER.error("Craft refund insertion outcome is uncertain; saved without replay",failure);recovery.uncertain(part.getKey(),Map.of(key,offered));}
                 }
-                if (!remainder.isEmpty()) {
-                    ServerLevel originLevel = access.level().getServer().getLevel(access.origin().dimension());
-                    var origin = access.origin().pos();
-                    if (originLevel == null || !originLevel.hasChunkAt(origin) || !originLevel.addFreshEntity(new ItemEntity(originLevel, origin.getX() + .5, origin.getY() + 1, origin.getZ() + .5, remainder.copy())))
-                        pending.merge(new ItemKey(remainder), (long)remainder.getCount(), Math::addExact);
+                if (uninserted > 0) {
+                    ServerLevel world = access.level().getServer().getLevel(access.origin().dimension());
+                    var position = access.origin().pos();
+                    if (!(key instanceof ItemKey item) || world == null || !world.hasChunkAt(position)
+                            || !world.addFreshEntity(new ItemEntity(world, position.getX()+.5, position.getY()+1, position.getZ()+.5, item.sample().copyWithCount((int)uninserted))))
+                        pending.merge(key, uninserted, Math::addExact);
                 }
                 left -= amount;
             }
