@@ -1,12 +1,12 @@
 # Astral Repository — Fabric 26.3
 
-A magical storage and automation network for Minecraft 26.3. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This branch contains Astral Repository 1.12.0 for Fabric.
+A magical storage and automation network for Minecraft 26.3. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This branch contains Astral Repository 1.12.1 for Fabric.
 
-Version 1.12.0 keeps Nexus crafting ingredients and the selected recipe between visits, prevents conversion loops, and combines stored-block conversions with other recipe paths. Recipe Tomes can block individual final or intermediate recipes. The default red X Blocking Rune excludes its container without moving the contents; the wand's linking glint follows the selected rune's painted color. See the [changelog](CHANGELOG.md).
+Version 1.12.1 preserves exact potion recipes, adds native Mekanism machine and resource discovery, and identifies each Recipe Tome recipe's process. Empty starred Nexus entries select a quantity before submitting a craft. Autocrafting still requires a physical crafting table within network coverage. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
-Install `astral_repository-fabric-26.3-1.12.0.jar` on both the client and server. Requires Minecraft **26.3**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.161.0+26.3**, and **Java 25**. Configuration and energy libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-26.3-1.12.1.jar` on both the client and server. Requires Minecraft **26.3**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.161.0+26.3**, and **Java 25**. Configuration and energy libraries are bundled in the mod JAR.
 
 JEI 31.1.0.12 beta (with MezzConfig 0.5.12 beta) and Jade 26.3.1 were installed during gameplay checks. These integrations are optional. No public Patchouli, EMI or Trinkets build was available for this target during validation; goggles work in the helmet slot. Tests with these integrations do not establish compatibility with every modpack.
 
@@ -19,8 +19,9 @@ JEI 31.1.0.12 beta (with MezzConfig 0.5.12 beta) and Jade 26.3.1 were installed 
 
 Right-click the Attunement Wand in the air to choose or edit rune presets. Place a Push or Pull rune on a container, then Shift-right-click the glyph with the wand to assign targets.
 
+The Nexus grid is a saved personal workspace shared by your Nexus menus. Keep a separate crafting table within coverage for autocrafting. Inscribe the exact final output in a Recipe Tome and place it in a nearby Chiseled Bookshelf. Each recipe page names its process; hovering it shows the exact recipe and type IDs. Click an empty starred Nexus entry, enter the amount, then press Enter or the craft button. Use **Block recipe** or **Allow recipe** to control an alternative without replacing the taught output. The default **Blocking Rune** excludes a container without moving its contents.
 
-The Nexus grid is a saved personal workspace shared by your Nexus menus. Ordinary deposits skip processing machines. Inscribe a final output in a Recipe Tome, browse an alternative or intermediate output, then select **Block recipe** without inscribing that intermediate as the new target. **Allow recipe** restores the selected route. Place the default **Blocking Rune** on a container to exclude it; remove or disable the rune to reconnect it.
+Ordinary item, fluid, and chemical deposits skip processing machines. Energy may enter an unclaimed native energy container; active crafting claims exclude every resource through all aliases. Mekanism discovery uses native recipe, machine, and conversion contracts, including compatible addon recipes and factories. It preserves item, fluid, chemical, and energy requirements. Native power, security, mode, structure, and processing conditions remain required. World mechanics without a recipe or conversion contract are not inferred.
 
 ## Building
 
@@ -30,13 +31,13 @@ Run Gradle with JDK 25:
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-26.3-1.12.0.jar`. Release builds must omit `-PclientSmoke`.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-26.3-1.12.1.jar`. Release builds must omit `-PclientSmoke`.
 
 The base sources and tests live in `support/fabric-common/src/`. `tools/modern-26.3.gradle` generates the target sources. Overrides in `src/overrides/java/` take precedence over `support/minecraft263-overrides/src/main/java/`, then the base sources. Edit those inputs, not the generated Java files.
 
 ## Validation
 
-Version 1.12.0 passes 169 unit tests and the normal release build. The shared tests cover conversion-loop rejection, mixed recipe paths, net additional output, maximum requests, and recipe exclusion matching. This edition's development client also passed gameplay checks with actual red/blue linking wands, generated-glint texture channel assertions, and inspected gallery captures. These are development-source checks, not a new packaged-client audit. The original NeoForge edition additionally passed 178 server GameTests in both ordinary and actual Polymorph/Iron Furnaces profiles, plus focused wand/tome UI client checks. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
+Version 1.12.1 passes 182 unit tests and the normal release build. Shared regressions cover recipe process labels, quantity selection, bounded machine-slot assignment, and existing planner and transfer behavior. Mekanism changes on this edition received build/source validation, without an installed native Mekanism runtime audit. The original NeoForge 1.21.1 edition separately passed 223 required GameTests with actual Mekanism, Industrial Foregoing, Immersive Engineering, and Oritech, plus hidden, muted, mouse-free client checks for Tome labels and quantity requests. Those checks do not establish native execution on every other loader or game version. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
 
 The earlier port checks passed 162 JUnit tests and twelve dedicated-server rune transit cases. These cover delayed and instant Push/Pull for native item, fluid, and energy providers plus a Source fixture; one-tick pipelining; shared stock limits; refunds and indeterminate-provider recovery; saved travel time; and actual storage routes through network targets. Both classic and improved-transparency client paths draw fluid, power, Source, and binding beam geometry. These render checks do not replace pixel comparisons against real cloud layers. Actual packaged-client checks cover all ten block-item placements, every registered block and item name, storage upgrades and preserved drops, Nexus packets and inventory transfers, crafting and refill, Recipe Tome inscription, bookshelf discovery and completed autocrafting, rune filter/stock limits, remote access, local storage, rendering and the wand editor. Dedicated-server checks cover native item/fluid/energy transactions, recipes and harvesting, and a second process verifies saved resources after restart.
 

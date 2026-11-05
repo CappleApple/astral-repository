@@ -18,6 +18,10 @@ final class CraftingJobAccess implements CraftingService.NetworkAccess {
     @Override public boolean mayUseFuel(ItemKey key){return !target.equals(key)&&delegate.mayUseFuel(key);}
     @Override public ServerLevel level(){return delegate.level();}
     @Override public Map<ItemKey,Long> snapshot(){return delegate.snapshot();}
+    @Override public Map<com.cappleapple.astralrepository.api.ResourceKey,Long> resourceSnapshot(){return delegate.resourceSnapshot();}
+    @Override public long reserveResource(com.cappleapple.astralrepository.api.ResourceKey key,long amount,BiConsumer<GlobalPos,Long> receipt){return delegate.reserveResource(key,amount,receipt);}
+    @Override public long insertResourceFrom(com.cappleapple.astralrepository.api.ResourceKey key,long amount,GlobalPos source){return delegate.insertResourceFrom(key,amount,source);}
+    @Override public void visualResource(GlobalPos from,GlobalPos to,com.cappleapple.astralrepository.api.ResourceKey key,long amount,int duration){delegate.visualResource(from,to,key,amount,duration);}
     @Override public ItemStack extract(ItemKey key,int count){return delegate.extract(key,count);}
     @Override public ItemStack reserve(ItemKey key,int count,BiConsumer<GlobalPos,ItemStack> receipt){return delegate.reserve(key,count,receipt);}
     @Override public int travelTicks(GlobalPos from,GlobalPos to){return delegate.travelTicks(from,to);}

@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.1 - 2026-11-05
+
+### Added
+
+- Added autocrafting for Mekanism recipe machines and factories, including fluid and chemical recipe chains, byproducts, and chance-based outputs. Compatible machines and addons are detected automatically.
+- Added autocrafting support for Industrial Foregoing's Resourceful Furnace, Immersive Engineering's Alloy Kiln, and Oritech's Foundry.
+
+### Changed
+
+- Recipe Tome pages now identify the processing method and required workstation, including crafting tables, with more recipe details on hover.
+
+### Fixed
+
+- Recipe Tomes preserve the correct potion type, and autocrafting can brew potions using brewing stands.
+- Clicking an out-of-stock starred Nexus item lets you choose the amount before submitting, instead of immediately queuing a one-item craft.
+
 ## 1.12.0 - 2026-11-04
 
 ### Added
