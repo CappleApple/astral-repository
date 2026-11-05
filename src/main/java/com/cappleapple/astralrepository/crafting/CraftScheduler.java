@@ -2,7 +2,7 @@ package com.cappleapple.astralrepository.crafting;
 
 import java.util.*;
 
-/** Server-thread DAG scheduler with item escrow, processor ownership and recoverable cancellation. */
+/** Server-thread DAG scheduler with resource escrow, processor ownership and recoverable cancellation. */
 public final class CraftScheduler<K, P> {
     public enum State { WAITING, RUNNING, COMPLETE, CANCELLED, FAILED }
     public interface Processor<K, P> {
@@ -17,6 +17,8 @@ public final class CraftScheduler<K, P> {
         Map<K, Long> cancel();
         /** Inputs held outside a persistent physical container, for save recovery. */
         default Map<K, Long> recoverable() { return Map.of(); }
+        /** A real probabilistic attempt may finish without its optimistic planning yield. */
+        default boolean mayReturnShortOutput() { return false; }
     }
     private record Running<K, P>(P processor, CraftPlan.Node<K> node, Operation<K> operation) {}
     private final CraftPlan<K> plan;
@@ -29,6 +31,7 @@ public final class CraftScheduler<K, P> {
     private final Set<Integer> completed = new HashSet<>();
     private State state = State.WAITING;
     private String error = "";
+    private boolean retryRequired;
 
     public CraftScheduler(CraftPlan<K> plan, Map<K, Long> extracted, Processor<K, P> driver) {
         this.plan = plan;
@@ -54,8 +57,14 @@ public final class CraftScheduler<K, P> {
                 if (produced == null) continue;
                 running.remove(entry.getKey());
                 add(produced);
-                if (produced.getOrDefault(work.node().recipe().output(), 0L) < work.node().recipe().outputCount())
+                if (produced.getOrDefault(work.node().recipe().output(), 0L) < work.node().recipe().outputCount()) {
+                    if (work.operation().mayReturnShortOutput()) {
+                        retryRequired = true;
+                        stop(State.WAITING);
+                        return;
+                    }
                     throw new IllegalStateException("Processor returned an unexpected result for " + work.node().recipe().id());
+                }
                 completed.add(work.node().id());
                 for (int dependent : dependents.getOrDefault(work.node().id(), List.of()))
                     if (unmet.compute(dependent, (ignored, count) -> count - 1) == 0) ready.add(dependent);
@@ -126,7 +135,8 @@ public final class CraftScheduler<K, P> {
         });
     }
     public State state() { return state; }
-    public boolean terminal() { return state == State.COMPLETE || state == State.CANCELLED || state == State.FAILED; }
+    public boolean retryRequired() { return retryRequired; }
+    public boolean terminal() { return retryRequired || state == State.COMPLETE || state == State.CANCELLED || state == State.FAILED; }
     public int active() { return running.size(); }
     public int completed() { return completed.size(); }
     public int total() { return plan.nodes().size(); }

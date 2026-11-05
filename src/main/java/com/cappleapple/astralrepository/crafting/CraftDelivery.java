@@ -47,4 +47,6 @@ final class CraftDelivery implements CraftScheduler.Operation<ItemKey> {
         return node.inputs();
     }
     @Override public Map<ItemKey,Long> recoverable(){return operation==null?node.inputs():operation.recoverable();}
+    @Override public boolean mayReturnShortOutput(){return operation!=null&&operation.mayReturnShortOutput();}
+
 }
