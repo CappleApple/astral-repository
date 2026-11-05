@@ -1,0 +1,19 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="CC-BY-NC-SA-4.0"
+[[mods]]
+modId="astral_legacy_mek_test"
+version="1"
+displayName="Astral Repository legacy Mekanism validation"
+[[dependencies.astral_legacy_mek_test]]
+modId="astral_repository"
+mandatory=true
+versionRange="[1.12.0,)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.astral_legacy_mek_test]]
+modId="mekanism"
+mandatory=true
+versionRange="[10.4,)"
+ordering="AFTER"
+side="BOTH"

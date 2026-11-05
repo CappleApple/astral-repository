@@ -9,7 +9,7 @@ import net.minecraft.world.item.crafting.*;
 import net.minecraft.world.level.block.Blocks;
 import java.util.*;
 
-/** Uses recipe assembly on real tables and actual vanilla furnace inventories and server ticks. */
+/** Uses recipe assembly at crafting workstations and actual furnace inventories and server ticks. */
 public final class VanillaProcessingAdapter implements ProcessingAdapter {
     private record Binding(Recipe<?> holder, List<Integer> slots) {}
     private final Map<String, Binding> bindings = new HashMap<>();
@@ -62,6 +62,10 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         if (recipe.getType() == RecipeType.STONECUTTING) return "stonecutting";
         return null;
     }
+    public static boolean isCraftingWorkstation(ServerLevel level, net.minecraft.core.BlockPos position) {
+        if (!level.hasChunkAt(position)) return false;
+        return VisualWorkbenchCompatibility.isCraftingTable(level, position);
+    }
     static ServerLevel world(CraftingService.NetworkAccess access, GlobalPos position) {
         return access.level().getServer().getLevel(position.dimension());
     }
@@ -70,7 +74,7 @@ public final class VanillaProcessingAdapter implements ProcessingAdapter {
         if (level == null || !level.hasChunkAt(position.pos()) || !bindings.containsKey(node.recipe().id())) return false;
         var state = level.getBlockState(position.pos());
         return switch (node.recipe().process()) {
-            case "crafting" -> VisualWorkbenchCompatibility.isCraftingTable(level,position.pos());
+            case "crafting" -> isCraftingWorkstation(level,position.pos());
             case "smelting", "blasting", "smoking" -> {
                 var furnace=FurnaceAccess.find(level,position.pos(),node.recipe().process());
                 yield furnace!=null&&(furnace.getItem(1).isEmpty()||access.mayUseFuel(new ItemKey(furnace.getItem(1))));

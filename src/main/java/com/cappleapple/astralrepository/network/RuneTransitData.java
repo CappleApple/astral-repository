@@ -56,10 +56,7 @@ public final class RuneTransitData extends SavedData {
     public static RuneTransitData load(CompoundTag tag,HolderLookup.Provider registries){
         var data=new RuneTransitData();data.relative=true;var entries=tag.getList("Flights",Tag.TAG_COMPOUND);
         for(int i=0;i<entries.size();i++){var value=entries.getCompound(i);try{
-            ResourceKey resource;
-            if(value.contains("Item"))resource=new ItemKey(ItemStack.of(value.getCompound("Item")));
-            else if(value.contains("Fluid"))resource=new FluidKey(FluidStack.loadFluidStackFromNBT(value.getCompound("Fluid")));
-            else resource=new ResourceKinds.ScalarKey(new ResourceLocation(value.getString("Type")),new ResourceLocation(value.getString("Resource")));
+            ResourceKey resource=ResourceKeyCodec.load(value.contains("Key")?value.getCompound("Key"):value,registries);
             data.enqueue(Math.max(0,value.getLong("Remaining")),new Flight(value.getUUID("Rune"),readEndpoint(value.getCompound("From")),readEndpoint(value.getCompound("To")),resource,value.getLong("Amount")));
         }catch(RuntimeException failure){AstralRepository.LOGGER.error("Invalid saved rune shipment {}",i,failure);}}
         return data;
@@ -76,14 +73,12 @@ public final class RuneTransitData extends SavedData {
         if(endpoint.policyAnchor!=null)tag.put("Policy",endpoint.policyAnchor.save());
         return tag;
     }
-    @Override public CompoundTag save(CompoundTag tag){
+    @Override public CompoundTag save(CompoundTag tag){HolderLookup.Provider registries=null;
         var entries=new ListTag();
         for(var bucket:due.entrySet())for(var flight:bucket.getValue()){
             var value=new CompoundTag();value.putLong("Remaining",relative?bucket.getKey():Math.max(0,bucket.getKey()-clock));value.putUUID("Rune",flight.rune);value.putLong("Amount",flight.amount);
             value.put("From",writeEndpoint(flight.from));value.put("To",writeEndpoint(flight.to));
-            if(flight.resource instanceof ItemKey item)value.put("Item",item.sample().save(new CompoundTag()));
-            else if(flight.resource instanceof FluidKey fluid)value.put("Fluid",fluid.sample().writeToNBT(new CompoundTag()));
-            else{value.putString("Type",flight.resource.type().toString());value.putString("Resource",flight.resource.id().toString());}
+            value.put("Key",ResourceKeyCodec.save(flight.resource,registries));
             entries.add(value);
         }
         tag.put("Flights",entries);return tag;
