@@ -15,11 +15,12 @@ import com.cappleapple.astralrepository.platform.network.event.RegisterPayloadHa
 
 public final class RecipeTomePackets {
     public static Consumer<Page> pageReceiver = page -> {};
-    public record Action(int menu, int kind, String query, int page, String recipe) implements CustomPacketPayload {
+    public record Action(int menu, int kind, String query, int page, String recipe, ItemStack selection) implements CustomPacketPayload {
+        public Action(int menu, int kind, String query, int page, String recipe) { this(menu, kind, query, page, recipe, ItemStack.EMPTY); }
         public static final Type<Action> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("astral_repository", "tome_action"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Action> CODEC = StreamCodec.of((b, p) -> {
-            b.writeVarInt(p.menu); b.writeVarInt(p.kind); b.writeUtf(p.query, 96); b.writeVarInt(p.page); b.writeUtf(p.recipe, 256);
-        }, b -> new Action(b.readVarInt(), b.readVarInt(), b.readUtf(96), b.readVarInt(), b.readUtf(256)));
+            b.writeVarInt(p.menu); b.writeVarInt(p.kind); b.writeUtf(p.query, 96); b.writeVarInt(p.page); b.writeUtf(p.recipe, 256); ItemStack.OPTIONAL_STREAM_CODEC.encode(b, p.selection);
+        }, b -> new Action(b.readVarInt(), b.readVarInt(), b.readUtf(96), b.readVarInt(), b.readUtf(256), ItemStack.OPTIONAL_STREAM_CODEC.decode(b)));
         @Override public Type<Action> type() { return TYPE; }
     }
     public record Page(int menu, int page, int total, ItemStack taught, String status, List<RecipeTomeMenu.Entry> entries) implements CustomPacketPayload {

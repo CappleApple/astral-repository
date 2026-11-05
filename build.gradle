@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.14.10'; id 'java-library' }
-version = '1.12.0'
+version = '1.12.1'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-fabric-1.21.1' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
