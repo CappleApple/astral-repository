@@ -1,5 +1,5 @@
 plugins { id 'java-library'; id 'net.minecraftforge.gradle' version '6.0.42'; id 'org.spongepowered.mixin' version '0.7.38' }
-version = '1.12.0'
+version = '1.12.1'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-1.20.1-forge' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -30,6 +30,7 @@ mixin { add sourceSets.main, 'astral_repository.refmap.json'; config 'astral_rep
 dependencies {
  annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
  minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
+ if(project.hasProperty('legacyMekTest')) runtimeOnly fg.deobf('maven.modrinth:mekanism:uxe1WQp4')
  compileOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
  compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.56.0.205')
  compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.56.0.205')
@@ -66,6 +67,15 @@ tasks.named('compileJava') {
 // Separate validation mod for an installed server. It is never part of the release JAR.
 sourceSets {
  portTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath }
+ legacyMekTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath }
+}
+if(project.hasProperty('legacyMekTest')) {
+ minecraft.runs.gameTestServer {
+  workingDirectory project.file('../../build/autocrafting-fixes/forge-1.20.1-mekanism-final')
+  property 'astral_repository.legacyMekTest', 'true'
+  property 'forge.enabledGameTestNamespaces', 'astral_repository,astral_legacy_mek_test'
+  mods { astral_legacy_mek_test { source sourceSets.legacyMekTest } }
+ }
 }
 tasks.register('auditHarnessJar', Jar) {
  archiveClassifier = 'audit-harness'

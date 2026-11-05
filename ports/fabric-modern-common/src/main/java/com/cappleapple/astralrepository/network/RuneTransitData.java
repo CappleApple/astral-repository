@@ -56,10 +56,7 @@ public final class RuneTransitData extends SavedData {
     public static RuneTransitData load(CompoundTag tag,HolderLookup.Provider registries){
         var data=new RuneTransitData();data.relative=true;var entries=tag.getListOrEmpty("Flights");
         for(int i=0;i<entries.size();i++){var value=entries.getCompoundOrEmpty(i);try{
-            ResourceKey resource;
-            if(value.contains("Item"))resource=new ItemKey(com.cappleapple.astralrepository.port.NbtCodecs.item(registries,value.getCompoundOrEmpty("Item")));
-            else if(value.contains("Fluid"))resource=new FluidKey(com.cappleapple.astralrepository.port.NbtCodecs.fluid(registries,value.getCompoundOrEmpty("Fluid")));
-            else resource=new ResourceKinds.ScalarKey(Identifier.parse(value.getStringOr("Type","")),Identifier.parse(value.getStringOr("Resource","")));
+            ResourceKey resource=ResourceKeyCodec.load(value.contains("Key")?value.getCompoundOrEmpty("Key"):value,registries);
             data.enqueue(Math.max(0,value.getLongOr("Remaining",0L)),new Flight(value.read("Rune",net.minecraft.core.UUIDUtil.CODEC).orElseThrow(),readEndpoint(value.getCompoundOrEmpty("From")),readEndpoint(value.getCompoundOrEmpty("To")),resource,value.getLongOr("Amount",0L)));
         }catch(RuntimeException failure){AstralRepository.LOGGER.error("Invalid saved rune shipment {}",i,failure);}}
         return data;
@@ -81,9 +78,7 @@ public final class RuneTransitData extends SavedData {
         for(var bucket:due.entrySet())for(var flight:bucket.getValue()){
             var value=new CompoundTag();value.putLong("Remaining",relative?bucket.getKey():Math.max(0,bucket.getKey()-clock));value.store("Rune",net.minecraft.core.UUIDUtil.CODEC,flight.rune);value.putLong("Amount",flight.amount);
             value.put("From",writeEndpoint(flight.from));value.put("To",writeEndpoint(flight.to));
-            if(flight.resource instanceof ItemKey item)value.put("Item",com.cappleapple.astralrepository.port.NbtCodecs.save(item.sample(),registries));
-            else if(flight.resource instanceof FluidKey fluid)value.put("Fluid",com.cappleapple.astralrepository.port.NbtCodecs.save(fluid.sample(),registries));
-            else{value.putString("Type",flight.resource.type().toString());value.putString("Resource",flight.resource.id().toString());}
+            value.put("Key",ResourceKeyCodec.save(flight.resource,registries));
             entries.add(value);
         }
         tag.put("Flights",entries);return tag;

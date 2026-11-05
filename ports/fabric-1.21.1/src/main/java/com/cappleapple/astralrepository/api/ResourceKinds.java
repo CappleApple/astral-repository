@@ -3,6 +3,11 @@ package com.cappleapple.astralrepository.api;
 import net.minecraft.resources.ResourceLocation;
 
 public final class ResourceKinds {
+    public static final ResourceLocation CHEMICAL = ResourceLocation.parse("astral_repository:chemical");
+    public static final ResourceLocation GAS = ResourceLocation.parse("astral_repository:gas");
+    public static final ResourceLocation INFUSION = ResourceLocation.parse("astral_repository:infusion");
+    public static final ResourceLocation PIGMENT = ResourceLocation.parse("astral_repository:pigment");
+    public static final ResourceLocation SLURRY = ResourceLocation.parse("astral_repository:slurry");
     public static final ResourceLocation ITEM = ResourceLocation.parse("astral_repository:item");
     public static final ResourceLocation FLUID = ResourceLocation.parse("astral_repository:fluid");
     public static final ResourceLocation ENERGY = ResourceLocation.parse("astral_repository:energy");

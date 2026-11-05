@@ -162,7 +162,7 @@ public final class DirectRuneTransfers {
         if(activeRoute.isEmpty()){layer.report("No loaded relay route");return;}
         RuneLayer.Target home=new RuneLayer.Target(surface.address().position(),surface.facing());
         if(home.position().equals(linked.position())){layer.report("Same container");return;}
-        if(CraftingService.isProcessorReserved(home.position())||CraftingService.isProcessorReserved(linked.position())){layer.report("Container reserved for crafting");return;}
+        if(CraftingService.isProcessorReserved(server,home.position())||CraftingService.isProcessorReserved(server,linked.position())){layer.report("Container reserved for crafting");return;}
         Endpoint a=endpoint(home);
         Endpoint b=linked.face()==null?new Endpoint(server.getLevel(linked.position().dimension()),linked,a,layer):endpoint(linked);
         Endpoint source=layer.mode()==RuneLayer.Mode.PUSH?a:b,destination=layer.mode()==RuneLayer.Mode.PUSH?b:a;
@@ -399,7 +399,7 @@ public final class DirectRuneTransfers {
         }
         long remaining=flight.amount();
         try{
-            if(!CraftingService.isProcessorReserved(flight.to().position())){
+            if(!CraftingService.isProcessorReserved(server,flight.to().position())){
                 Object target=resolve(flight.to(),flight.resource());
                 if(target instanceof StorageProvider items&&flight.resource() instanceof ItemKey key){
                     var rest=items.insert(key.sample().copyWithCount((int)remaining),false);verifyRemainder(rest,key,(int)remaining);remaining=rest.getCount();

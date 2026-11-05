@@ -185,16 +185,18 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
             storageClickButton = button;
             var entry = index < menu.entries.size() ? menu.entries.get(index) : null;
             if (entry != null && entry.craftable()) { selected = entry.stack().copyWithCount(1); updateControls(); }
-            if (button == 2) {
-                if (entry != null && entry.craftable()) { setFocused(quantity); quantity.setFocused(true); quantity.setHighlightPos(0); quantity.setCursorPosition(quantity.getValue().length()); }
-                return true;
-            }
-            if (!menu.getCarried().isEmpty()) send(NetworkPackets.DEPOSIT, ItemStack.EMPTY, button == 1 ? 1 : 0);
-            else if (entry != null) {
-                // A stack craft takes precedence over withdrawing existing stock.
-                if (button == 1 && hasShiftDown() && entry.craftable()) send(NetworkPackets.CRAFT_STACK, entry.stack(), 0);
-                else if (entry.count() > 0) send(hasShiftDown() ? NetworkPackets.QUICK_WITHDRAW : NetworkPackets.PICKUP, entry.stack(), button == 1 ? 1 : 0);
-                else if (entry.craftable()) send(NetworkPackets.CRAFT, entry.stack(), 1);
+            var action = NexusEntryInput.action(button, hasShiftDown(), !menu.getCarried().isEmpty(),
+                    entry != null && entry.craftable(), entry == null ? 0 : entry.count());
+            switch (action) {
+                case SELECT_CRAFT -> {
+                    setFocused(quantity); quantity.setFocused(true);
+                    quantity.setCursorPosition(quantity.getValue().length()); quantity.setHighlightPos(0);
+                }
+                case DEPOSIT -> send(NetworkPackets.DEPOSIT, ItemStack.EMPTY, button == 1 ? 1 : 0);
+                case CRAFT_STACK -> send(NetworkPackets.CRAFT_STACK, entry.stack(), 0);
+                case PICKUP -> send(NetworkPackets.PICKUP, entry.stack(), button == 1 ? 1 : 0);
+                case QUICK_WITHDRAW -> send(NetworkPackets.QUICK_WITHDRAW, entry.stack(), button == 1 ? 1 : 0);
+                case NONE -> { }
             }
             return true;
         }
@@ -342,6 +344,10 @@ public final class NexusScreen extends AbstractContainerScreen<NexusMenu> {
             var entry = menu.entries.get(index);
             List<Component> tooltip = new ArrayList<>(getTooltipFromItem(minecraft, entry.stack()));
             if (entry.count() > 1) tooltip.add(Component.literal(Long.toString(entry.count())));
+            if (entry.craftable()) {
+                tooltip.add(Component.literal(entry.count() == 0 ? "Click to choose craft quantity" : "Middle-click to choose craft quantity"));
+                tooltip.add(Component.literal("Shift-right-click to craft a stack"));
+            }
             g.renderComponentTooltip(font, tooltip, mouseX, mouseY);
         }
         if (!menu.error.isEmpty() && within(mouseX, mouseY, 287, 6, 19, 15)) g.renderComponentTooltip(font, List.of(Component.literal(menu.error)), mouseX, mouseY);

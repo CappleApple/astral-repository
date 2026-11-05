@@ -54,8 +54,14 @@ public final class RuneAggregateTransitGameTests {
                 else for(var node:List.of(near,far))node.inventory().insertItem(0,new ItemStack(Items.IRON_INGOT,16),false);
                 h.assertTrue(surface.toggleTarget(rune.id(),at(h,relayPos),null).success(),"Rune binds to the aggregate Relay network");
                 var manager=NetworkManager.get(h.getLevel().getServer());
-                var managerTick=NetworkManager.class.getDeclaredMethod("tick");managerTick.setAccessible(true);managerTick.invoke(manager);
+                var managerTick=NetworkManager.class.getDeclaredMethod("tick");managerTick.setAccessible(true);
                 var network=manager.networkAt(relay.address());
+                // Generating the long route can queue many ordinary block updates. Drain
+                // bounded discovery work before testing transport on the registered graph.
+                for(int attempt=0;attempt<128;attempt++){
+                    managerTick.invoke(manager);network=manager.networkAt(relay.address());
+                    if(network!=null&&manager.networkAt(near.address())==network&&manager.networkAt(far.address())==network)break;
+                }
                 h.assertTrue(network!=null&&manager.networkAt(near.address())==network&&manager.networkAt(far.address())==network,"Fixture has one connected storage component: relay="+network+", near="+manager.networkAt(near.address())+", far="+manager.networkAt(far.address())+", sight="+LineOfSight.clear(h.getLevel(),relay.getBlockPos(),near.getBlockPos(),p->{})+"/"+LineOfSight.clear(h.getLevel(),near.getBlockPos(),far.getBlockPos(),p->{})+", mode="+mode+"");
                 for(var pos:List.of(hostPos,nearPos,farPos))network.invalidate(at(h,pos));network.tick(32,32);
                 var iron=new ItemKey(new ItemStack(Items.IRON_INGOT));
@@ -91,9 +97,15 @@ public final class RuneAggregateTransitGameTests {
                     near.insertionFilter().clear();near.insertionFilter().setTarget(16);
                 }
                 h.assertTrue(count(host)+near.inventory().used()+far.inventory().used()==0,"Policy simulation and serialization cannot mutate physical inventories");
-                near.setPriority(1);managerTick.invoke(manager);
+                near.setPriority(1);
+                // Exercise the actual topology replacement without advancing either transport
+                // worker: cold chunk discovery may leave unrelated queued block updates.
+                long topologyClock=workerClock.getLong(managerWorker.get(manager));
+                var refresh=NetworkManager.class.getDeclaredMethod("refresh",GlobalPos.class);refresh.setAccessible(true);refresh.invoke(manager,at(h,nearPos));
+                var rebuild=NetworkManager.class.getDeclaredMethod("rebuild");rebuild.setAccessible(true);rebuild.invoke(manager);
                 h.assertTrue(manager.networkAt(relay.address())!=network,"Fixture replaced its aggregate component while resources were travelling");
-                h.assertTrue(workerClock.getLong(managerWorker.get(manager))==departed,"Topology tick remains at this fixture's departure clock");
+                h.assertTrue(workerClock.getLong(managerWorker.get(manager))==topologyClock&&workerClock.getLong(worker)==departed,"Topology replacement does not advance either transport clock");
+                h.assertTrue(count(host)+near.inventory().used()+far.inventory().used()==0,"Topology replacement leaves every shipment in flight");
                 for(int elapsed=1;elapsed<=farTicks;elapsed++){
                     worker.tick();
                     long expectedNear=elapsed>=nearTicks?16:0,expectedFar=elapsed>=farTicks?16:0;

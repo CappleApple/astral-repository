@@ -1,5 +1,14 @@
 # Port validation
 
+## 1.12.1 checks - 2026-11-05
+
+All eight normal `test build` runs pass. Unit counts are 181 each for the original NeoForge, Forge 1.20.1, Fabric 1.20.1 and Fabric 1.21.1; 182 each for Fabric 26.2/26.3; and 186 each for NeoForge 26.2/26.3, totaling 1,460. New pure regressions cover craft-entry selection, process labels, and bounded multi-input slot assignment. Minecraft 26.3 uses separate native brewing-recipe and brewing-stand overrides.
+
+The original development client passes actual quantity selection/submission and process-label checks. NeoForge 26.3 passes a dedicated-server fixture with five native physical brewing steps, exact Tome potion identity, fuel reuse and container remainders. The physical crafting table requirement is preserved across editions; the regression checks waiting without consuming ingredients and resuming after a table appears.
+
+The final NeoForge 1.21.1 installed-mod suite passes all 223 required GameTests, including generic Mekanism machine/resource processing, Resourceful Furnace, formed Alloy Kiln and formed Foundry. Its native discovery audit covers 1,409 recipes across 26 types with no missing valid recipes. Forge 1.20.1 passes 22 normal GameTests and 30 with Mekanism 10.4; its audit covers 1,259 recipes across 27 types with no missing valid recipes. These audits establish discovery coverage, while physical fixtures exercise representative native recipe shapes. Fabric and modern editions received source/build validation for Mekanism, not installed-mod runtime validation. See the [main validation record](../docs/validation.md#1121-checks---2026-11-05) for exact versions and boundaries. Per-edition logs remain under ignored `build/autocrafting-fixes/`. Collected artifacts are version 1.12.1.
+
+
 ## 1.12.0 checks - 2026-11-04
 
 All eight normal `test build` runs pass, totaling 1,356 unit tests:

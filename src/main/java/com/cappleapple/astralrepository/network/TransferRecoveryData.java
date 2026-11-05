@@ -25,19 +25,14 @@ public final class TransferRecoveryData extends SavedData {
         TransferRecoveryData data=new TransferRecoveryData();ListTag list=tag.getList("Transfers",Tag.TAG_COMPOUND);
         for(int i=0;i<list.size();i++){CompoundTag value=list.getCompound(i);try{
             GlobalPos source=GlobalPos.of(net.minecraft.resources.ResourceKey.create(Registries.DIMENSION,ResourceLocation.parse(value.getString("Dimension"))),BlockPos.of(value.getLong("Position")));
-            ResourceKey key;
-            if(value.contains("Item"))key=new ItemKey(ItemStack.parseOptional(registries,value.getCompound("Item")));
-            else if(value.contains("Fluid"))key=new FluidKey(FluidStack.parseOptional(registries,value.getCompound("Fluid")));
-            else key=new ResourceKinds.ScalarKey(ResourceLocation.parse(value.getString("Type")),ResourceLocation.parse(value.getString("Resource")));
+            ResourceKey key=ResourceKeyCodec.load(value.contains("Key")?value.getCompound("Key"):value,registries);
             UUID id=value.getUUID("Id");data.entries.put(id,new Entry(id,source,key,value.getLong("Amount"),value.getBoolean("Uncertain"),value.getString("Provider"),value.contains("Side")?Direction.byName(value.getString("Side")):null));
         }catch(RuntimeException error){AstralRepository.LOGGER.error("Invalid transfer recovery entry {}",i,error);}}
         return data;
     }
     @Override public CompoundTag save(CompoundTag tag,HolderLookup.Provider registries){
         ListTag list=new ListTag();for(Entry e:entries.values()){CompoundTag value=new CompoundTag();value.putUUID("Id",e.id);value.putString("Dimension",e.source.dimension().location().toString());value.putLong("Position",e.source.pos().asLong());value.putLong("Amount",e.amount);value.putBoolean("Uncertain",e.uncertain);value.putString("Provider",e.provider);if(e.side!=null)value.putString("Side",e.side.getName());
-            if(e.resource instanceof ItemKey item)value.put("Item",item.sample().save(registries));
-            else if(e.resource instanceof FluidKey fluid)value.put("Fluid",fluid.sample().save(registries));
-            else{value.putString("Type",e.resource.type().toString());value.putString("Resource",e.resource.id().toString());}
+            value.put("Key",ResourceKeyCodec.save(e.resource,registries));
             list.add(value);
         }tag.put("Transfers",list);return tag;
     }

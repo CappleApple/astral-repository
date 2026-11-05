@@ -79,6 +79,8 @@ public final class CompatibilityRegistry {
         if (!level.hasChunkAt(pos)) return List.of();
         List<ResourceProvider> result=new ArrayList<>();
         attempt(level,pos,"fluids",() -> {
+            var nativeTanks=MekanismFluidResourceProvider.discover(level,pos,side);
+            if(nativeTanks.isPresent()){nativeTanks.get().forEach(provider->result.add(ProviderGuard.resource(provider)));return null;}
             var tracked=track(Capabilities.FluidHandler.BLOCK,level,pos,side);
             var handler=tracked.handler;
             if (handler != null) result.add(ProviderGuard.resource(new FluidResourceProvider(
@@ -86,6 +88,8 @@ public final class CompatibilityRegistry {
             return null;
         });
         attempt(level,pos,"energy",() -> {
+            var nativeContainers=MekanismEnergyResourceProvider.discover(level,pos,side);
+            if(nativeContainers.isPresent()){nativeContainers.get().forEach(provider->result.add(ProviderGuard.resource(provider)));return null;}
             var tracked=track(Capabilities.EnergyStorage.BLOCK,level,pos,side);
             var handler=tracked.handler;
             if (handler != null) result.add(ProviderGuard.resource(new EnergyResourceProvider(
@@ -97,6 +101,7 @@ public final class CompatibilityRegistry {
             if (ArsSourceProvider.supports(tile)) result.add(ProviderGuard.resource(new ArsSourceProvider(level,tile)));
             return null;
         });
+        attempt(level,pos,"mekanism_chemicals",() -> { ChemicalResourceProvider.discover(level,pos,side).forEach(provider->result.add(ProviderGuard.resource(provider))); return null; });
         for (Adapter<ResourceProvider> adapter:List.copyOf(RESOURCES))
             attempt(level,pos,adapter.id,() -> { adapter.factory.discover(level,pos,side).forEach(p -> result.add(ProviderGuard.resource(p))); return null; });
         return result.stream().map(p->com.cappleapple.astralrepository.content.ContainerRuneRules.wrap(level,pos.immutable(),p)).toList();

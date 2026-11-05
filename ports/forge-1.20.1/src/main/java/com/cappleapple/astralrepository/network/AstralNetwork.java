@@ -33,6 +33,7 @@ public final class AstralNetwork implements NetworkAccess {
     private final Map<String,BoundResource> resources=new LinkedHashMap<>();
     private final NetworkInventoryIndex<ItemKey,String> index=new NetworkInventoryIndex<>();
     private final NetworkInventoryIndex<ResourceKey,String> resourceIndex=new NetworkInventoryIndex<>();
+    private final NetworkInventoryIndex<ResourceKey,String> craftResourceIndex=new NetworkInventoryIndex<>();
     private final ArrayDeque<Scan> scans=new ArrayDeque<>();
     private final Set<GlobalPos> queuedScans=new HashSet<>();
     private final Map<String,List<GlobalPos>> visualPaths=new LinkedHashMap<>();
@@ -63,7 +64,7 @@ public final class AstralNetwork implements NetworkAccess {
     public void rescanChunk(ServerLevel level,ChunkPos pos){for(var node:nodes)if(node.getLevel()==level && Math.abs((node.getBlockPos().getX()>>4)-pos.x)<=2 && Math.abs((node.getBlockPos().getZ()>>4)-pos.z)<=2)scanAround(NetworkManager.location(node));}
     public void unloadChunk(ServerLevel level,ChunkPos chunk){
         List<String> remove=storages.entrySet().stream().filter(e->inChunk(e.getValue().pos,level,chunk)).map(Map.Entry::getKey).toList();remove.forEach(this::removeStorage);
-        resources.entrySet().removeIf(e->{if(inChunk(e.getValue().pos,level,chunk)){resourceIndex.remove(e.getKey());return true;}return false;});
+        resources.entrySet().removeIf(e->{if(inChunk(e.getValue().pos,level,chunk)){resourceIndex.remove(e.getKey());craftResourceIndex.remove(e.getKey());return true;}return false;});
         libraryExclusions.keySet().removeIf(p->inChunk(p,level,chunk));
         workstations.removeIf(p->inChunk(p,level,chunk));if(library.keySet().removeIf(p->inChunk(p,level,chunk)))libraryRevision++;revision++;
     }
@@ -111,7 +112,7 @@ public final class AstralNetwork implements NetworkAccess {
             }
         }catch(RuntimeException failure){quarantine(NetworkManager.id(pos),failure);}
     }
-    private void removeAt(GlobalPos pos){storages.entrySet().stream().filter(e->e.getValue().pos.equals(pos)).map(Map.Entry::getKey).toList().forEach(this::removeStorage);resources.entrySet().removeIf(e->{if(e.getValue().pos.equals(pos)){resourceIndex.remove(e.getKey());return true;}return false;});}
+    private void removeAt(GlobalPos pos){storages.entrySet().stream().filter(e->e.getValue().pos.equals(pos)).map(Map.Entry::getKey).toList().forEach(this::removeStorage);resources.entrySet().removeIf(e->{if(e.getValue().pos.equals(pos)){resourceIndex.remove(e.getKey());craftResourceIndex.remove(e.getKey());return true;}return false;});}
     private void removeStorage(String key){
         BoundStorage removed=storages.remove(key);index.remove(key);nextPoll.remove(key);
         if(removed!=null){
@@ -124,7 +125,7 @@ public final class AstralNetwork implements NetworkAccess {
         String key=pollQueue.poll();if(key==null)return;
         BoundStorage bound=storages.get(key);if(bound==null)return;pollQueue.add(key);
         if(failed.contains(key))return;
-        if(CraftingService.isProcessorReserved(bound.pos)){index.remove(key);return;}
+        if(crafting.isProcessorAliasReserved(bound.pos)){index.remove(key);return;}
         if(server.getTickCount()<nextPoll.getOrDefault(key,0L))return;
         try{
             if(!loaded(bound.pos)||!bound.provider.valid()){removeStorage(key);invalidate(bound.pos);return;}
@@ -170,13 +171,14 @@ public final class AstralNetwork implements NetworkAccess {
         boolean blocked=ContainerRuneRules.blocked(world,pos.pos());
         for(String key:storagePositions.getOrDefault(pos,Set.of())){if(blocked)index.remove(key);nextPoll.remove(key);}
         if(blocked){
-            for(var entry:resources.entrySet())if(entry.getValue().pos.equals(pos))resourceIndex.remove(entry.getKey());
+            for(var entry:resources.entrySet())if(entry.getValue().pos.equals(pos)){resourceIndex.remove(entry.getKey());craftResourceIndex.remove(entry.getKey());}
             removeShelf(pos);
         }
         invalidate(pos);
     }
     @Override public void processorChanged(GlobalPos pos){
-        for(String key:storagePositions.getOrDefault(pos,Set.of())){index.remove(key);nextPoll.remove(key);}
+        for(var entry:resources.entrySet())if(entry.getValue().pos.equals(pos)||crafting.isProcessorAliasReserved(entry.getValue().pos)){resourceIndex.remove(entry.getKey());craftResourceIndex.remove(entry.getKey());}
+        for(var entry:storages.entrySet())if(entry.getValue().pos.equals(pos)||crafting.isProcessorAliasReserved(entry.getValue().pos)){index.remove(entry.getKey());nextPoll.remove(entry.getKey());}
         invalidate(pos);
     }
     @Override public boolean payCrafting(long complexity){return powered&&power.operation(AstralConfig.jobCost.get()+complexity*AstralConfig.complexityCost.get());}
@@ -199,6 +201,87 @@ public final class AstralNetwork implements NetworkAccess {
         libraryExclusions.values().forEach(shelf->result.addAll(shelf.getOrDefault(key,Set.of())));return Set.copyOf(result);
     }
     @Override public Map<ItemKey,Long> snapshot(){return index.snapshot();}
+    private record ResourceAlias(Object kind,Object physical){}
+    private long craftResourceTick=Long.MIN_VALUE;
+    private int craftResourceCursor;
+    private boolean resourceUsable(String id,BoundResource bound){return powered&&bound!=null&&!failed.contains(id)&&loaded(bound.pos)
+            &&bound.provider.valid()&&!crafting.isProcessorAliasReserved(bound.pos);}
+    private void refreshCraftProvider(String id,BoundResource bound){
+        var stock=bound.provider.snapshot();resourceIndex.update(id,stock);Map<ResourceKey,Long> available=new LinkedHashMap<>();
+        for(var entry:stock.entrySet())if(entry.getValue()>0){
+            long accessible=bound.provider.extract(entry.getKey(),entry.getValue(),true);
+            if(accessible<0||accessible>entry.getValue())throw new IllegalStateException("Provider violated resource simulation contract");
+            // A positive probe establishes access; per-call limits are aggregated by the coordinator.
+            if(accessible>0)available.put(entry.getKey(),entry.getValue());
+        }
+        craftResourceIndex.update(id,available);
+    }
+    private void refreshCraftResources(){
+        if(craftResourceTick==server.getTickCount())return;craftResourceTick=server.getTickCount();
+        var values=new ArrayList<>(resources.entrySet());if(values.isEmpty())return;
+        int budget=Math.min(values.size(),Math.max(1,AstralConfig.reconciliationBudget.get()));
+        for(int i=0;i<budget;i++){
+            var entry=values.get(Math.floorMod(craftResourceCursor++,values.size()));String id=entry.getKey();BoundResource bound=entry.getValue();
+            if(!resourceUsable(id,bound)){resourceIndex.remove(id);craftResourceIndex.remove(id);continue;}
+            try{refreshCraftProvider(id,bound);}catch(RuntimeException failure){resourceIndex.remove(id);craftResourceIndex.remove(id);quarantine(id,failure);}
+        }
+    }
+    @Override public Map<ResourceKey,Long> resourceSnapshot(){
+        refreshCraftResources();Map<ResourceKey,Long> result=new LinkedHashMap<>(snapshot());Set<ResourceAlias> seen=new HashSet<>();
+        for(var entry:resources.entrySet()){
+            String id=entry.getKey();BoundResource bound=entry.getValue();if(!resourceUsable(id,bound)||!seen.add(new ResourceAlias(bound.provider.resourceType(),bound.provider.identity())))continue;
+            for(var resource:craftResourceIndex.provider(id).entrySet())if(matches(bound.owner.networkExtractionFilter(),resource.getKey())){
+                long available=Math.min(resource.getValue(),Math.max(0,resourceIndex.provider(id).getOrDefault(resource.getKey(),0L)-bound.owner.networkExtractionFilter().minimum()));
+                if(available>0)result.merge(resource.getKey(),available,NetworkInventoryIndex::saturatingAdd);
+            }
+        }
+        return Map.copyOf(result);
+    }
+    @Override public long reserveResource(ResourceKey key,long amount,java.util.function.BiConsumer<GlobalPos,Long> receipt){
+        if(key instanceof ItemKey)return NetworkAccess.super.reserveResource(key,amount,receipt);
+        if(key instanceof ResourceKeyCodec.DeferredKey||amount<=0)return 0;
+        refreshCraftResources();long total=0;Set<Object> seen=new HashSet<>();
+        for(String id:List.copyOf(craftResourceIndex.locations(key))){
+            BoundResource bound=resources.get(id);if(!resourceUsable(id,bound)||!key.type().equals(bound.provider.resourceType())
+                    ||!canRoute(bound.pos,origin)||!matches(bound.owner.networkExtractionFilter(),key)||!seen.add(bound.provider.identity()))continue;
+            long available=Math.max(0,resourceIndex.provider(id).getOrDefault(key,0L)-bound.owner.networkExtractionFilter().minimum());
+            long wanted=Math.min(amount-total,available);if(wanted<=0)continue;
+            long extracted;
+            try{extracted=bound.provider.extract(key,wanted,false);if(extracted<0||extracted>wanted)throw new IllegalStateException("Provider violated resource extraction contract");}
+            catch(RuntimeException failure){TransferRecoveryData.get(server).put(bound.pos,key,wanted,true,id);quarantine(id,failure);resourceIndex.remove(id);craftResourceIndex.remove(id);continue;}
+            if(extracted<=0)continue;total+=extracted;throughput+=extracted;receipt.accept(bound.pos,extracted);
+            try{refreshCraftProvider(id,bound);}catch(RuntimeException failure){resourceIndex.remove(id);craftResourceIndex.remove(id);quarantine(id,failure);}
+            if(total>=amount)break;
+        }
+        return total;
+    }
+    @Override public long insertResourceFrom(ResourceKey key,long amount,GlobalPos source){
+        if(key instanceof ItemKey)return NetworkAccess.super.insertResourceFrom(key,amount,source);
+        if(key instanceof ResourceKeyCodec.DeferredKey||amount<=0)return Math.max(0,amount);
+        refreshCraftResources();long remaining=amount;Set<Object> seen=new HashSet<>();
+        var destinations=new ArrayList<>(resources.entrySet());
+        destinations.sort(Comparator.comparingInt(entry->-entry.getValue().owner.priority()));
+        for(var entry:destinations){
+            String id=entry.getKey();BoundResource bound=entry.getValue();
+            if(!resourceUsable(id,bound)||(crafting.isProcessingPosition(bound.pos)&&!key.type().equals(ResourceKinds.ENERGY))||!key.type().equals(bound.provider.resourceType())
+                    ||!canRoute(source,bound.pos)||!matches(bound.owner.networkInsertionFilter(),key)||!seen.add(bound.provider.identity()))continue;
+            long stored=resourceIndex.provider(id).getOrDefault(key,0L),limit=bound.owner.networkInsertionFilter().target();
+            long room=limit==Long.MAX_VALUE?Long.MAX_VALUE:Math.max(0,limit-stored),offer=Math.min(remaining,room);if(offer<=0)continue;
+            long accepted;
+            try{accepted=bound.provider.insert(key,offer,false);if(accepted<0||accepted>offer)throw new IllegalStateException("Provider violated resource insertion contract");}
+            catch(RuntimeException failure){TransferRecoveryData.get(server).put(source,key,offer,true,id);remaining-=offer;quarantine(id,failure);resourceIndex.remove(id);craftResourceIndex.remove(id);continue;}
+            remaining-=accepted;throughput+=accepted;
+            try{refreshCraftProvider(id,bound);}catch(RuntimeException failure){resourceIndex.remove(id);craftResourceIndex.remove(id);quarantine(id,failure);}
+            if(accepted>0)visualResource(source,bound.pos,key,accepted,20);
+            if(remaining<=0)break;
+        }
+        return remaining;
+    }
+    @Override public void visualResource(GlobalPos from,GlobalPos to,ResourceKey key,long amount,int durationTicks){
+        if(key instanceof ItemKey){NetworkAccess.super.visualResource(from,to,key,amount,durationTicks);return;}
+        try{resourceVisual(from,to,key,durationTicks);}catch(RuntimeException cosmetic){com.cappleapple.astralrepository.AstralRepository.LOGGER.debug("Cosmetic resource transport failed",cosmetic);}
+    }
+
     @Override public ItemStack extract(ItemKey key,int amount){return extractAt(key,amount,origin);}
     @Override public ItemStack reserve(ItemKey key,int amount,java.util.function.BiConsumer<GlobalPos,ItemStack> receipt){return extractAt(key,amount,origin,receipt);}
     @Override public int travelTicks(GlobalPos from,GlobalPos to){
@@ -319,7 +402,7 @@ public final class AstralNetwork implements NetworkAccess {
         try{ItemStack rest=source.provider.insert(stack,false);adjustCount(id,new ItemKey(stack),stack.getCount()-rest.getCount());if(!rest.isEmpty())drop(source.pos,rest);}
         catch(RuntimeException failure){TransferRecoveryData.get(server).put(source.pos,new ItemKey(stack),stack.getCount(),true,id);quarantine(id,failure);}
     }
-    private boolean usable(BoundStorage bound,String id){return bound!=null&&!failed.contains(id)&&loaded(bound.pos)&&!CraftingService.isProcessorReserved(bound.pos)&&bound.provider.valid()&&bound.owner.enabled();}
+    private boolean usable(BoundStorage bound,String id){return bound!=null&&!failed.contains(id)&&loaded(bound.pos)&&!crafting.isProcessorAliasReserved(bound.pos)&&bound.provider.valid()&&bound.owner.enabled();}
     private void adjustCount(String provider,ItemKey key,long delta){index.adjust(provider,key,delta);BoundStorage bound=storages.get(provider);if(bound!=null)manager.providerIdentitiesChanged(Set.of(bound.provider.identity()));}
     private boolean attached(BoundStorage bound){return bound.owner.attachedTo(bound.pos);}
     private void routeItems(){
@@ -358,9 +441,9 @@ public final class AstralNetwork implements NetworkAccess {
         for(var entry:resourceEntries){
             if(examined++>=AstralConfig.reconciliationBudget.get())break;
             String id=entry.getKey();BoundResource source=entry.getValue();
-            if(failed.contains(id)||!loaded(source.pos)||CraftingService.isProcessorReserved(source.pos))continue;
+            if(failed.contains(id)||!loaded(source.pos)||crafting.isProcessorAliasReserved(source.pos))continue;
             try{
-                if(!source.provider.valid()){resources.remove(id);resourceIndex.remove(id);invalidate(source.pos);continue;}
+                if(!source.provider.valid()){resources.remove(id);resourceIndex.remove(id);craftResourceIndex.remove(id);invalidate(source.pos);continue;}
                 resourceIndex.update(id,source.provider.snapshot());
                 if(!source.owner.collects()||!source.owner.attachedTo(source.pos))continue;
                 for(var resource:resourceIndex.provider(id).entrySet()){
@@ -369,7 +452,7 @@ public final class AstralNetwork implements NetworkAccess {
                     long available=Math.max(0,resource.getValue()-source.owner.networkExtractionFilter().minimum());
                     for(var target:new ArrayList<>(resources.entrySet())){
                         BoundResource destination=target.getValue();
-                        if(!canRoute(source.pos,destination.pos)||id.equals(target.getKey())||source.provider.identity().equals(destination.provider.identity())||failed.contains(target.getKey())||!loaded(destination.pos)||!key.type().equals(destination.provider.resourceType())||!destination.provider.valid()||!matches(destination.owner.networkInsertionFilter(),key))continue;
+                        if(crafting.isProcessorAliasReserved(destination.pos)||(crafting.isProcessingPosition(destination.pos)&&!key.type().equals(ResourceKinds.ENERGY))||!canRoute(source.pos,destination.pos)||id.equals(target.getKey())||source.provider.identity().equals(destination.provider.identity())||failed.contains(target.getKey())||!loaded(destination.pos)||!key.type().equals(destination.provider.resourceType())||!destination.provider.valid()||!matches(destination.owner.networkInsertionFilter(),key))continue;
                         long targetCount=destination.provider.snapshot().getOrDefault(key,0L);
                         long room=destination.owner.networkInsertionFilter().target()-targetCount;
                         long move=Math.min(Math.min(rate,available),Math.max(0,room));
@@ -390,7 +473,7 @@ public final class AstralNetwork implements NetworkAccess {
                     }
                     resourceIndex.update(id,source.provider.snapshot());
                 }
-            }catch(RuntimeException failure){quarantine(id,failure);resourceIndex.remove(id);}
+            }catch(RuntimeException failure){quarantine(id,failure);resourceIndex.remove(id);craftResourceIndex.remove(id);}
         }
     }
 
@@ -532,7 +615,7 @@ public final class AstralNetwork implements NetworkAccess {
             return candidates;
         }
         private boolean live(Map.Entry<String,BoundResource> entry){
-            var bound=entry.getValue();return resources.get(entry.getKey())==bound&&!failed.contains(entry.getKey())&&loaded(bound.pos)&&bound.provider.valid()&&!CraftingService.isProcessorReserved(bound.pos)&&runeReachable(host,bound.pos);
+            var bound=entry.getValue();return resources.get(entry.getKey())==bound&&!failed.contains(entry.getKey())&&loaded(bound.pos)&&bound.provider.valid()&&!crafting.isProcessorAliasReserved(bound.pos)&&runeReachable(host,bound.pos);
         }
         private boolean available(Map.Entry<String,BoundResource> entry){
             if(!live(entry))return false;
@@ -560,7 +643,7 @@ public final class AstralNetwork implements NetworkAccess {
         private List<RuneRouting.ResourceEndpoint> endpoints(ResourceKey key,boolean insert){
             if(!powered||!key.type().equals(kind))return List.of();var result=new ArrayList<RuneRouting.ResourceEndpoint>();
             Set<Object> seen=new HashSet<>();
-            for(var entry:ordered(insert)){var bound=entry.getValue();if(!available(entry)||!seen.add(bound.provider.identity()))continue;
+            for(var entry:ordered(insert)){var bound=entry.getValue();if(!available(entry)||(insert&&crafting.isProcessingPosition(bound.pos)&&!key.type().equals(ResourceKinds.ENERGY))||!seen.add(bound.provider.identity()))continue;
                 var filter=insert?bound.owner.networkInsertionFilter():bound.owner.networkExtractionFilter();
                 if(matches(filter,key))result.add(runeResourceEndpoint(bound));
             }
@@ -573,7 +656,7 @@ public final class AstralNetwork implements NetworkAccess {
             try{
                 long moved=0;Set<Object> seen=new HashSet<>();
                 for(var entry:ordered(insert)){
-                    var bound=entry.getValue();if(!available(entry)||!seen.add(bound.provider.identity()))continue;
+                    var bound=entry.getValue();if(!available(entry)||(insert&&crafting.isProcessingPosition(bound.pos)&&!key.type().equals(ResourceKinds.ENERGY))||!seen.add(bound.provider.identity()))continue;
                     var filter=insert?bound.owner.networkInsertionFilter():bound.owner.networkExtractionFilter();if(!matches(filter,key))continue;
                     long limit;
                     if(insert&&filter.target()==Long.MAX_VALUE)limit=Long.MAX_VALUE;
@@ -608,7 +691,7 @@ public final class AstralNetwork implements NetworkAccess {
     }
     /** A flight retains its physical provider, while component policy and power follow rebuilds. */
     private AstralNetwork runePhysicalNetwork(GlobalPos pos,NetworkAnchor owner,String provider){
-        if(!loaded(pos)||owner.isRemoved()||!owner.enabled()||CraftingService.isProcessorReserved(pos))return null;
+        if(!loaded(pos)||owner.isRemoved()||!owner.enabled()||crafting.isProcessorAliasReserved(pos))return null;
         var network=manager.networkAt(owner.address());
         return network==null||network.failed.contains(NetworkManager.id(pos)+"/"+provider)?null:network;
     }
@@ -700,7 +783,7 @@ public final class AstralNetwork implements NetworkAccess {
     long recoverRuneResource(GlobalPos source,ResourceKey key,long amount){
         if(key instanceof ItemKey item){int offer=(int)Math.min(64,amount);return offer-insertAt(item.sample().copyWithCount(offer),source).getCount();}
         long returned=0;Set<Object> visited=new HashSet<>();
-        for(var entry:resources.entrySet()){var bound=entry.getValue();if(failed.contains(entry.getKey())||!bound.provider.resourceType().equals(key.type())||!loaded(bound.pos)||!bound.provider.valid()||CraftingService.isProcessorReserved(bound.pos)||!visited.add(bound.provider.identity()))continue;
+        for(var entry:resources.entrySet()){var bound=entry.getValue();if(failed.contains(entry.getKey())||!bound.provider.resourceType().equals(key.type())||!loaded(bound.pos)||!bound.provider.valid()||crafting.isProcessorAliasReserved(bound.pos)||(crafting.isProcessingPosition(bound.pos)&&!key.type().equals(ResourceKinds.ENERGY))||!visited.add(bound.provider.identity()))continue;
             long offer=amount-returned;if(offer<=0)break;
             try{long accepted=bound.provider.insert(key,offer,false);if(accepted<0||accepted>offer)throw new IllegalStateException("Invalid recovery insertion");returned+=accepted;if(accepted>0)invalidate(bound.pos);}
             catch(RuntimeException failure){TransferRecoveryData.get(server).put(source,key,offer,true,entry.getKey());returned+=offer;quarantine(entry.getKey(),failure);}

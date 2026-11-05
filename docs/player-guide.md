@@ -21,9 +21,8 @@ The Storage Nexus combines storage, manual crafting, and autocrafting. Storage a
 | Left-click a stored item with an empty cursor | Pick up one normal stack on the cursor |
 | Right-click a stored item with an empty cursor | Pick up half of the available normal stack, rounded up |
 | Shift-left-click a stored item | Move up to one normal stack into available player inventory space |
-| Right-click a craftable entry with nothing stored and an empty cursor | Request one final item |
 | Shift-right-click a craftable entry with an empty cursor | Request one normal stack, even if the network already stores some |
-| Middle-click a craftable entry | Select its output and focus the quantity field without withdrawing |
+| Click an empty starred entry, or middle-click any craftable entry | Select its output and focus the quantity field without withdrawing |
 | Left-click anywhere in the storage grid while carrying a stack | Deposit the cursor stack |
 | Right-click anywhere in the storage grid while carrying a stack | Deposit one item |
 | Shift-click a player inventory stack | Deposit that stack directly |
@@ -34,7 +33,7 @@ The Storage Nexus combines storage, manual crafting, and autocrafting. Storage a
 | Select a taught product, enter 1–4,096, press the hammer button | Request that many final items |
 | Click the cancel icon beside a running job | Cancel that individual request |
 
-Deposits and withdrawals complete immediately by default. Pack settings can defer player transactions by 20 server ticks; the menu rechecks access and inventory state before committing. Closing the menu or changing the affected inventory cancels a pending transaction. Cursor pickups can be placed in player inventory slots or the manual crafting grid with normal left-click, right-click, and drag controls. Partial deposits leave rejected items on the cursor. Shift-click withdrawal leaves the rest in network storage. Items and the selected recipe stay in your personal crafting grid when the interface closes, including when you reopen at another Nexus. Network deposits skip processing blocks such as furnaces.
+Deposits and withdrawals complete immediately by default. Pack settings can defer player transactions by 20 server ticks; the menu rechecks access and inventory state before committing. Closing the menu or changing the affected inventory cancels a pending transaction. Cursor pickups can be placed in player inventory slots or the manual crafting grid with normal left-click, right-click, and drag controls. Partial deposits leave rejected items on the cursor. Shift-click withdrawal leaves the rest in network storage. Items and the selected recipe stay in your personal crafting grid when the interface closes, including when you reopen at another Nexus. Network item deposits skip processing blocks such as furnaces. Power can still enter unclaimed energy containers.
 
 Manual refill preserves the original ingredient identity, including item components such as names. It returns container remainders, such as empty buckets, to storage before refilling that slot; a remainder that storage rejects stays in the grid. Shift-crafting stops when ingredients run out, the output changes, or the next complete recipe output would exceed a normal stack or available inventory space. It does not drop a partial-fit result.
 
@@ -168,9 +167,9 @@ Remote connections do not force-load chunks. An unloaded endpoint stays unavaila
 1. Right-click a Recipe Tome to open its recipe editor.
 2. Shift-click an output in the inventory below the book, or drag it from EMI/JEI onto the page. Review the recipe and press **Inscribe**. Arrows cycle recipes for the same output.
 3. Insert the tome into a vanilla Chiseled Bookshelf inside network coverage.
-4. Open the Storage Nexus. Right-click an empty craftable entry for one item, Shift-right-click for a stack, or middle-click it to enter a quantity and press the hammer button.
+4. Open the Storage Nexus. Click an empty starred entry, or middle-click any craftable entry, to select an amount. Enter the quantity and press Enter or the hammer button. Shift-right-click explicitly queues a normal stack.
 
-Bookshelves expose their taught products as autocrafting choices. Connected external crafting providers may also expose their own products. Intermediate recipes are resolved automatically. Place ordinary crafting tables, furnaces, blast furnaces, smokers, and stonecutters within coverage to supply their corresponding processes. Workstations reserve their place while ingredients travel. Tables display each arriving batch and begin assembly after the last arrival. Furnace inputs and fuel enter their real slots only when their flights finish. Furnaces use real processing and require available fuel. Additional workstations provide parallel capacity. Missing resources or processors are reported when a request cannot be planned.
+Bookshelves expose their taught products as autocrafting choices. Connected external crafting providers may also expose their own products. Intermediate recipes are resolved automatically. Place a crafting table within network coverage for ordinary 3x3 autocrafting. The Nexus's personal crafting grid is a separate manual workspace and does not supply an autocrafting workstation. Place furnaces, blast furnaces, smokers, brewing stands, and stonecutters within coverage for their corresponding processes. Workstations reserve their place while ingredients travel. Tables display each arriving batch and begin assembly after the last arrival. Furnace inputs and fuel enter their real slots only when their flights finish. Furnaces use real processing and require available fuel. Additional workstations provide parallel capacity. Missing resources or processors are reported when a request cannot be planned.
 
 Visual Workbench tables also provide crafting capacity when that mod is installed. Autocrafting uses ingredients taken from network storage and leaves the table's saved manual grid and preview unchanged. Its player ingredients are not indexed as network stock, withdrawn by the Nexus, or filled by network deposits.
 

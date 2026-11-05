@@ -17,8 +17,8 @@ Transfers follow the shortest loaded route with clear line of sight, travelling 
 - A handheld Astral Nexus and distant network bridges, with separate upgrades for dimensional access.
 - Recipe Tomes select actual recipes from inventory samples or EMI/JEI drops in a book editor and teach final outputs through vanilla Chiseled Bookshelves. The tome can block individual recipes, including intermediate conversions, for its taught output. Recipe searches are cached and planned on worker threads. Jobs appear immediately as Calculating, show tagged ingredient shortages, and resume when stock becomes available.
 - Cadence sets per-rune batch amounts and intervals for supported item, fluid, energy, and Source storage.
-- Real furnace processing and crafting-table assembly, including Visual Workbench tables without changing their saved player grids. Optional Create adapters provide pressing and milling.
-- Item and fluid rune transfers, native item/fluid/FE storage, and optional Ars Nouveau Source, AE2, Refined Storage, and Stacks Not Slots adapters.
+- Real crafting-table assembly, furnace processing, and potion brewing. Optional integrations include Mekanism recipe processors and factories, Industrial Foregoing's Resourceful Furnace, Immersive Engineering's Alloy Kiln, Oritech's Foundry, and Create pressing/milling. Machines retain their normal power and setup requirements.
+- Item and fluid rune transfers, native item/fluid/FE storage, Mekanism chemical storage and crafting ingredients, and optional Ars Nouveau Source, AE2, Refined Storage, and Stacks Not Slots adapters.
 - Vanilla-amethyst geode shells, growth, and harvesting behavior. Astral Gems and the natural blocks use blue amethyst surfaces with a purple interior, depth-dependent parallax, drifting square and rectangular particles, and configurable opacity.
 - Astral Gems work with all vanilla smithing trim patterns, adding the astral shader only to the trim on worn armor and item icons.
 - Separate timing controls for player interactions and automatic logistics.
@@ -47,14 +47,14 @@ Requires Minecraft **1.21.1**, **NeoForge 21.1.244 or newer**, and **Java 21**. 
 
 **Patchouli 1.21.1-93 or newer for NeoForge is optional.** Install it on both sides to add the `astral_repository:field_guide` item and its crafting recipe.
 
-Put `astral_repository-1.12.0.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
+Put `astral_repository-1.12.1.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
 
 ## Start a workshop
 
 1. Find an Astral geode and collect Astral Gems. With Patchouli installed, craft a book with two gems in any arrangement for the **Astral Field Guide**.
 2. Craft a Storage Nexus and place it near chests or barrels. Open it once automatic discovery has populated the index.
 3. Extend discovery with Relay Crystals within 16 blocks of other same-channel network crystals; they connect automatically.
-4. Right-click a Recipe Tome, Shift-click an output in inventory or drag it from EMI/JEI, and choose **Inscribe**. Put the tome in a nearby Chiseled Bookshelf, then request that product through the Nexus.
+4. Right-click a Recipe Tome, Shift-click an output in inventory or drag it from EMI/JEI, and choose **Inscribe**. Put the tome in a nearby Chiseled Bookshelf, then request that product through the Nexus. Place a crafting table inside network coverage for autocrafting; the Nexus's personal crafting grid is for manual crafting.
 
 For a chest-to-chest transfer, right-click the wand in air and left-click a **Push** or **Pull** preset. Right-click a preset to edit it; the **+** tile creates one. Click the source container for Push or the destination for Pull. Shift-right-click the placed glyph with the wand, then click its target containers. Click an assigned target again to remove it. A Relay or Storage Nexus target addresses its whole network. Nearby transfers need no relay; longer transfers follow loaded relay paths.
 
@@ -72,7 +72,7 @@ With Java 21 available, run on Windows:
 .\gradlew.bat test build
 ```
 
-The mod JAR is written to `build/libs/astral_repository-1.12.0.jar`.
+The mod JAR is written to `build/libs/astral_repository-1.12.1.jar`.
 
 ```powershell
 .\gradlew.bat runGameTestServer
