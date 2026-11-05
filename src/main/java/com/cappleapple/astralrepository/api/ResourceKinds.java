@@ -3,6 +3,11 @@ package com.cappleapple.astralrepository.api;
 import net.minecraft.resources.Identifier;
 
 public final class ResourceKinds {
+    public static final Identifier CHEMICAL = Identifier.parse("astral_repository:chemical");
+    public static final Identifier GAS = Identifier.parse("astral_repository:gas");
+    public static final Identifier INFUSION = Identifier.parse("astral_repository:infusion");
+    public static final Identifier PIGMENT = Identifier.parse("astral_repository:pigment");
+    public static final Identifier SLURRY = Identifier.parse("astral_repository:slurry");
     public static final Identifier ITEM = Identifier.parse("astral_repository:item");
     public static final Identifier FLUID = Identifier.parse("astral_repository:fluid");
     public static final Identifier ENERGY = Identifier.parse("astral_repository:energy");

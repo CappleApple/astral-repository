@@ -19,7 +19,7 @@
     },
     {
       "type": "patchouli:text",
-      "text": "Search by name, ID, $(bold)@mod$(), or $(bold)#tag$(). Right-click search to clear.$(br2)The 3x3 grid refills ingredients from storage after crafting. Shift-click the result for one output stack. The return icon clears ingredients into storage.$(br2)Shift-right-click a craftable item to queue a stack. Middle-click selects an amount for the hammer button.",
+      "text": "Search by name, ID, $(bold)@mod$(), or $(bold)#tag$(). Right-click search to clear.$(br2)The 3x3 grid refills ingredients from storage after crafting. Shift-click the result for one output stack. The return icon clears ingredients into storage.$(br2)Click an empty starred entry or middle-click any craftable item to select its amount. Press Enter or the hammer button to submit. Shift-right-click explicitly queues a stack.",
       "title": "Search and craft"
     },
     {

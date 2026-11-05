@@ -1,6 +1,6 @@
 package com.cappleapple.astralrepository.crafting;
 
-import com.cappleapple.astralrepository.api.ItemKey;
+import com.cappleapple.astralrepository.api.ResourceKeyCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.HolderLookup;
@@ -17,16 +17,16 @@ import java.util.*;
 
 /** Persistent escrow journal. Physical machine inputs remain in their own block-entity saves. */
 final class CraftRecoveryData extends SavedData {
-    record Entry(GlobalPos origin, Map<ItemKey, Long> items, boolean uncertain) {}
+    record Entry(GlobalPos origin, Map<com.cappleapple.astralrepository.api.ResourceKey, Long> items, boolean uncertain) {}
     private final Map<UUID, Entry> entries = new LinkedHashMap<>();
     static CraftRecoveryData get(MinecraftServer server) {
         return server.overworld().getDataStorage().computeIfAbsent(com.cappleapple.astralrepository.port.NbtCodecs.savedType("astral_repository_craft_recovery",CraftRecoveryData::new,server.registryAccess(),CraftRecoveryData::load,(data,registries)->data.save(new CompoundTag(),registries)));
     }
-    void put(UUID id, GlobalPos origin, Map<ItemKey, Long> items) {
+    void put(UUID id, GlobalPos origin, Map<? extends com.cappleapple.astralrepository.api.ResourceKey, Long> items) {
         Entry next = new Entry(origin, Map.copyOf(items), false);
         if (!next.equals(entries.put(id, next))) setDirty();
     }
-    void uncertain(GlobalPos origin, Map<ItemKey, Long> items) { entries.put(UUID.randomUUID(), new Entry(origin, Map.copyOf(items), true)); setDirty(); }
+    void uncertain(GlobalPos origin, Map<? extends com.cappleapple.astralrepository.api.ResourceKey, Long> items) { entries.put(UUID.randomUUID(), new Entry(origin, Map.copyOf(items), true)); setDirty(); }
     void remove(UUID id) { if (entries.remove(id) != null) setDirty(); }
     Map<UUID, Entry> pending(GlobalPos origin, Set<UUID> active) {
         Map<UUID, Entry> result = new LinkedHashMap<>();
@@ -40,13 +40,13 @@ final class CraftRecoveryData extends SavedData {
             CompoundTag entry = entries.getCompoundOrEmpty(i);
             try {
                 GlobalPos origin = GlobalPos.of(ResourceKey.create(Registries.DIMENSION, Identifier.parse(entry.getStringOr("Dimension",""))), BlockPos.of(entry.getLongOr("Position",0L)));
-                Map<ItemKey, Long> items = new LinkedHashMap<>();
+                Map<com.cappleapple.astralrepository.api.ResourceKey, Long> items = new LinkedHashMap<>();
                 ListTag savedItems = entry.getListOrEmpty("Escrow");
                 for (int j = 0; j < savedItems.size(); j++) {
                     CompoundTag savedItem = savedItems.getCompoundOrEmpty(j);
-                    ItemStack stack = com.cappleapple.astralrepository.port.NbtCodecs.item(registries, savedItem.getCompoundOrEmpty("Stack"));
+                    var resource = ResourceKeyCodec.load(savedItem.contains("Key")?savedItem.getCompoundOrEmpty("Key"):savedItem, registries);
                     long count = savedItem.getLongOr("Count",0L);
-                    if (!stack.isEmpty() && count > 0) items.merge(new ItemKey(stack), count, Math::addExact);
+                    if (count > 0) items.merge(resource, count, Math::addExact);
                 }
                 data.entries.put(entry.read("Id",net.minecraft.core.UUIDUtil.CODEC).orElseThrow(), new Entry(origin, Map.copyOf(items), entry.getBooleanOr("Uncertain",false)));
             } catch (RuntimeException error) {
@@ -65,8 +65,8 @@ final class CraftRecoveryData extends SavedData {
             job.putLong("Position", entry.origin().pos().asLong());
             ListTag items = new ListTag();
             entry.items().forEach((key, count) -> {
-                CompoundTag item = new CompoundTag();
-                item.put("Stack", com.cappleapple.astralrepository.port.NbtCodecs.save(key.sample(),registries));
+                CompoundTag item = new CompoundTag();item.put("Key",ResourceKeyCodec.save(key, registries));
+
                 item.putLong("Count", count);
                 items.add(item);
             });

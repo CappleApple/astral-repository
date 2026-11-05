@@ -2,14 +2,15 @@
 
 A magical storage and automation network: place crystals around a workshop, teach a bookshelf the products you want, and let the network find storage, route resources, and coordinate ordinary workstations.
 
-This branch builds Astral Repository **1.12.0** for **Minecraft 26.3**, **NeoForge 26.3.0.7-beta or newer within Minecraft 26.3**, and **Java 25**. Install the matching JAR on both the client and server. No additional mod is required.
+This branch builds Astral Repository **1.12.1** for **Minecraft 26.3**, **NeoForge 26.3.0.7-beta or newer within Minecraft 26.3**, and **Java 25**. Install the matching JAR on both the client and server. No additional mod is required.
 
-NeoForge has no stable release for Minecraft 26.3 yet; this branch is tested with 26.3.0.7-beta.
+This edition was validated with NeoForge 26.3.0.7-beta.
 
-Version 1.12.0 keeps Nexus crafting ingredients and the selected recipe between visits, prevents conversion loops, and combines stored-block conversions with other recipe paths. Recipe Tomes can block individual final or intermediate recipes. The default red X Blocking Rune excludes its container without moving the contents; the wand's linking glint follows the selected rune's painted color. See the [changelog](CHANGELOG.md).
+Version 1.12.1 preserves exact potion recipes, adds native Mekanism machine and resource discovery, and identifies each Recipe Tome recipe's process. Empty starred Nexus entries select a quantity before submitting a craft. Autocrafting still requires a physical crafting table within network coverage. See the [changelog](CHANGELOG.md).
 
+The Nexus grid is a saved personal workspace shared by your Nexus menus. Keep a separate crafting table within coverage for autocrafting. Inscribe the exact final output in a Recipe Tome and place it in a nearby Chiseled Bookshelf. Each recipe page names its process; hovering it shows the exact recipe and type IDs. Click an empty starred Nexus entry, enter the amount, then press Enter or the craft button. Use **Block recipe** or **Allow recipe** to control an alternative without replacing the taught output. The default **Blocking Rune** excludes a container without moving its contents.
 
-The Nexus grid is a saved personal workspace shared by your Nexus menus. Ordinary deposits skip processing machines. Inscribe a final output in a Recipe Tome, browse an alternative or intermediate output, then select **Block recipe** without inscribing that intermediate as the new target. **Allow recipe** restores the selected route. Place the default **Blocking Rune** on a container to exclude it; remove or disable the rune to reconnect it.
+Ordinary item, fluid, and chemical deposits skip processing machines. Energy may enter an unclaimed native energy container; active crafting claims exclude every resource through all aliases. Mekanism discovery uses native recipe, machine, and conversion contracts, including compatible addon recipes and factories. It preserves item, fluid, chemical, and energy requirements. Native power, security, mode, structure, and processing conditions remain required. World mechanics without a recipe or conversion contract are not inferred.
 
 ## Building
 
@@ -21,15 +22,15 @@ Use Java 25 to run the included Gradle wrapper:
 
 On Linux or macOS, use `./gradlew test build`.
 
-The installable JAR is `build/libs/astral_repository-26.3-neoforge-1.12.0.jar`.
+The installable JAR is `build/libs/astral_repository-26.3-neoforge-1.12.1.jar`.
 
 ## Source and validation
 
-Version 1.12.0 passes 173 unit tests and the normal release build. The shared tests cover conversion-loop rejection, mixed recipe paths, net additional output, maximum requests, and recipe exclusion matching. This edition's development client also passed gameplay checks with actual red/blue linking wands, generated-glint texture channel assertions, and inspected gallery captures. These are development-source checks, not a new packaged-client audit. The original NeoForge edition additionally passed 178 server GameTests in both ordinary and actual Polymorph/Iron Furnaces profiles, plus focused wand/tome UI client checks. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
+Version 1.12.1 passes 186 unit tests and the normal release build. Shared regressions cover recipe process labels, quantity selection, bounded machine-slot assignment, and existing planner and transfer behavior. A focused NeoForge 26.3 dedicated-server fixture also passed five physical brewing steps, exact potion Tome inscription, charged-fuel reuse, and bottle remainders. Mekanism changes on this edition received build/source validation, without an installed native Mekanism runtime audit. The original NeoForge 1.21.1 edition separately passed 223 required GameTests with actual Mekanism, Industrial Foregoing, Immersive Engineering, and Oritech, plus hidden, muted, mouse-free client checks for Tome labels and quantity requests. Those checks do not establish native execution on every other loader or game version. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
 
 The branch contains all of its source inputs. [The 26.3 source generator](tools/modern-26.3.gradle) adapts the Java in `src/main/java` and tests in `src/test/java` into `build/generated/sources/minecraft263/`. Replacement classes are applied in this order: `src/overrides/java`, then `src/shared-overrides/java`, then the base sources. Edit these inputs rather than the generated files. Resources in `src/main/resources` already use the 26.3 formats.
 
-The project contains 173 unit tests. Development runtime checks are available as `runServer -PsmokeTest` and `runClientSmoke -PclientSmoke`; the client fixture is compiled only when requested. Test fixtures are excluded from the release JAR. Server runs require accepting Minecraft's EULA in `run-server/eula.txt`.
+The project contains 186 unit tests. Development runtime checks are available as `runServer -PsmokeTest` and `runClientSmoke -PclientSmoke`; the client fixture is compiled only when requested. Test fixtures are excluded from the release JAR. Server runs require accepting Minecraft's EULA in `run-server/eula.txt`.
 
 The [packaged validation launcher](tools/neoforge-packaged-validation.gradle) runs the built release JAR with a separate fixture directory and removes the production source output directories from the runtime classpath. For a background client run, first disable NeoForge's early startup window:
 
