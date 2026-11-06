@@ -1,12 +1,12 @@
 # Astral Repository — Fabric 1.21.1
 
-A magical storage and automation network for Minecraft 1.21.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.12.1**, on branch `CappleApple/fabric-1.21.1`.
+A magical storage and automation network for Minecraft 1.21.1. Crystals connect nearby storage, relay resources, and coordinate crafting through ordinary workstations. This is Astral Repository **1.12.2**, on branch `CappleApple/fabric-1.21.1`.
 
-Version 1.12.1 preserves exact potion recipes, adds native Mekanism machine and resource discovery, and identifies each Recipe Tome recipe's process. Empty starred Nexus entries select a quantity before submitting a craft. Autocrafting still requires a physical crafting table within network coverage. See the [changelog](CHANGELOG.md).
+Version 1.12.2 discovers machine recipes through shared native APIs for Industrial Foregoing, Immersive Engineering, Oritech, Create, Thermal, Ender IO, and Powah. Recipe Tomes show nearby machine conversions and byproducts. Powah requests use one real orb cycle at a time. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
-Install `astral_repository-fabric-1.21.1-1.12.1.jar` on the client and server. Requires **Minecraft 1.21.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.116.17+1.21.1**, and **Java 21**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
+Install `astral_repository-fabric-1.21.1-1.12.2.jar` on the client and server. Requires **Minecraft 1.21.1**, **Fabric Loader 0.19.5 or newer**, **Fabric API 0.116.17+1.21.1**, and **Java 21**. Configuration, energy, and applicable model libraries are bundled in the mod JAR.
 
 Trinkets enables the goggles face slot; goggles also work in the normal helmet slot. Patchouli enables the Astral Field Guide. EMI adds recipe and menu integration, and Jade adds block information. These optional mods are not bundled. The explicit Refined Storage Fabric 1.21.1 adapter was not exercised with a complete optional storage network during these checks.
 
@@ -19,9 +19,9 @@ Trinkets enables the goggles face slot; goggles also work in the normal helmet s
 
 Right-click the Attunement Wand in the air to choose or edit rune presets. Place a Push or Pull rune on a container, then Shift-right-click the glyph with the wand to assign target containers.
 
-The Nexus grid is a saved personal workspace shared by your Nexus menus. Keep a separate crafting table within coverage for autocrafting. Inscribe the exact final output in a Recipe Tome and place it in a nearby Chiseled Bookshelf. Each recipe page names its process; hovering it shows the exact recipe and type IDs. Click an empty starred Nexus entry, enter the amount, then press Enter or the craft button. Use **Block recipe** or **Allow recipe** to control an alternative without replacing the taught output. The default **Blocking Rune** excludes a container without moving its contents.
+The Nexus grid is a saved personal workspace shared by your Nexus menus. Keep a physical crafting table within coverage for autocrafting. Inscribe the exact final output in a Recipe Tome and place it in a nearby Chiseled Bookshelf. Each recipe page names its process; hovering it shows the exact recipe and type IDs. Click an empty starred Nexus entry, enter the amount, then press Enter or the craft button. Use **Block recipe** or **Allow recipe** to control an alternative without replacing the taught output. The default **Blocking Rune** excludes a container without moving its contents.
 
-Ordinary item, fluid, and chemical deposits skip processing machines. Energy may enter an unclaimed native energy container; active crafting claims exclude every resource through all aliases. Mekanism discovery uses native recipe, machine, and conversion contracts, including compatible addon recipes and factories. It preserves item, fluid, chemical, and energy requirements. Native power, security, mode, structure, and processing conditions remain required. World mechanics without a recipe or conversion contract are not inferred.
+Ordinary item, fluid, and chemical deposits skip processing machines. Energy may enter an unclaimed native energy container; active crafting claims exclude every resource through all aliases. Machine discovery uses shared native recipe, machine, and conversion contracts. It includes compatible addon recipes when they expose those contracts. It preserves item, fluid, chemical, and energy requirements. Native power, security, mode, structure, and processing conditions remain required. World mechanics without a recipe or conversion contract are not inferred.
 
 ## Building
 
@@ -31,11 +31,11 @@ Run Gradle with **JDK 21**.
 .\gradlew.bat test build
 ```
 
-On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.21.1-1.12.1.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
+On Linux or macOS, use `./gradlew test build`. The output is `build/libs/astral_repository-fabric-1.21.1-1.12.2.jar`. All source sets and resources are inside this branch; no sibling checkout is required.
 
 ## Validation
 
-Version 1.12.1 passes 181 unit tests and the normal release build. Shared regressions cover recipe process labels, quantity selection, bounded machine-slot assignment, and existing planner and transfer behavior. Mekanism changes on this edition received build/source validation, without an installed native Mekanism runtime audit. The original NeoForge 1.21.1 edition separately passed 223 required GameTests with actual Mekanism, Industrial Foregoing, Immersive Engineering, and Oritech, plus hidden, muted, mouse-free client checks for Tome labels and quantity requests. Those checks do not establish native execution on every other loader or game version. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
+Version 1.12.2 passes 224 unit tests and its normal release build. Its actual packaged client ran hidden and muted without capturing the mouse, exercising placement, Nexus packets, Recipe Tome inscription and physical autocrafting. The tested JAR's class and resource entries match the release artifact. Native machine integrations on this edition received build/source validation; installed native-mod suites were run separately on NeoForge 1.21.1 and Forge 1.20.1. Discovery audits do not establish physical execution of every recipe or support for every addon. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
 
 The earlier release checks included 161 JUnit tests and 12 packaged-server rune transfer regressions. These cover delayed and instant transfers, one-tick pipelines, stock limits, rejected deliveries, saved shipments, and actual storage endpoints for network-bound runes. The packaged client fixture uses the remapped release JAR with a separate test mod. It covers all ten blocks on all six placement faces, survival item consumption, stateful storage break/re-place, stock-limited rune transfer, translated item names and tooltips, Nexus withdrawal and deposit packets, ordinary crafting, Recipe Tome inscription, bookshelf discovery, and a completed autocrafting job.
 

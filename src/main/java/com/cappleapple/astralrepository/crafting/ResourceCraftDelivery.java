@@ -12,13 +12,15 @@ final class ResourceCraftDelivery implements CraftScheduler.Operation<ResourceKe
     private final GlobalPos position;
     private final CraftPlan.Node<ResourceKey> node;
     private final CraftOrigins<ResourceKey,GlobalPos> origins;
+    private final Set<GlobalPos> claimed;
     private final List<Shipment> shipments=new ArrayList<>();
     private final Map<ResourceKey,Long> arrived=new LinkedHashMap<>();
     private CraftScheduler.Operation<ResourceKey> operation;
     private int elapsed,latest;
     private boolean settled;
-    ResourceCraftDelivery(CraftingService.NetworkAccess access,ResourceProcessingAdapter adapter,GlobalPos position,CraftPlan.Node<ResourceKey> node,CraftOrigins<ResourceKey,GlobalPos> origins){
+    ResourceCraftDelivery(CraftingService.NetworkAccess access,ResourceProcessingAdapter adapter,GlobalPos position,CraftPlan.Node<ResourceKey> node,CraftOrigins<ResourceKey,GlobalPos> origins,List<GlobalPos> claimed){
         this.access=access;this.adapter=adapter;this.position=position;this.node=node;this.origins=origins;
+        this.claimed=Set.copyOf(claimed);
         // Read routes before taking origin claims, so validation failures cannot lose provenance.
         Map<GlobalPos,Integer> delays=new HashMap<>();for(var key:node.inputs().keySet())for(var from:origins.positions(key))delays.put(from,access.travelTicks(from,position));
         node.inputs().forEach((key,count)->origins.take(key,count,access.origin()).forEach((from,n)->{
@@ -30,6 +32,8 @@ final class ResourceCraftDelivery implements CraftScheduler.Operation<ResourceKe
         if(operation!=null)return operation.poll();
         var level=access.level().getServer().getLevel(position.dimension());if(level==null||!level.hasChunkAt(position.pos()))return null;
         if(!adapter.supports(access,position,node))throw new IllegalStateException("Workstation removed before ingredients arrived");
+        var current=new HashSet<>(adapter.claimedPositions(access,position,node));current.add(position);
+        if(!current.equals(claimed))throw new IllegalStateException("Native machine output destinations changed before delivery");
         elapsed++;boolean changed=false;
         for(var shipment:shipments)if(shipment.due()<=elapsed&&shipment.due()>elapsed-1){arrived.merge(shipment.key(),shipment.count(),Long::sum);changed=true;}
         if(elapsed==1)for(var shipment:shipments)if(shipment.due()==0){arrived.merge(shipment.key(),shipment.count(),Long::sum);changed=true;}

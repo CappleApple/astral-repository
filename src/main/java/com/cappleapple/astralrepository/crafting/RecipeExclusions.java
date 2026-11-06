@@ -8,5 +8,9 @@ public final class RecipeExclusions {
         if (excluded.contains(recipe)) return false;
         return excluded.stream().noneMatch(id -> recipe.endsWith("/" + id));
     }
+    /** A composed native operation is blocked when any actual source recipe is blocked. */
+    public static boolean allows(String recipe, java.util.Collection<String> sources, Set<String> excluded) {
+        return allows(recipe, excluded) && sources.stream().allMatch(source -> allows(source, excluded));
+    }
     private RecipeExclusions() {}
 }

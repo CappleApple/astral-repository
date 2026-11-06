@@ -5,7 +5,8 @@ import java.util.Map;
 import java.util.Set;
 
 /** Topologically ordered DAG. Reservations contain only resources taken from existing storage. */
-public record CraftPlan<K>(K target, long count, Map<K, Long> reservations, List<Node<K>> nodes) {
+public record CraftPlan<K>(K target, long count, Map<K, Long> reservations, List<Node<K>> nodes, boolean additional) {
+    public CraftPlan(K target, long count, Map<K, Long> reservations, List<Node<K>> nodes) { this(target, count, reservations, nodes, false); }
     public CraftPlan {
         reservations = Map.copyOf(reservations);
         nodes = List.copyOf(nodes);
