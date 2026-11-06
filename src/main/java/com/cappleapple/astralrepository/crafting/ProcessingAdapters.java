@@ -20,6 +20,7 @@ public final class ProcessingAdapters {
         List<ResourceProcessingAdapter> result = new ArrayList<>();
         for (var adapter : create()) result.add(new ItemProcessingBridge(adapter));
         result.add(new MekanismProcessingAdapter());
+        NativeMachineBackends.create().forEach(backend -> result.add(new NativeMachineAdapter(backend)));
         RESOURCE_FACTORIES.forEach((id, factory) -> { try { result.add(factory.get()); } catch (RuntimeException failure) { CraftingService.LOGGER.error("Resource processing adapter {} could not initialize", id, failure); } });
         return result;
     }
