@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.12.2 - 2026-11-05
+
+### Added
+
+- Expanded autocrafting for Industrial Foregoing, Immersive Engineering, Oritech, Create, Thermal, and Ender IO. Machines using each mod's shared recipe APIs are detected automatically, with their real item/fluid inputs, byproducts, fuel, tools, and catalysts.
+- Added Powah energizing recipes. Large requests run as separate orb cycles, with at most one ingredient in each input slot.
+- Recipe Tomes can teach machine conversions and byproducts that have no ordinary recipe entry, and identify the nearby machine that performs them.
+
+### Fixed
+
+- Queued crafts retain their planned recipes when machine discovery or stored ingredient variants refresh.
+- Custom machine ingredients recognize newly stocked item types even when those items are missing from the recipe's displayed alternatives.
+- Replication recipes can reuse a real seed while counting only the newly produced items toward the requested amount.
+- Recipe Tome exclusions also block the native recipes used inside machine conversions.
+- Active machines, multiblock ports, and output containers share one reservation. Dropped results stay separate from preexisting item stacks until collected.
+
 ## 1.12.1 - 2026-11-05
 
 ### Added

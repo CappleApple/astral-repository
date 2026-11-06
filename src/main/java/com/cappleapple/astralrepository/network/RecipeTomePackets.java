@@ -24,13 +24,14 @@ public final class RecipeTomePackets {
         @Override public Type<Action> type() { return TYPE; }
     }
     public record Page(int menu, int page, int total, ItemStack taught, String status, List<RecipeTomeMenu.Entry> entries) implements CustomPacketPayload {
-        public static final Type<Page> TYPE = new Type<>(Identifier.fromNamespaceAndPath("astral_repository", "tome_page"));
+        public static final Type<Page> TYPE = new Type<>(Identifier.fromNamespaceAndPath("astral_repository", "tome_page_v2"));
         public static final StreamCodec<RegistryFriendlyByteBuf, Page> CODEC = StreamCodec.of((b, p) -> {
             b.writeVarInt(p.menu); b.writeVarInt(p.page); b.writeVarInt(p.total); ItemStack.OPTIONAL_STREAM_CODEC.encode(b, p.taught); b.writeUtf(p.status, 160);
             b.writeVarInt(p.entries.size());
             for (var entry : p.entries) {
                 b.writeIdentifier(entry.recipe()); b.writeIdentifier(entry.type()); ItemStack.STREAM_CODEC.encode(b, entry.output());
                 b.writeBoolean(entry.excluded());
+                b.writeUtf(entry.process(), 256);
                 b.writeVarInt(entry.ingredients().size()); for (ItemStack ingredient : entry.ingredients()) ItemStack.OPTIONAL_STREAM_CODEC.encode(b, ingredient);
             }
         }, b -> {
@@ -40,9 +41,10 @@ public final class RecipeTomePackets {
             for (int i = 0; i < count; i++) {
                 Identifier recipe = b.readIdentifier(), type = b.readIdentifier(); ItemStack output = ItemStack.STREAM_CODEC.decode(b);
                 boolean excluded = b.readBoolean();
+                String process = b.readUtf(256);
                 int inputs = b.readVarInt(); if (inputs < 0 || inputs > 9) throw new IllegalArgumentException("Invalid tome recipe preview");
                 List<ItemStack> ingredients = new ArrayList<>(); for (int slot = 0; slot < inputs; slot++) ingredients.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(b));
-                entries.add(new RecipeTomeMenu.Entry(recipe, type, output, List.copyOf(ingredients), excluded));
+                entries.add(new RecipeTomeMenu.Entry(recipe, type, output, List.copyOf(ingredients), excluded, process));
             }
             return new Page(menu, page, total, taught, status, List.copyOf(entries));
         });
@@ -50,7 +52,7 @@ public final class RecipeTomePackets {
     }
     public static void setup(IEventBus bus) { bus.addListener(RecipeTomePackets::register); }
     private static void register(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("1");
+        var registrar = event.registrar("2");
         registrar.playToServer(Action.TYPE, Action.CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player && player.containerMenu instanceof RecipeTomeMenu menu && menu.containerId == payload.menu()) menu.action(payload);
         });
