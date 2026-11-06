@@ -80,7 +80,9 @@ public final class FabricGameplaySmoke implements net.fabricmc.api.ClientModInit
             }else if(phase==11&&mc.screen instanceof RecipeTomeScreen screen){screen.acceptItem(new ItemStack(Items.OAK_PLANKS));next(12);
             }else if(phase==12&&mc.screen instanceof RecipeTomeScreen screen){
                 var id=new net.minecraft.resources.ResourceLocation("minecraft:oak_planks");
-                if(!screen.selectRecipe(id))return;capture("recipe-catalogue.png");screen.inscribeSelection();next(13);
+                if(!screen.selectRecipe(id))return;next(19);
+            }else if(phase==19&&ticks>10&&mc.screen instanceof RecipeTomeScreen screen){
+                check(!screen.visibleRecipes().isEmpty(),"Selected recipe page disappeared before render");capture("recipe-catalogue.png");screen.inscribeSelection();next(13);
             }else if(phase==13&&RecipeTomeItem.product(mc.player.getMainHandItem(),mc.level.registryAccess()).is(Items.OAK_PLANKS)){
                 server(p->{
                     var level=p.serverLevel();var tome=p.getMainHandItem().copy();check(RecipeTomeItem.product(tome,level.registryAccess()).is(Items.OAK_PLANKS),"Server inscription output");p.closeContainer();

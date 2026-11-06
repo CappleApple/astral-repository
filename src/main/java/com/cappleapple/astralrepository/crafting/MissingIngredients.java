@@ -33,7 +33,8 @@ public final class MissingIngredients<K> {
             long operations=(count-1)/recipe.outputCount()+1;if(operations>8192)continue;
             var branch=new State(state);
             for(var ingredient:recipe.ingredients()){
-                long left=Math.multiplyExact(operations,ingredient.count());
+                boolean seed=recipe.returnedSeedCount()>0 && ingredient.alternatives().stream().allMatch(key::equals);
+                long left=seed?ingredient.count():Math.multiplyExact(operations,ingredient.count());
                 for(K alt:ingredient.alternatives()){left=branch.take(alt,left);if(left==0)break;}
                 if(left==0)continue;
                 State bestAlternative=null;
@@ -46,7 +47,7 @@ public final class MissingIngredients<K> {
                 if(bestAlternative!=null&&(ingredient.tag().isEmpty()||bestAlternative.score()==branch.score()||usesStock))branch=bestAlternative;
                 else branch.missing.merge(new Group<>(ingredient.alternatives(),ingredient.tag()),left,Math::addExact);
             }
-            branch.stock.merge(key,operations*recipe.outputCount()-count,Long::sum);
+            branch.stock.merge(key,Math.addExact(Math.multiplyExact(operations,recipe.outputCount())-count,recipe.returnedSeedCount()),Long::sum);
             if(best==null||branch.score()<best.score())best=branch;
             if(best.score()==state.score())break;
         }

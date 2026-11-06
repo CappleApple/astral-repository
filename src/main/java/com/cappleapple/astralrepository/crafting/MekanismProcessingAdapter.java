@@ -18,7 +18,10 @@ public final class MekanismProcessingAdapter implements ResourceProcessingAdapte
     private record Choice(List<ResourceKey> alternatives, long count) {}
     private final Map<String, Binding> bindings = new HashMap<>();
     private final Set<String> diagnostics = new HashSet<>();
-    private final Set<Object> unavailable = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<Object> unavailable;
+    public MekanismProcessingAdapter() { unavailable = Collections.newSetFromMap(new IdentityHashMap<>()); }
+    private MekanismProcessingAdapter(MekanismProcessingAdapter source) { unavailable = source.unavailable; bindings.putAll(source.bindings); }
+    @Override public ResourceProcessingAdapter capturePlan() { return new MekanismProcessingAdapter(this); }
 
     @Override public List<?> catalogState(CraftingService.NetworkAccess access) {
         List<Object> result = new ArrayList<>();
@@ -130,7 +133,9 @@ public final class MekanismProcessingAdapter implements ResourceProcessingAdapte
                     for (var output : aliases.entrySet()) {
                         String costKey = perTick ? cost.state().isEmpty() ? "unbound" : costKey(cost) : "once";
                         String id = "astral_repository:mekanism/" + entry.type().replace(':', '/') + "/" + direction + "/" + costKey + "/" + variant++ + "/" + entry.id();
-                        result.add(new CraftRecipe<>(id, output.getKey(), output.getValue(), "mekanism/" + entry.type() + "/" + direction + "/" + costKey, ingredients, 0, (int) Math.min(Integer.MAX_VALUE, duration(entry.recipe()))));
+                        long self = ingredients.stream().filter(input -> input.alternatives().contains(output.getKey())).mapToLong(CraftRecipe.Ingredient::count).reduce(0, Math::addExact);
+                        long seed = guaranteed.containsKey(output.getKey()) && output.getValue() > self ? self : 0;
+                        result.add(new CraftRecipe<>(id, output.getKey(), output.getValue() - seed, "mekanism/" + entry.type() + "/" + direction + "/" + costKey, ingredients, 0, (int) Math.min(Integer.MAX_VALUE, duration(entry.recipe())), seed));
                         bindings.put(id, new Binding(entry.type(), entry.recipe(), inputs, Map.copyOf(guaranteed), Map.copyOf(possible), perTick, !guaranteed.containsKey(output.getKey()), perTick ? cost.state() : Map.of()));
                     }
                 }

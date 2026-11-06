@@ -57,7 +57,7 @@ public final class CraftScheduler<K, P> {
                 if (produced == null) continue;
                 running.remove(entry.getKey());
                 add(produced);
-                if (produced.getOrDefault(work.node().recipe().output(), 0L) < work.node().recipe().outputCount()) {
+                if (produced.getOrDefault(work.node().recipe().output(), 0L) < work.node().recipe().grossOutputCount()) {
                     if (work.operation().mayReturnShortOutput()) {
                         retryRequired = true;
                         stop(State.WAITING);
@@ -91,7 +91,7 @@ public final class CraftScheduler<K, P> {
                 if (!started) ready.addLast(id);
             }
             state = completed.size() == plan.nodes().size() ? State.COMPLETE : running.isEmpty() ? State.WAITING : State.RUNNING;
-            if (state == State.COMPLETE && escrow.getOrDefault(plan.target(), 0L) < plan.count())
+            if (state == State.COMPLETE && targetCredit(escrow) < plan.count())
                 throw new IllegalStateException("Final result missing from escrow");
         } catch (RuntimeException failure) {
             error = failure.getMessage() == null ? failure.getClass().getSimpleName() : failure.getMessage();
@@ -113,6 +113,12 @@ public final class CraftScheduler<K, P> {
         Map<K, Long> result = Map.copyOf(escrow);
         escrow.clear();
         return result;
+    }
+    /** Returned original seeds are physical resources, but do not count as newly produced targets. */
+    public long targetCredit(Map<K, Long> returned) {
+        long amount = returned.getOrDefault(plan.target(), 0L);
+        long seed = plan.additional() ? plan.reservations().getOrDefault(plan.target(), 0L) : 0;
+        return amount <= seed ? 0 : amount - seed;
     }
     public Map<K, Long> recoverySnapshot() {
         Map<K, Long> result = new LinkedHashMap<>(escrow);

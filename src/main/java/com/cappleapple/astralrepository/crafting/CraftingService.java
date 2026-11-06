@@ -20,6 +20,7 @@ public final class CraftingService {
     private static final Map<GlobalPos, UUID> PROCESSOR_OWNERS = new HashMap<>();
     private static final Map<Object, UUID> PROCESSOR_IDENTITIES = new HashMap<>();
     private static final Map<GlobalPos, Object> CLAIM_IDENTITIES = new HashMap<>();
+    private static final Map<GlobalPos, List<GlobalPos>> CLAIM_POSITIONS = new HashMap<>();
     private static final Set<UUID> ACTIVE = new HashSet<>();
     public interface NetworkAccess {
         ServerLevel level();
@@ -111,6 +112,7 @@ public final class CraftingService {
     private final Map<UUID,Planning> planning=new LinkedHashMap<>();
     private List<CraftRecipe<ResourceKey>> catalogRecipes=List.of();
     private Map<String,ResourceProcessingAdapter> catalogOwners=Map.of();
+    private Map<String,ResourceProcessingAdapter> capturedOwners=Map.of();
     private List<?> recipeHolders=List.of(),processingRules=List.of(),adapterStates=List.of();
     private Set<ResourceKey> catalogVariants=Set.of();
     private AsyncCraftPlanner<ResourceKey> catalog;
@@ -119,6 +121,27 @@ public final class CraftingService {
     };
     private record ProcessorProbe(ResourceProcessingAdapter adapter,CraftPlan.Node<ResourceKey> node) {}
     private List<ProcessorProbe> processorProbes=List.of();
+    /** Detached server-owned recipe knowledge; browsing never starts or reserves a craft. */
+    public List<CraftRecipe<ResourceKey>> catalogSnapshot() {
+        refreshCatalog(access.resourceSnapshot());
+        return catalogRecipes;
+    }
+    public List<CraftRecipe<ResourceKey>> catalogSnapshot(ItemStack desiredOutput) {
+        if (!desiredOutput.isEmpty()) {
+            var key = new ItemKey(desiredOutput);
+            adapters.forEach(adapter -> adapter.requestOutput(access, key));
+        }
+        return catalogSnapshot();
+    }
+    public String workstationLabel(String recipeId) {
+        var adapter = catalogOwners.get(recipeId);
+        return adapter == null ? "" : adapter.workstationLabel(access, recipeId);
+    }
+    /** Read the captured native dependency identities, never infer them from an encoded alias. */
+    public Set<String> sourceRecipes(String recipeId) {
+        var adapter = capturedOwners.get(recipeId);
+        return adapter == null ? Set.of(recipeId) : adapter.sourceRecipes(recipeId);
+    }
     private void refreshCatalog(Map<ResourceKey,Long> stock){
         var holders=List.copyOf(access.level().getRecipeManager().getRecipes());
         var rules=List.copyOf(ProcessingRules.rules());
@@ -129,6 +152,10 @@ public final class CraftingService {
         for(var adapter:adapters)try{for(var recipe:adapter.recipes(access))if(owners.putIfAbsent(recipe.id(),adapter)==null)recipes.add(recipe);}
         catch(RuntimeException failure){LOGGER.warn("Processing adapter unavailable",failure);}
         catalogRecipes=List.copyOf(recipes);catalogOwners=Map.copyOf(owners);catalog=new AsyncCraftPlanner<>(catalogRecipes);
+        var captured=new IdentityHashMap<ResourceProcessingAdapter,ResourceProcessingAdapter>();
+        var frozen=new LinkedHashMap<String,ResourceProcessingAdapter>();
+        owners.forEach((id,adapter)->frozen.put(id,captured.computeIfAbsent(adapter,ResourceProcessingAdapter::capturePlan)));
+        capturedOwners=Map.copyOf(frozen);
         recipeHolders=holders;processingRules=rules;catalogVariants=variants;adapterStates=states;filteredCatalogs.clear();
     }
     private Set<String> availableProcesses(){
@@ -152,10 +179,10 @@ public final class CraftingService {
         return processorProbes.stream().anyMatch(probe->probe.adapter().supports(access,position,probe.node()));
     }
     private void calculate(Planning job,Map<ResourceKey,Long> stock,Set<String> processes){
-        job.snapshot=Map.copyOf(stock);job.processes=processes;job.catalog=catalog;job.owners=catalogOwners;
+        job.snapshot=Map.copyOf(stock);job.processes=processes;job.catalog=catalog;job.owners=capturedOwners;
         job.exclusions=Set.copyOf(access.excludedRecipes(job.target));
         var worker=job.exclusions.isEmpty()?catalog:filteredCatalogs.computeIfAbsent(job.exclusions,
-                excluded->new AsyncCraftPlanner<>(catalogRecipes.stream().filter(recipe->RecipeExclusions.allows(recipe.id(),excluded)).toList()));
+                excluded->new AsyncCraftPlanner<>(catalogRecipes.stream().filter(recipe->RecipeExclusions.allows(recipe.id(),sourceRecipes(recipe.id()),excluded)).toList()));
         job.state="CALCULATING";job.missing=List.of();job.error="";
         try{job.future=worker.submit(new ItemKey(job.target),job.count,ledger.available(stock),processes);}
         catch(java.util.concurrent.RejectedExecutionException busy){job.future=null;}
@@ -197,6 +224,22 @@ public final class CraftingService {
         try { access.craftingVisual(table, grid, output, com.cappleapple.astralrepository.network.LogisticsTiming.visualTicks(ticks)); } catch (RuntimeException failure) { LOGGER.debug("Cosmetic table animation failed", failure); }
     }
     public static boolean isProcessorReserved(GlobalPos position) { return PROCESSOR_OWNERS.containsKey(position); }
+    static boolean hasProcessorClaims() { return !PROCESSOR_IDENTITIES.isEmpty(); }
+    static NativeWorldOutputs.Claim nativeOutputClaim(ServerLevel level, net.minecraft.core.BlockPos position) {
+        if (PROCESSOR_IDENTITIES.isEmpty()) return null;
+        GlobalPos at = GlobalPos.of(level.dimension(), position);
+        if (CLAIM_IDENTITIES.containsKey(at)) return new NativeWorldOutputs.Claim(PROCESSOR_OWNERS.get(at), at);
+        Object identity = null;
+        try {
+            Object handler = MekanismMachineAccess.handler(level.getBlockEntity(position));
+            if (handler != null && PROCESSOR_IDENTITIES.containsKey(MekanismMachineAccess.identity(handler))) identity = MekanismMachineAccess.identity(handler);
+        } catch (RuntimeException | LinkageError unavailable) { /* Other native backends remain independent. */ }
+        if (identity == null) identity = NativeMachineBackends.ownedIdentity(level, position, PROCESSOR_IDENTITIES.keySet());
+        if (identity == null) return null;
+        UUID request = PROCESSOR_IDENTITIES.get(identity);
+        for (var entry : CLAIM_IDENTITIES.entrySet()) if (entry.getValue().equals(identity)) return new NativeWorldOutputs.Claim(request, entry.getKey());
+        return null;
+    }
     /** Direct rune paths also respect native multiblock aliases outside their originating network. */
     public static boolean isProcessorReserved(net.minecraft.server.MinecraftServer server, GlobalPos position) {
         if (isProcessorReserved(position)) return true;
@@ -204,8 +247,9 @@ public final class CraftingService {
         if (level == null || !level.hasChunkAt(position.pos()) || PROCESSOR_IDENTITIES.isEmpty()) return false;
         try {
             Object handler = MekanismMachineAccess.handler(level.getBlockEntity(position.pos()));
-            return handler != null && PROCESSOR_IDENTITIES.containsKey(MekanismMachineAccess.identity(handler));
-        } catch (RuntimeException | LinkageError unavailable) { return false; }
+            if (handler != null && PROCESSOR_IDENTITIES.containsKey(MekanismMachineAccess.identity(handler))) return true;
+        } catch (RuntimeException | LinkageError unavailable) { /* Other mod identities remain independently discoverable. */ }
+        return NativeMachineBackends.reserved(level, position.pos(), PROCESSOR_IDENTITIES.keySet());
     }
     public boolean isProcessorAliasReserved(GlobalPos position) {
         if (isProcessorReserved(position)) return true;
@@ -232,6 +276,9 @@ public final class CraftingService {
     private RequestResult startPlanned(Planning job,CraftPlan<ResourceKey> plan){
         UUID id=job.id;ItemStack target=job.target;int count=job.count;
         var owners=job.owners;var snapshot=access.resourceSnapshot();
+        var excluded=Set.copyOf(access.excludedRecipes(target));
+        if(plan.nodes().stream().anyMatch(node->{var owner=owners.get(node.recipe().id());return owner==null||!RecipeExclusions.allows(node.recipe().id(),owner.sourceRecipes(node.recipe().id()),excluded);}))
+            return new RequestResult(false,"A recipe used by this craft is blocked by its Recipe Tome",null);
         NetworkAccess jobAccess=new CraftingJobAccess(access,new ItemKey(target));
         Map<ResourceKey,Long> extracted=new LinkedHashMap<>();
         CraftOrigins<ResourceKey,GlobalPos> origins=new CraftOrigins<>();
@@ -257,13 +304,23 @@ public final class CraftingService {
                     return !isProcessorAliasReserved(position) && node.inputs().keySet().stream().allMatch(key->origins.positions(key).stream().allMatch(from->access.canRoute(from,position))) && owners.get(node.recipe().id()).supports(jobAccess, position, node);
                 }
                 @Override public CraftScheduler.Operation<ResourceKey> start(GlobalPos position, CraftPlan.Node<ResourceKey> node) {
-                    Object identity = owners.get(node.recipe().id()).processorIdentity(jobAccess, position);
+                    var adapter = owners.get(node.recipe().id());
+                    Object identity = adapter.processorIdentity(jobAccess, position);
+                    var claimed = new LinkedHashSet<GlobalPos>(); claimed.add(position);
+                    claimed.addAll(adapter.claimedPositions(jobAccess, position, node));
+                    for (var endpoint : claimed) {
+                        var level = access.level().getServer().getLevel(endpoint.dimension());
+                        if (level == null || !level.hasChunkAt(endpoint.pos()) || isProcessorAliasReserved(endpoint)) return null;
+                    }
                     if (PROCESSOR_IDENTITIES.putIfAbsent(identity, id) != null) return null;
-                    if (PROCESSOR_OWNERS.putIfAbsent(position, id) != null) { PROCESSOR_IDENTITIES.remove(identity, id); return null; }
+                    for (var endpoint : claimed) PROCESSOR_OWNERS.put(endpoint, id);
                     CLAIM_IDENTITIES.put(position, identity);
-                    access.processorChanged(position);
+                    CLAIM_POSITIONS.put(position, List.copyOf(claimed));
                     CraftScheduler.Operation<ResourceKey> operation;
-                    try { operation = new ResourceCraftDelivery(jobAccess,owners.get(node.recipe().id()),position,node,origins); }
+                    try {
+                        claimed.forEach(access::processorChanged);
+                        operation = new ResourceCraftDelivery(jobAccess, adapter, position, node, origins, List.copyOf(claimed));
+                    }
                     catch (RuntimeException failure) { release(position, id); throw failure; }
                     return new CraftScheduler.Operation<>() {
                         @Override public Map<ResourceKey, Long> poll() {
@@ -332,6 +389,11 @@ public final class CraftingService {
         if (PROCESSOR_OWNERS.remove(position, id)) {
             Object identity = CLAIM_IDENTITIES.remove(position);
             if (identity != null) PROCESSOR_IDENTITIES.remove(identity, id);
+            var claimed = CLAIM_POSITIONS.remove(position);
+            if (claimed != null) for (var endpoint : claimed) {
+                PROCESSOR_OWNERS.remove(endpoint, id);
+                access.processorChanged(endpoint);
+            }
         }
         access.processorChanged(position);
     }
@@ -413,7 +475,7 @@ public final class CraftingService {
             // counts toward this request; surplus/refunds are real storage before replanning.
             recovery.remove(job.id());
             if (!pending.isEmpty()) recovery.put(UUID.randomUUID(), access.origin(), pending);
-            long produced = Math.addExact(job.produced(), actual.getOrDefault(new ItemKey(job.target()), 0L));
+            long produced = Math.addExact(job.produced(), job.scheduler().targetCredit(actual));
             if (produced < job.count()) {
                 planning.put(job.id(), new Planning(job.id(), job.owner(), job.target(), Math.toIntExact(job.count()-produced), Math.toIntExact(job.count()), produced));
             } else remember(new JobStatus(job.id(),job.owner(),job.target(),job.count(),"COMPLETE",job.scheduler().completed(),job.scheduler().total(),0,""));
