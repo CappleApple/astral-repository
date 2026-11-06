@@ -29,6 +29,8 @@ def generator = tasks.register('generateMinecraft263Sources', Sync) {
             renames.each { before, after -> line = line.replace(before, after).replace(before.replace('.', '/'), after.replace('.', '/')) }
             line = line.replace('import com.mojang.blaze3d.pipeline.*;', 'import com.mojang.blaze3d.pipeline.*; import com.mojang.renderpearl.api.pipeline.*;')
             line = line.replace('DynamicUniforms.class', 'DynamicGpuData.class')
+            // Native brewing moved from PotionBrewing to the registered BREWING recipe contract.
+            line = line.replace('reference.owner().equals(net.minecraft.world.item.alchemy.PotionBrewing.class.getName())', '(reference.owner().equals(net.minecraft.world.item.crafting.BrewingRecipe.class.getName()) || (reference.opcode()==178 && reference.owner().equals(net.minecraft.world.item.crafting.RecipeType.class.getName()) && reference.readStatic(type.getClassLoader())==net.minecraft.world.item.crafting.RecipeType.BREWING))')
             line = line.replace('DynamicUniformStorage.DynamicUniform', 'DynamicGpuDataStorage.DynamicGpuData')
             line = line.replace('DynamicUniformStorage<', 'DynamicGpuDataStorageMapped<')
             line = line.replace('("Astral material UBO",352,32)', '("Astral material UBO",352,com.mojang.renderpearl.api.buffers.GpuBuffer.USAGE_UNIFORM,32)')
