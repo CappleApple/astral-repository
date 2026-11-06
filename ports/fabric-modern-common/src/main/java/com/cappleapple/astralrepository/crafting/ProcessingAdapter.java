@@ -6,6 +6,7 @@ import java.util.List;
 
 /** Server-thread adapter for actual processing infrastructure. Implementations must isolate failures. */
 public interface ProcessingAdapter {
+    default ProcessingAdapter capturePlan() { return this; }
     /** Recipe knowledge is separate from the final products exposed by bookshelves. */
     List<CraftRecipe<ItemKey>> recipes(CraftingService.NetworkAccess access);
     boolean supports(CraftingService.NetworkAccess access, GlobalPos position, CraftPlan.Node<ItemKey> node);

@@ -15,12 +15,17 @@
       ],
       "title": "Inscribe a recipe",
       "border": true,
-      "text": "Review the output and ingredients, then press Inscribe."
+      "text": "Review the output, processing method, machine, and ingredients, then press Inscribe."
     },
     {
       "type": "patchouli:text",
       "text": "Place a crafting table inside network coverage for autocrafting. The Nexus's personal grid is a separate manual workspace. Supply furnaces, brewing stands, or stonecutters for other processes. Extra tables add capacity. Visual Workbench keeps its saved grid untouched.$(br2)Intermediate recipes resolve automatically. Furnaces need fuel.$(br2)Jobs at the lower right show amounts and progress. Click a job's cross to cancel.",
       "title": "Supply the workshop"
+    },
+    {
+      "type": "patchouli:text",
+      "title": "Machine recipes",
+      "text": "Place compatible machines inside network coverage. Native tech recipes use their real item and fluid ports, co-products, and fuel.$(br2)Supply the normal power, heat, structure, tools, and catalysts. The Tome identifies the process and nearby machine.$(br2)Powah energizing runs one recipe at a time, with one ingredient per orb input slot. Larger requests repeat that cycle."
     },
     {
       "type": "patchouli:crafting",

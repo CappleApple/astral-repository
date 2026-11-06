@@ -7,7 +7,7 @@ import java.util.function.BiPredicate;
 public final class MachineSlotAssignment {
     private MachineSlotAssignment() {}
     public static <T> List<Integer> assign(List<Integer> slots, List<T> ingredients, BiPredicate<Integer, T> accepts) {
-        if (ingredients.isEmpty() || ingredients.size() > 9 || ingredients.size() > slots.size()) return null;
+        if (ingredients.isEmpty() || ingredients.size() > 64 || ingredients.size() > slots.size()) return null;
         var assigned = new ArrayList<Integer>();
         return visit(List.copyOf(new LinkedHashSet<>(slots)), ingredients, accepts, 0, assigned, new int[]{4096}) ? List.copyOf(assigned) : null;
     }

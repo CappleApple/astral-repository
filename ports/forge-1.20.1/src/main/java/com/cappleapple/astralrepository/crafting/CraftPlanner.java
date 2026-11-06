@@ -29,7 +29,7 @@ public final class CraftPlanner<K> {
     public synchronized CraftPlan<K> plan(K target, long count, Map<K, Long> inventory, Set<String> processes) {
         return plan(target,count,inventory,processes,true);
     }
-    /** Produce a net increase in the target; cyclic paths cannot spend existing target stock. */
+    /** Produce a net increase; only declared guaranteed-growth recipes may reuse owned target seeds. */
     public synchronized CraftPlan<K> planAdditional(K target,long count,Map<K,Long> inventory,Set<String> processes) {
         return plan(target,count,inventory,processes,false);
     }
@@ -42,7 +42,7 @@ public final class CraftPlanner<K> {
         });
         attempts = 0; activeSearch = 0;
         State outcome = fulfill(target, count, initial, new LinkedHashSet<>(), processes, result -> result.state, useExistingTarget);
-        return new CraftPlan<>(target, count, outcome.reservations, outcome.nodes);
+        return new CraftPlan<>(target, count, outcome.reservations, outcome.nodes, !useExistingTarget);
     }
     private Set<K> relevantKeys(K target, Set<String> processes) {
         Set<K> result = new HashSet<>();
@@ -89,6 +89,19 @@ public final class CraftPlanner<K> {
             for (CraftRecipe<K> recipe : candidates) {
                 if (usedRecipes.contains(recipe.id())) continue;
                 try {
+                    if (recipe.returnedSeedCount() > 0) {
+                        long credit = initial.supplies.getOrDefault(key, List.of()).stream().filter(supply -> supply.credit).mapToLong(supply -> supply.count).sum();
+                        long uncredited = available(key, initial) - credit;
+                        long borrowedCredit = Math.max(0, recipe.returnedSeedCount() - uncredited);
+                        long required = useExisting ? Math.max(0, count - available(key, initial)) : Math.max(0, Math.addExact(count - credit, borrowedCredit));
+                        long operations = required == 0 ? 0 : Math.floorDiv(required - 1, recipe.outputCount()) + 1;
+                        if (operations > maxNodes - initial.nodes.size()) throw new PlanningException("Craft plan exceeds " + maxNodes + " operations");
+                        return resolveOperations(recipe, operations, new State(initial), nextPath, processes, branch -> {
+                            Set<Integer> producedBy = new LinkedHashSet<>();
+                            if (consume(key, count, branch, producedBy, useExisting) != 0) throw new PlanningException("Seed production did not supply the requested net output");
+                            return continuation.apply(new Outcome(branch, producedBy));
+                        });
+                    }
                     long operations = Math.floorDiv(missing - 1, recipe.outputCount()) + 1;
                     if (operations > maxNodes - state.nodes.size()) throw new PlanningException("Craft plan exceeds " + maxNodes + " operations");
                     State batch = new State(state);
@@ -139,6 +152,8 @@ public final class CraftPlanner<K> {
         Set<Integer> producedBy = new LinkedHashSet<>(dependencies);
         long remaining = consume(key, missing, state, producedBy, useExisting);
         if (remaining == 0) return continuation.apply(new Outcome(state, producedBy));
+        if (available(key, initial) > 0 && candidates(key, processes).stream().anyMatch(recipe -> recipe.returnedSeedCount() > 0 && !usedRecipes.contains(recipe.id())))
+            return fulfill(key, missing, new State(initial), path, processes, continuation, useExisting, usedRecipes);
         if (remaining == missing) throw new PlanningException("Recipe did not supply its declared output");
         return fulfill(key, remaining, state, path, processes, outcome -> {
             Set<Integer> allDependencies = new LinkedHashSet<>(producedBy);
@@ -168,10 +183,11 @@ public final class CraftPlanner<K> {
         budget();
         if (index == recipe.ingredients().size()) {
             if (state.nodes.size() >= maxNodes) throw new PlanningException("Craft plan exceeds " + maxNodes + " operations");
-            recordProduction(recipe.output(), selected, state);
+            recordProduction(recipe, selected, state);
             int id = state.nodes.size();
             state.nodes.add(new CraftPlan.Node<>(id, recipe, selected, dependencies));
             state.supplies.computeIfAbsent(recipe.output(), ignored -> new ArrayList<>()).add(new Supply(recipe.outputCount(), id));
+            if (recipe.returnedSeedCount() > 0) state.supplies.get(recipe.output()).add(new Supply(recipe.returnedSeedCount(), id, false));
             return continuation.apply(state);
         }
         CraftRecipe.Ingredient<K> ingredient = recipe.ingredients().get(index);
@@ -180,6 +196,12 @@ public final class CraftPlanner<K> {
         String failure = "No usable alternative for " + ingredient.alternatives();
         for (K alternative : alternatives) {
             try {
+                if (recipe.returnedSeedCount() > 0 && Objects.equals(alternative, recipe.output())) {
+                    State branch = new State(state); Set<Integer> seedDependencies = new LinkedHashSet<>(dependencies);
+                    if (consumeSeed(alternative, ingredient.count(), branch, seedDependencies) != 0) throw new PlanningException("Missing initial seed for " + alternative);
+                    List<CraftPlan.Selection<K>> nextSelected = new ArrayList<>(selected); nextSelected.add(new CraftPlan.Selection<>(alternative, ingredient.count()));
+                    return resolveIngredients(recipe, index + 1, branch, path, processes, nextSelected, seedDependencies, continuation);
+                }
                 rejectProductionCycle(recipe.output(), alternative, state);
                 return fulfill(alternative, ingredient.count(), state, path, processes, outcome -> {
                     List<CraftPlan.Selection<K>> nextSelected = new ArrayList<>(selected);
@@ -207,10 +229,12 @@ public final class CraftPlanner<K> {
             if (visited.add(key)) pending.addAll(state.productionInputs.getOrDefault(key, Set.of()));
         }
     }
-    private void recordProduction(K output, List<CraftPlan.Selection<K>> selected, State state) {
+    private void recordProduction(CraftRecipe<K> recipe, List<CraftPlan.Selection<K>> selected, State state) {
+        K output = recipe.output();
         Set<K> inputs = new LinkedHashSet<>(state.productionInputs.getOrDefault(output, Set.of()));
         for (var selection : selected) {
             K input = selection.key();
+            if (recipe.returnedSeedCount() > 0 && Objects.equals(input, output)) continue;
             if (inputs.contains(input)) continue;
             rejectProductionCycle(output, input, state);
             inputs.add(input);
@@ -231,12 +255,24 @@ public final class CraftPlanner<K> {
     private long consume(K key, long count, State state, Set<Integer> dependencies, boolean useExisting) {
         long remaining = count;
         for (Supply supply : state.supplies.getOrDefault(key, List.of())) {
-            if (!useExisting && supply.producer < 0) continue;
+            if (!useExisting && !supply.credit) continue;
             long take = Math.min(remaining, supply.count);
             if (take == 0) continue;
             supply.count -= take; remaining -= take;
             if (supply.producer < 0) state.reservations.merge(key, take, Math::addExact);
             else dependencies.add(supply.producer);
+            if (remaining == 0) break;
+        }
+        return remaining;
+    }
+    private long consumeSeed(K key, long count, State state, Set<Integer> dependencies) {
+        var supplies = new ArrayList<>(state.supplies.getOrDefault(key, List.of()));
+        supplies.sort(Comparator.comparingInt(supply -> !supply.credit && supply.producer >= 0 ? 0 : supply.producer < 0 ? 1 : 2));
+        long remaining = count;
+        for (Supply supply : supplies) {
+            long taken = Math.min(remaining, supply.count); if (taken <= 0) continue;
+            supply.count -= taken; remaining -= taken;
+            if (supply.producer < 0) state.reservations.merge(key, taken, Math::addExact); else dependencies.add(supply.producer);
             if (remaining == 0) break;
         }
         return remaining;
@@ -257,9 +293,10 @@ public final class CraftPlanner<K> {
         }
     }
     private static final class Supply {
-        long count; final int producer;
-        Supply(long count, int producer) { this.count = count; this.producer = producer; }
-        Supply(Supply source) { this(source.count, source.producer); }
+        long count; final int producer; final boolean credit;
+        Supply(long count, int producer) { this(count, producer, producer >= 0); }
+        Supply(long count, int producer, boolean credit) { this.count = count; this.producer = producer; this.credit = credit; }
+        Supply(Supply source) { this(source.count, source.producer, source.credit); }
     }
     private final class Outcome {
         final State state; final Set<Integer> dependencies;

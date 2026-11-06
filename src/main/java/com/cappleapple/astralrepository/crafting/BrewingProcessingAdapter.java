@@ -11,6 +11,9 @@ import net.minecraft.world.level.block.entity.BrewingStandBlockEntity;
 /** Runs one bottle and one reagent through a real, exclusively claimed brewing stand. */
 public final class BrewingProcessingAdapter implements ProcessingAdapter {
     private final Map<String, BrewingRecipes.Entry> bindings = new HashMap<>();
+    public BrewingProcessingAdapter() {}
+    private BrewingProcessingAdapter(BrewingProcessingAdapter source) { bindings.putAll(source.bindings); }
+    @Override public ProcessingAdapter capturePlan() { return new BrewingProcessingAdapter(this); }
 
     @Override public List<CraftRecipe<ItemKey>> recipes(CraftingService.NetworkAccess access) {
         bindings.clear();

@@ -27,12 +27,9 @@ public final class ProcessingRules extends SimpleJsonResourceReloadListener {
         return rules.stream().anyMatch(rule -> BuiltInRegistries.BLOCK.containsKey(rule.block()) && state.is(BuiltInRegistries.BLOCK.get(rule.block())));
     }
     private static List<Rule> defaults() {
-        return List.of(new Rule("astral_repository:create_pressing", new ResourceLocation("create:depot"), new ResourceLocation("create:pressing"), new ResourceLocation("create:mechanical_press"), 2, Direction.UP, Direction.DOWN, List.of(), List.of(), 2400, 0),
-                new Rule("astral_repository:create_milling", new ResourceLocation("create:millstone"), new ResourceLocation("create:milling"), null, 1, Direction.UP, Direction.DOWN, List.of(0), List.of(1,2,3,4,5,6,7,8,9), 2400, 0),
-                new Rule("astral_repository:resourceful_smelting", new ResourceLocation("industrialforegoing:resourceful_furnace"), new ResourceLocation("minecraft:smelting"), null, 1, null, null, List.of(0,1,2), List.of(0,1,2), 7200, 0),
-                new Rule("astral_repository:immersive_alloy", new ResourceLocation("immersiveengineering:alloy_smelter"), new ResourceLocation("immersiveengineering:alloy"), null, 1, null, null, List.of(0,1), List.of(3), 7200, 0),
-                new Rule("astral_repository:oritech_foundry", new ResourceLocation("oritech:foundry_block"), new ResourceLocation("oritech:foundry"), null, 1, null, null, List.of(0,1), List.of(2), 7200, 0),
-                new Rule("astral_repository:oritech_foundry_modern", new ResourceLocation("oritech:foundry"), new ResourceLocation("oritech:foundry"), null, 1, null, null, List.of(0,1), List.of(2), 7200, 0));
+        // Native mods advertise their shared machine contracts through per-mod backends.
+        // Datapack rules remain available for custom machines without such an API.
+        return List.of();
     }
     @Override protected void apply(Map<ResourceLocation, JsonElement> json, ResourceManager manager, ProfilerFiller profiler) {
         Map<String, Rule> next = new LinkedHashMap<>();

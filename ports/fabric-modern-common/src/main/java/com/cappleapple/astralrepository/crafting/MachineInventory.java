@@ -31,23 +31,6 @@ final class MachineInventory {
     static Boundary find(BlockEntity entity, ProcessingRules.Rule rule, Object input, Object output) {
         if (entity == null) return null;
         try {
-            if (rule.block().toString().equals("immersiveengineering:alloy_smelter")) {
-                // Dummy blocks share state with the master. Only claim the master position.
-                if (!entity.getClass().getName().equals("blusunrize.immersiveengineering.api.multiblocks.blocks.registry.MultiblockBlockEntityMaster")) return null;
-                Object helper = method(entity, "getHelper").invoke(entity);
-                Object state = method(helper, "getState").invoke(helper);
-                if (state == null || !state.getClass().getName().equals("blusunrize.immersiveengineering.common.blocks.multiblocks.logic.AlloySmelterLogic$State")) return null;
-                Slots slots = new Slots(method(state, "getInventory").invoke(state));
-                return slots.size() == 4 ? new Boundary(slots, slots, 2) : null;
-            }
-            if (entity.getClass().getName().equals("com.buuz135.industrial.block.resourceproduction.tile.ResourcefulFurnaceTile")) {
-                // Titanium combines inventory components differently for each configured side.
-                // The verified input/output components keep their own stable three-slot contract.
-                Field in = entity.getClass().getDeclaredField("input"), out = entity.getClass().getDeclaredField("output");
-                in.setAccessible(true); out.setAccessible(true);
-                Slots inputs = new Slots(in.get(entity)), outputs = new Slots(out.get(entity));
-                return inputs.size() == 3 && outputs.size() == 3 ? new Boundary(inputs, outputs, -1) : null;
-            }
             return input == null || output == null ? null : new Boundary(new Slots(input), new Slots(output), -1);
         } catch (ReflectiveOperationException | RuntimeException unsupported) { return null; }
     }

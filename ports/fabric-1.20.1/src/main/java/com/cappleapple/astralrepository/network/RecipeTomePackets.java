@@ -24,13 +24,14 @@ public final class RecipeTomePackets {
         @Override public Type<Action> type() { return TYPE; }
     }
     public record Page(int menu, int page, int total, ItemStack taught, String status, List<RecipeTomeMenu.Entry> entries) implements CustomPacketPayload {
-        public static final Type<Page> TYPE = new Type<>(new ResourceLocation("astral_repository", "tome_page"));
+        public static final Type<Page> TYPE = new Type<>(new ResourceLocation("astral_repository", "tome_page_v2"));
         public static final StreamCodec<FriendlyByteBuf, Page> CODEC = StreamCodec.of((b, p) -> {
             b.writeVarInt(p.menu); b.writeVarInt(p.page); b.writeVarInt(p.total); com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.encode(b, p.taught); b.writeUtf(p.status, 160);
             b.writeVarInt(p.entries.size());
             for (var entry : p.entries) {
                 b.writeResourceLocation(entry.recipe()); b.writeResourceLocation(entry.type()); com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.encode(b, entry.output());
                 b.writeBoolean(entry.excluded());
+                b.writeUtf(entry.process(), 256);
                 b.writeVarInt(entry.ingredients().size()); for (ItemStack ingredient : entry.ingredients()) com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.encode(b, ingredient);
             }
         }, b -> {
@@ -40,9 +41,10 @@ public final class RecipeTomePackets {
             for (int i = 0; i < count; i++) {
                 ResourceLocation recipe = b.readResourceLocation(), type = b.readResourceLocation(); ItemStack output = com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.decode(b);
                 boolean excluded = b.readBoolean();
+                String process = b.readUtf(256);
                 int inputs = b.readVarInt(); if (inputs < 0 || inputs > 9) throw new IllegalArgumentException("Invalid tome recipe preview");
                 List<ItemStack> ingredients = new ArrayList<>(); for (int slot = 0; slot < inputs; slot++) ingredients.add(com.cappleapple.astralrepository.platform.Backport.ITEM_CODEC.decode(b));
-                entries.add(new RecipeTomeMenu.Entry(recipe, type, output, List.copyOf(ingredients), excluded));
+                entries.add(new RecipeTomeMenu.Entry(recipe, type, output, List.copyOf(ingredients), excluded, process));
             }
             return new Page(menu, page, total, taught, status, List.copyOf(entries));
         });
@@ -50,7 +52,7 @@ public final class RecipeTomePackets {
     }
     public static void setup(IEventBus bus) { register(new RegisterPayloadHandlersEvent()); }
     private static void register(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("1");
+        var registrar = event.registrar("2");
         registrar.playToServer(Action.TYPE, Action.CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player && player.containerMenu instanceof RecipeTomeMenu menu && menu.containerId == payload.menu()) menu.action(payload);
         });

@@ -22,9 +22,12 @@ import net.minecraft.world.item.crafting.ShapedRecipe;
 /** A held-book editing session. All recipe identities and saved outputs originate on the server. */
 public final class RecipeTomeMenu extends AbstractContainerMenu {
     public static final int PAGE_SIZE = 1;
-    public record Entry(Identifier recipe, Identifier type, ItemStack output, List<ItemStack> ingredients, boolean excluded) {
+    public record Entry(Identifier recipe, Identifier type, ItemStack output, List<ItemStack> ingredients, boolean excluded, String process) {
+        public Entry(Identifier recipe, Identifier type, ItemStack output, List<ItemStack> ingredients, boolean excluded) {
+            this(recipe, type, output, ingredients, excluded, "");
+        }
         public Entry(Identifier recipe, Identifier type, ItemStack output, List<ItemStack> ingredients) {
-            this(recipe, type, output, ingredients, false);
+            this(recipe, type, output, ingredients, false, "");
         }
     }
     private final Player owner;
@@ -64,7 +67,7 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
             if(item==null||!BuiltInRegistries.ITEM.containsKey(item))return;
             selectedOutput = action.selection().isEmpty() ? ItemStack.EMPTY : action.selection().copyWithCount(1);
             if (!selectedOutput.isEmpty() && !BuiltInRegistries.ITEM.getKey(selectedOutput.getItem()).equals(item)) return;
-            query="="+item;page=0;status="";
+            query="="+item;page=0;status="";catalogue=null;
         } else if (action.kind() == 1) {
             Identifier recipe = Identifier.tryParse(action.recipe());
             status = recipe != null && inscribe(recipe) ? "Inscribed." : "That recipe is no longer available.";
@@ -113,7 +116,15 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
             for (var brewing : com.cappleapple.astralrepository.crafting.BrewingRecipes.entries(player.level(), List.of()))
                 entries.add(new Entry(brewing.id(), Identifier.withDefaultNamespace("brewing"), brewing.output(),
                         List.of(brewing.input(), brewing.reagent())));
-            entries.sort(Comparator.comparing((Entry entry) -> entry.output().getHoverName().getString(), String.CASE_INSENSITIVE_ORDER).thenComparing(entry -> entry.recipe().toString()));
+            var nativeEntries = com.cappleapple.astralrepository.crafting.NativeRecipeKnowledge.entries(player, selectedOutput);
+            record Alias(Identifier recipe, com.cappleapple.astralrepository.api.ItemKey output) {}
+            var nativeAliases = nativeEntries.stream().map(entry -> new Alias(entry.recipe(), new com.cappleapple.astralrepository.api.ItemKey(entry.output())))
+                    .collect(java.util.stream.Collectors.toSet());
+            entries.removeIf(entry -> !entry.type().getNamespace().equals("minecraft")
+                    && nativeAliases.contains(new Alias(entry.recipe(), new com.cappleapple.astralrepository.api.ItemKey(entry.output()))));
+            for (var entry : nativeEntries) entries.add(new Entry(entry.recipe(), entry.type(), entry.output(), entry.ingredients(), false, entry.process()));
+            entries.sort(Comparator.comparing((Entry entry) -> entry.output().getHoverName().getString(), String.CASE_INSENSITIVE_ORDER)
+                    .thenComparing(entry -> entry.recipe().toString()).thenComparing(Entry::process));
             catalogue = List.copyOf(entries);
         }
         String normalized = search.strip().toLowerCase(Locale.ROOT);
@@ -122,17 +133,23 @@ public final class RecipeTomeMenu extends AbstractContainerMenu {
         return new RecipeTomePackets.Page(containerId, selectedPage, matches.size(), RecipeTomeItem.product(tome, player.registryAccess()), status,
                 matches.stream().skip((long) selectedPage * PAGE_SIZE).limit(PAGE_SIZE)
                         .map(entry -> new Entry(entry.recipe(), entry.type(), entry.output(), entry.ingredients(),
-                                RecipeTomeItem.excludedRecipes(tome).contains(entry.recipe().toString()))).toList());
+                                RecipeTomeItem.excludedRecipes(tome).contains(entry.recipe().toString()), entry.process())).toList());
     }
     private void sendPage() { if (owner instanceof ServerPlayer player) {
         if(query.isBlank())RecipeTomePackets.send(player,new RecipeTomePackets.Page(containerId,0,0,RecipeTomeItem.product(tome,player.registryAccess()),"",List.of()));
         else RecipeTomePackets.send(player,browse(query,page));
     } }
-    private static ItemStack resolveOutput(Identifier recipeId, ServerPlayer player) {
+    private ItemStack resolveOutput(Identifier recipeId, ServerPlayer player) {
         var holder = player.level().getServer().getRecipeManager().byKey(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE,recipeId));
-        if (holder.isPresent()) return output(holder.get(), player);
+        if (holder.isPresent()) {
+            ItemStack result = output(holder.get(), player);
+            if (!result.isEmpty() && (selectedOutput.isEmpty() || ItemStack.isSameItemSameComponents(result, selectedOutput))) return result;
+        }
+        ItemStack nativeOutput = com.cappleapple.astralrepository.crafting.NativeRecipeKnowledge.resolve(player, recipeId, selectedOutput);
+        if (!nativeOutput.isEmpty()) return nativeOutput;
         return com.cappleapple.astralrepository.crafting.BrewingRecipes.entries(player.level(), List.of()).stream()
-                .filter(entry -> entry.id().equals(recipeId)).map(entry -> entry.output().copy()).findFirst().orElse(ItemStack.EMPTY);
+                .filter(entry -> entry.id().equals(recipeId) && (selectedOutput.isEmpty() || ItemStack.isSameItemSameComponents(entry.output(), selectedOutput)))
+                .map(entry -> entry.output().copy()).findFirst().orElse(ItemStack.EMPTY);
     }
     private static ItemStack output(RecipeHolder<?> recipe, ServerPlayer player) {
         try {

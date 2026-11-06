@@ -13,6 +13,9 @@ import java.util.*;
 public final class VanillaProcessingAdapter implements ProcessingAdapter {
     private record Binding(Recipe<?> holder, List<Integer> slots) {}
     private final Map<String, Binding> bindings = new HashMap<>();
+    public VanillaProcessingAdapter() {}
+    private VanillaProcessingAdapter(VanillaProcessingAdapter source) { bindings.putAll(source.bindings); }
+    @Override public ProcessingAdapter capturePlan() { return new VanillaProcessingAdapter(this); }
     @Override public List<CraftRecipe<ItemKey>> recipes(CraftingService.NetworkAccess access) {
         bindings.clear();
         List<CraftRecipe<ItemKey>> result = new ArrayList<>();

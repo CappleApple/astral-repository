@@ -15,6 +15,10 @@ neoForge {
     }
     runs {
         configureEach {
+            if (project.hasProperty('genericTechTest')) {
+                systemProperty 'astral_repository.genericTechTest', 'true'
+                systemProperty 'astral_repository.machineCompatTest', 'true'
+            }
             if (project.hasProperty('machineCompatTest')) systemProperty 'astral_repository.machineCompatTest', 'true'
             if (project.hasProperty('recipeCompatTest')) systemProperty 'astral_repository.recipeCompatTest', 'true'
             if (project.hasProperty("curiosTest")) systemProperty "astral_repository.curiosTest", "true"
@@ -123,7 +127,7 @@ neoForge {
         }
         gameTestServer {
             type = 'gameTestServer'
-            gameDirectory = project.layout.projectDirectory.dir(project.hasProperty('machineCompatTest') ? 'build/autocrafting-fixes/machine-gametest' : project.hasProperty('recipeCompatTest') ? 'build/recipe-compat/gametest' : project.hasProperty('compatTest') ? 'run-gametest-compat' : 'run-gametest')
+            gameDirectory = project.layout.projectDirectory.dir(project.hasProperty('genericTechTest') ? 'build/generic-processing/runtime' : project.hasProperty('machineCompatTest') ? 'build/autocrafting-fixes/machine-gametest' : project.hasProperty('recipeCompatTest') ? 'build/recipe-compat/gametest' : project.hasProperty('compatTest') ? 'run-gametest-compat' : 'run-gametest')
             if (project.hasProperty('compatTest')) systemProperty 'astral_repository.compatTest', 'true'
             systemProperty 'neoforge.enabledGameTestNamespaces', 'astral_repository,minecraft'
         }
@@ -138,6 +142,11 @@ repositories {
     maven { url = "https://maven.terraformersmc.com/releases" }
 }
 dependencies {
+    if (project.hasProperty('genericTechTest')) {
+        runtimeOnly fileTree(dir: 'test-libs/machine-compat', include: ['*.jar'], exclude: ['*-sources.jar'])
+        runtimeOnly fileTree(dir: 'test-libs/generic-tech', include: ['Powah-*.jar', 'cloth-config-*.jar', 'guideme-*.jar', 'enderio-*.jar'])
+        runtimeOnly files('test-libs/create-1.21.1-6.0.10.jar')
+    }
     if (project.hasProperty('machineCompatTest'))
         runtimeOnly fileTree(dir: 'test-libs/machine-compat', include: ['*.jar'], exclude: ['*-sources.jar'])
     if (project.hasProperty('nexusTransitionTest')) {

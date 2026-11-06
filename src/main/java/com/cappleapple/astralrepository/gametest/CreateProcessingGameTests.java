@@ -70,7 +70,7 @@ public final class CreateProcessingGameTests {
             service.tick();
         });
         h.succeedWhen(() -> {
-            h.assertTrue(service.activeJobs() == 0, "Create operation is complete");
+            h.assertTrue(service.statuses().stream().anyMatch(status -> status.id().equals(request.jobId()) && status.state().equals("COMPLETE")), "Original Create request completes: " + service.statuses());
             h.assertTrue(fixture.snapshot().getOrDefault(new ItemKey(output), 0L) >= 1L,
                     "Actual Create output returned to chest: " + service.statuses());
             h.assertTrue(fixture.snapshot().getOrDefault(new ItemKey(input), 0L) == 0L, "Actual ingredient was consumed");

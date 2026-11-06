@@ -17,7 +17,7 @@ Transfers follow the shortest loaded route with clear line of sight, travelling 
 - A handheld Astral Nexus and distant network bridges, with separate upgrades for dimensional access.
 - Recipe Tomes select actual recipes from inventory samples or EMI/JEI drops in a book editor and teach final outputs through vanilla Chiseled Bookshelves. The tome can block individual recipes, including intermediate conversions, for its taught output. Recipe searches are cached and planned on worker threads. Jobs appear immediately as Calculating, show tagged ingredient shortages, and resume when stock becomes available.
 - Cadence sets per-rune batch amounts and intervals for supported item, fluid, energy, and Source storage.
-- Real crafting-table assembly, furnace processing, and potion brewing. Optional integrations include Mekanism recipe processors and factories, Industrial Foregoing's Resourceful Furnace, Immersive Engineering's Alloy Kiln, Oritech's Foundry, and Create pressing/milling. Machines retain their normal power and setup requirements.
+- Real crafting-table assembly, furnace processing, and potion brewing. Optional native machine adapters cover Mekanism, Industrial Foregoing, Immersive Engineering, Oritech, Create, Thermal, Ender IO, and Powah through their shared recipe and inventory APIs. Machines retain their normal power and setup requirements.
 - Item and fluid rune transfers, native item/fluid/FE storage, Mekanism chemical storage and crafting ingredients, and optional Ars Nouveau Source, AE2, Refined Storage, and Stacks Not Slots adapters.
 - Vanilla-amethyst geode shells, growth, and harvesting behavior. Astral Gems and the natural blocks use blue amethyst surfaces with a purple interior, depth-dependent parallax, drifting square and rectangular particles, and configurable opacity.
 - Astral Gems work with all vanilla smithing trim patterns, adding the astral shader only to the trim on worn armor and item icons.
@@ -47,7 +47,7 @@ Requires Minecraft **1.21.1**, **NeoForge 21.1.244 or newer**, and **Java 21**. 
 
 **Patchouli 1.21.1-93 or newer for NeoForge is optional.** Install it on both sides to add the `astral_repository:field_guide` item and its crafting recipe.
 
-Put `astral_repository-1.12.1.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
+Put `astral_repository-1.12.2.jar` in the instance's `mods` directory. Optional integrations have specific access points and limits; see [Compatibility](docs/compatibility.md) and the [validation record](docs/validation.md).
 
 ## Start a workshop
 
@@ -72,7 +72,7 @@ With Java 21 available, run on Windows:
 .\gradlew.bat test build
 ```
 
-The mod JAR is written to `build/libs/astral_repository-1.12.1.jar`.
+The mod JAR is written to `build/libs/astral_repository-1.12.2.jar`.
 
 ```powershell
 .\gradlew.bat runGameTestServer

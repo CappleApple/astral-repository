@@ -1,5 +1,24 @@
 # Port validation
 
+## 1.12.2 checks - 2026-11-05
+
+All eight normal builds pass 1,806 unit tests in total. Each final normal JAR launches in a hidden, muted client without capturing the mouse and completes its gameplay checks and world saves. Every class and resource entry matches the corresponding release artifact.
+
+| Edition | Unit tests | Packaged client |
+| --- | ---: | --- |
+| NeoForge 1.21.1 (original) | 224 | Passed |
+| Forge 1.20.1 | 224 | Passed |
+| Fabric 1.20.1 | 224 | Passed |
+| Fabric 1.21.1 | 224 | Passed |
+| Fabric 26.2 | 225 | Passed |
+| NeoForge 26.2 | 230 | Passed |
+| Fabric 26.3 | 225 | Passed |
+| NeoForge 26.3 | 230 | Passed |
+
+The original NeoForge edition passes 296 installed-mod GameTests; Forge 1.20.1 passes 80. A separate ordinary production Forge server passes 9 actual Thermal/Industrial Foregoing operations with the normal reobfuscated JAR and official dependencies. Fabric and modern editions have build/source validation for the shared native machine integrations, rather than installed-tech-mod runtime coverage. The [main validation record](../docs/validation.md#1122-checks---2026-11-05) lists exact mod versions and test boundaries.
+
+Native fixtures verify actual machine processing and resource conservation, including Powah's one-item-per-slot cycles, retained native setup, exact potion/enchantment data, chance results, seed reuse, multiblock aliases, output destinations, and cancellation. Discovery audits are separate from physical execution; compatible shared APIs do not establish support for every addon or world mechanic. Logs, current source witnesses, JAR hashes, and client captures remain in ignored `build/generic-processing/` and `build/publication/v1.12.2/`. Normal JARs exclude all test entrypoints and fixture classes.
+
 ## 1.12.1 checks - 2026-11-05
 
 All eight normal `test build` runs pass. Unit counts are 181 each for the original NeoForge, Forge 1.20.1, Fabric 1.20.1 and Fabric 1.21.1; 182 each for Fabric 26.2/26.3; and 186 each for NeoForge 26.2/26.3, totaling 1,460. New pure regressions cover craft-entry selection, process labels, and bounded multi-input slot assignment. Minecraft 26.3 uses separate native brewing-recipe and brewing-stand overrides.

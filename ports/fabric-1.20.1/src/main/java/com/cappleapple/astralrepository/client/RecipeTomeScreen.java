@@ -81,14 +81,17 @@ public final class RecipeTomeScreen extends AbstractContainerScreen<RecipeTomeMe
         AstralInterfaceRenderer.blit(g,new ResourceLocation("astral_repository","textures/gui/rune_settings.png"),leftPos+7,topPos+210,178,96);
         for(var slot:menu.slots)RuneUi.slot(g,leftPos+slot.x-1,topPos+slot.y-1,18,isHovering(slot.x,slot.y,16,16,mx,my));
     }
-    public String processName(){return selection==null?"":RecipeProcessLabels.describe(selection.type().toString());}
+    public String processName(){return selection==null?"":selection.process().isEmpty()?RecipeProcessLabels.describe(selection.type().toString()):selection.process();}
     public List<Component> processTooltip(){
         if(selection==null)return List.of();
         List<Component> lines=new ArrayList<>();
         lines.add(Component.literal(processName()));
         lines.add(Component.literal("Recipe type: "+selection.type()));
         lines.add(Component.literal("Recipe: "+selection.recipe()));
-        if(selection.type().getNamespace().equals("mekanism")){
+        if(!selection.process().isEmpty()&&!selection.process().contains("/unbound")){
+            lines.add(Component.literal("Ingredient counts use this network recipe profile."));
+            lines.add(Component.literal("Native power, setup and machine modes are still required."));
+        }else if(selection.type().getNamespace().equals("mekanism")){
             lines.add(Component.literal("Shown ingredient counts are base recipe amounts."));
             lines.add(Component.literal("Chemical totals depend on processing time and upgrades."));
         }

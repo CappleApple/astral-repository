@@ -16,7 +16,10 @@ import java.util.*;
 public final class InventoryProcessingAdapter implements ProcessingAdapter {
     private record Binding(ProcessingRules.Rule rule, Map<ItemKey, Long> possibleOutputs) {}
     private final Map<String, Binding> bindings = new HashMap<>();
-    private final Set<GlobalPos> unavailable = new HashSet<>();
+    private final Set<GlobalPos> unavailable;
+    public InventoryProcessingAdapter() { unavailable = new HashSet<>(); }
+    private InventoryProcessingAdapter(InventoryProcessingAdapter source) { unavailable = source.unavailable; bindings.putAll(source.bindings); }
+    @Override public ProcessingAdapter capturePlan() { return new InventoryProcessingAdapter(this); }
     @Override public List<CraftRecipe<ItemKey>> recipes(CraftingService.NetworkAccess access) {
         bindings.clear();
         List<CraftRecipe<ItemKey>> result = new ArrayList<>();
