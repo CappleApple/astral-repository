@@ -6,7 +6,11 @@
   "mixins": [
     "StorageDirtyMixin",
     "RouteOcclusionMixin",
-    "AstralMineralPistonMixin"
+    "AstralMineralPistonMixin",
+    "NativeMachineTickMixin",
+    "NativeMachineDropMixin",
+    "NativeOwnedItemMixin",
+    "NativeItemMergeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

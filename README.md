@@ -2,9 +2,9 @@
 
 Astral Repository connects workshop inventories through crystal networks, moves items, fluids, and energy, and crafts products from recipes taught to the network.
 
-The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.12.1. It builds independently of the other Minecraft and loader branches.
+The `CappleApple/forge-1.20.1` branch contains the standalone Forge edition, version 1.12.2. It builds independently of the other Minecraft and loader branches.
 
-Version 1.12.1 preserves exact potion recipes, adds native Mekanism machine and resource discovery, and identifies each Recipe Tome recipe's process. Empty starred Nexus entries select a quantity before submitting a craft. Autocrafting still requires a physical crafting table within network coverage. See the [changelog](CHANGELOG.md).
+Version 1.12.2 discovers machine recipes through shared native APIs for Industrial Foregoing, Immersive Engineering, Oritech, Create, Thermal, Ender IO, and Powah. Recipe Tomes show nearby machine conversions and byproducts. Powah requests use one real orb cycle at a time. See the [changelog](CHANGELOG.md).
 
 ## Installation
 
@@ -28,13 +28,13 @@ Teach recipes with a Recipe Tome and request their products from the Nexus. Use 
 
 Item identities and saved settings use Minecraft 1.20.1 item NBT. Storage interoperability uses native Forge capabilities with invalidation listeners.
 
-The Nexus grid is a saved personal workspace shared by your Nexus menus. Keep a separate crafting table within coverage for autocrafting. Inscribe the exact final output in a Recipe Tome and place it in a nearby Chiseled Bookshelf. Each recipe page names its process; hovering it shows the exact recipe and type IDs. Click an empty starred Nexus entry, enter the amount, then press Enter or the craft button. Use **Block recipe** or **Allow recipe** to control an alternative without replacing the taught output. The default **Blocking Rune** excludes a container without moving its contents.
+The Nexus grid is a saved personal workspace shared by your Nexus menus. Keep a physical crafting table within coverage for autocrafting. Inscribe the exact final output in a Recipe Tome and place it in a nearby Chiseled Bookshelf. Each recipe page names its process; hovering it shows the exact recipe and type IDs. Click an empty starred Nexus entry, enter the amount, then press Enter or the craft button. Use **Block recipe** or **Allow recipe** to control an alternative without replacing the taught output. The default **Blocking Rune** excludes a container without moving its contents.
 
-Ordinary item, fluid, and chemical deposits skip processing machines. Energy may enter an unclaimed native energy container; active crafting claims exclude every resource through all aliases. Mekanism discovery uses native recipe, machine, and conversion contracts, including compatible addon recipes and factories. It preserves item, fluid, chemical, and energy requirements. Native power, security, mode, structure, and processing conditions remain required. World mechanics without a recipe or conversion contract are not inferred.
+Ordinary item, fluid, and chemical deposits skip processing machines. Energy may enter an unclaimed native energy container; active crafting claims exclude every resource through all aliases. Machine discovery uses shared native recipe, machine, and conversion contracts. It includes compatible addon recipes when they expose those contracts. It preserves item, fluid, chemical, and energy requirements. Native power, security, mode, structure, and processing conditions remain required. World mechanics without a recipe or conversion contract are not inferred.
 
 ## Build and validation
 
-Version 1.12.1 passes 181 unit tests and the normal release build. Shared regressions cover recipe process labels, quantity selection, bounded machine-slot assignment, and existing planner and transfer behavior. Forge 1.20.1 also passed 22 normal and 30 native Mekanism 10.4.16.80 runtime cases. Its native catalog audit found 1,259 recipes across 27 types with no missing entries. The original NeoForge 1.21.1 edition separately passed 223 required GameTests with actual Mekanism, Industrial Foregoing, Immersive Engineering, and Oritech, plus hidden, muted, mouse-free client checks for Tome labels and quantity requests. Those checks do not establish native execution on every other loader or game version. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
+Version 1.12.2 passes 224 unit tests and its normal release build. Its actual packaged client ran hidden and muted without capturing the mouse, exercising placement, Nexus packets, Recipe Tome inscription and physical autocrafting. The tested JAR's class and resource entries match the release artifact. Installed native-mod runtime checks also cover representative Immersive Engineering, Ender IO, Thermal, and Industrial Foregoing operations on this edition. Discovery audits do not establish physical execution of every recipe or support for every addon. See the [current validation record](https://github.com/CappleApple/astral-repository/blob/main/docs/validation.md). Runtime descriptions retained below document earlier release checks.
 
 Set `JAVA_HOME` to a JDK 17 installation and run:
 
@@ -45,7 +45,7 @@ Set `JAVA_HOME` to a JDK 17 installation and run:
 .\gradlew.bat -PgameplaySmoke -PoptionalRuntime runClient
 ```
 
-The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.12.1.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
+The Gradle 8.8 wrapper downloads public dependencies. The release JAR is `build/libs/astral_repository-1.20.1-forge-1.12.2.jar`. ForgeGradle reobfuscates it and includes the Mixin refmap. Both refmaps and the Mixin member-mapping file are retained when compilation is restored from Gradle cache.
 
 The earlier port audit passed 146 JUnit tests and 22 native Forge GameTests. Runtime checks cover all ten blocks placed through their items on all six faces, storage recovery after breaking and replacement, Nexus withdrawal/deposit and vanilla crafting/refill, Recipe Tome inscription and bookshelf discovery, completed automatic crafting with ingredient conservation, item/fluid/energy rune transfers with stock limits, capability invalidation, all thirteen base recipes, and worldgen registration. This is a focused port suite; it does not claim the original NeoForge edition's complete GameTest coverage.
 

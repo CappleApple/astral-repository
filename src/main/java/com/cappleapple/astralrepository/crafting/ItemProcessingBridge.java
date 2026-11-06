@@ -9,6 +9,7 @@ import net.minecraft.core.GlobalPos;
 final class ItemProcessingBridge implements ResourceProcessingAdapter {
     private final ProcessingAdapter delegate;
     ItemProcessingBridge(ProcessingAdapter delegate) { this.delegate = delegate; }
+    @Override public ResourceProcessingAdapter capturePlan() { return new ItemProcessingBridge(delegate.capturePlan()); }
     @Override public List<CraftRecipe<ResourceKey>> recipes(CraftingService.NetworkAccess access) {
         return delegate.recipes(access).stream().map(ItemProcessingBridge::resourceRecipe).toList();
     }
@@ -32,13 +33,13 @@ final class ItemProcessingBridge implements ResourceProcessingAdapter {
     static CraftRecipe<ResourceKey> resourceRecipe(CraftRecipe<ItemKey> recipe) {
         return new CraftRecipe<>(recipe.id(), recipe.output(), recipe.outputCount(), recipe.process(),
                 recipe.ingredients().stream().map(input -> new CraftRecipe.Ingredient<ResourceKey>(
-                        new ArrayList<>(input.alternatives()), input.count(), input.tag())).toList(), recipe.priority(), recipe.durationTicks());
+                        new ArrayList<>(input.alternatives()), input.count(), input.tag())).toList(), recipe.priority(), recipe.durationTicks(), recipe.returnedSeedCount());
     }
     static CraftPlan.Node<ItemKey> itemNode(CraftPlan.Node<ResourceKey> node) {
         var recipe = node.recipe();
         var items = new CraftRecipe<>(recipe.id(), item(recipe.output()), recipe.outputCount(), recipe.process(),
                 recipe.ingredients().stream().map(input -> new CraftRecipe.Ingredient<>(
-                        input.alternatives().stream().map(ItemProcessingBridge::item).toList(), input.count(), input.tag())).toList(), recipe.priority(), recipe.durationTicks());
+                        input.alternatives().stream().map(ItemProcessingBridge::item).toList(), input.count(), input.tag())).toList(), recipe.priority(), recipe.durationTicks(), recipe.returnedSeedCount());
         return new CraftPlan.Node<>(node.id(), items, node.selected().stream()
                 .map(input -> new CraftPlan.Selection<>(item(input.key()), input.count())).toList(), node.dependencies());
     }

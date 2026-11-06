@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="CC-BY-NC-SA-4.0"
+[[mods]]
+modId="astral_legacy_tech_test"
+version="1"
+displayName="Astral Repository native IE and Ender IO validation"
+[[dependencies.astral_legacy_tech_test]]
+modId="astral_repository"
+mandatory=true
+versionRange="[1.12.1,)"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.astral_legacy_tech_test]]
+modId="immersiveengineering"
+mandatory=true
+versionRange="[1.20.1-10.2.0-183]"
+ordering="AFTER"
+side="BOTH"
+[[dependencies.astral_legacy_tech_test]]
+modId="enderio"
+mandatory=true
+versionRange="[6.2,)"
+ordering="AFTER"
+side="BOTH"

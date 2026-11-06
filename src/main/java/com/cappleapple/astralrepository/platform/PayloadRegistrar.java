@@ -6,7 +6,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 import java.util.function.BiConsumer;
 public final class PayloadRegistrar {
- public static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new net.minecraft.resources.ResourceLocation("astral_repository","main"),()->"1.11.8-forge-1.20.1","1.11.8-forge-1.20.1"::equals,"1.11.8-forge-1.20.1"::equals);
+ public static final SimpleChannel CHANNEL=NetworkRegistry.newSimpleChannel(new net.minecraft.resources.ResourceLocation("astral_repository","main"),()->"1.12.2-forge-1.20.1","1.12.2-forge-1.20.1"::equals,"1.12.2-forge-1.20.1"::equals);
  private static int next;
  public record Context(Player player) {}
  public <T extends CustomPacketPayload> void playToClient(CustomPacketPayload.Type<T> type,StreamCodec<FriendlyByteBuf,T> codec,BiConsumer<T,Context> handler){register(type,codec,handler,NetworkDirection.PLAY_TO_CLIENT);}

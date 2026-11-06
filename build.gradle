@@ -1,5 +1,5 @@
 plugins { id 'java-library'; id 'net.minecraftforge.gradle' version '6.0.42'; id 'org.spongepowered.mixin' version '0.7.38' }
-version = '1.12.1'
+version = '1.12.2'
 group = 'com.cappleapple.astralrepository'
 base { archivesName = 'astral_repository-1.20.1-forge' }
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -30,7 +30,20 @@ mixin { add sourceSets.main, 'astral_repository.refmap.json'; config 'astral_rep
 dependencies {
  annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
  minecraft 'net.minecraftforge:forge:1.20.1-47.4.10'
- if(project.hasProperty('legacyMekTest')) runtimeOnly fg.deobf('maven.modrinth:mekanism:uxe1WQp4')
+ if(project.hasProperty('legacyMekTest') || project.hasProperty('legacyTechTest')) runtimeOnly fg.deobf('maven.modrinth:mekanism:uxe1WQp4')
+ if(project.hasProperty('legacyTechTest')) {
+  runtimeOnly fg.deobf('maven.modrinth:immersiveengineering:WUzj4tgJ')
+  runtimeOnly fg.deobf('maven.modrinth:enderio:nJnmg29v')
+ }
+ if(project.hasProperty('legacyThermalTest')) {
+  runtimeOnly fg.deobf('maven.modrinth:thermal-expansion:Ux2Z0ow1')
+  runtimeOnly fg.deobf('maven.modrinth:thermal-foundation:44ilyZbi')
+  runtimeOnly fg.deobf('maven.modrinth:cofh-core:kglS53Hd')
+ }
+ if(project.hasProperty('legacyIndustrialTest')) {
+  runtimeOnly fg.deobf('maven.modrinth:industrial-foregoing:5XXYqEMK')
+  runtimeOnly fg.deobf('maven.modrinth:titanium:Hiz07O4L')
+ }
  compileOnly fg.deobf('top.theillusivec4.curios:curios-forge:5.14.1+1.20.1')
  compileOnly fg.deobf('mezz.jei:jei-1.20.1-common-api:15.56.0.205')
  compileOnly fg.deobf('mezz.jei:jei-1.20.1-forge-api:15.56.0.205')
@@ -68,6 +81,7 @@ tasks.named('compileJava') {
 sourceSets {
  portTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath }
  legacyMekTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath }
+ legacyTechTest { compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath }
 }
 if(project.hasProperty('legacyMekTest')) {
  minecraft.runs.gameTestServer {
@@ -75,6 +89,18 @@ if(project.hasProperty('legacyMekTest')) {
   property 'astral_repository.legacyMekTest', 'true'
   property 'forge.enabledGameTestNamespaces', 'astral_repository,astral_legacy_mek_test'
   mods { astral_legacy_mek_test { source sourceSets.legacyMekTest } }
+ }
+}
+if(project.hasProperty('legacyTechTest')) {
+ minecraft.runs.gameTestServer {
+  workingDirectory project.file(project.findProperty('legacyTechRun') ?: 'build/generic-processing/legacy-tech-runtime')
+  property 'astral_repository.genericTechOutput', project.file((project.findProperty('legacyTechRun') ?: 'build/generic-processing/legacy-tech-runtime')+'/audit').absolutePath
+  property 'astral_repository.genericTechTest', 'true'
+  property 'astral_repository.legacyTechTest', 'true'
+  property 'astral_repository.legacyThermalTest', project.hasProperty('legacyThermalTest').toString()
+  property 'astral_repository.legacyIndustrialTest', project.hasProperty('legacyIndustrialTest').toString()
+  property 'forge.enabledGameTestNamespaces', 'astral_repository,astral_legacy_tech_test'+(project.hasProperty('legacyMekTest')?',astral_legacy_mek_test':'')
+  mods { astral_legacy_tech_test { source sourceSets.legacyTechTest } }
  }
 }
 tasks.register('auditHarnessJar', Jar) {
